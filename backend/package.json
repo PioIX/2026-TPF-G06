@@ -1,0 +1,33 @@
+{
+  "name": "backend-tp2-pio-socket",
+  "version": "1.0.0",
+  "description": "Backend base para el TP2 (Pio Socket) - Router, searchParams y Socket.IO",
+  "main": "index.js",
+  "bin": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "pkg . --targets node18-win-x64 --output build/backend-tp2.exe",
+    "pio": "nodemon --env-file=.pio.env index.js",
+    "home": "nodemon --env-file=.home.env index.js"
+  },
+  "keywords": [
+    "socket.io",
+    "express",
+    "nextjs",
+    "backend"
+  ],
+  "author": "Ing. Pablo Morandi",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-session": "^1.18.2",
+    "mysql2": "^3.24.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "pkg": "^5.8.1"
+  }
+}

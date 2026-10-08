@@ -2,12 +2,12 @@
 # Presupuesto y Documento de Alcance
 
 ### Descripción del proyecto
-- *Nombre de la aplicación:* “Fast Food Rush”
-- *Descripción general:* Va a ser un juego de crear comida rápida, como hamburguesas y papas fritas
-- *Problemática o necesidad que aborda:* Armar la comida en tiempo, atender a los clientes y que no se te queme nada
-- *Público objetivo:* Niños y adolescentes
-- *Objetivo general:* Aprender a armar hamburguesas
-- *Principales funcionalidades:* Armar hamburguesas
+*Nombre de la aplicación:* “Fast Food Rush”
+*Descripción general:* Va a ser un juego de crear comida rápida, como hamburguesas y papas fritas
+*Problemática o necesidad que aborda:* Armar la comida en tiempo, atender a los clientes y que no se te queme nada
+*Público objetivo:* Niños y adolescentes
+*Objetivo general:* Aprender a armar hamburguesas
+*Principales funcionalidades:* Armar hamburguesas
 
 ### Alcance
 Funcionalidades desarrolladas
@@ -38,12 +38,11 @@ Funcionalidades desarrolladas
 *Integrantes responsables:* Guadalupe Atienza, Delfina Ciceran, Candela Langan y Victoria Jimenez
 *Fecha estimada de finalización:* 18/11/26
 
-| Tarea | Responsable | Fecha estimada |
-|--------|------|--------|
-| Registro e inicio de sesión:  |    |  |
-| DER   | Langan   | 7/10 |
-| READ.ME |  Jimenez  | 8/10 |
-| CSS  |    |  |
-| FOTOS | Jimenez | 8/10 |
-| Backend   |    |  |
-| Frontend  |    |  |
+*Tarea                              Responsable     Fecha estimada*
+*Registro e inicio de sesión:*
+*DER*
+*CSS*
+*Backend*
+*Frontend*
+
+dddss

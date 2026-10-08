@@ -8,11 +8,13 @@ export default function LoginPage() {
   const [mail, setMail] = useState('');
   const [contra, setContra] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
       const res = await fetch('http://localhost:4000/login', {
@@ -26,19 +28,23 @@ export default function LoginPage() {
       const data = await res.json();
       console.log("Respuesta de Login:", data);
 
-      // Corregido: la API devuelve { ok: true, usuario: {...} }
-      if (res.ok && data.ok) {
-        // Guardamos la información del usuario logueado en localStorage
-        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+      // El backend devuelve { respuesta: { ok: true, msg: "..." }, existe: [...] }
+      if (res.ok && data.respuesta?.ok) {
+        // Guardamos el primer registro de la lista 'existe' como el usuario logueado
+        if (data.existe && data.existe.length > 0) {
+          localStorage.setItem('usuario', JSON.stringify(data.existe[0]));
+        }
 
-        // Redirigimos a la pantalla principal del chat
+        // Redirigimos al chat
         router.push('/partidas');
       } else {
-        setError(data.msg || 'Credenciales incorrectas');
+        setError(data.respuesta?.msg || data.message || 'Credenciales incorrectas');
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setError('Error al conectar con el servidor');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,7 +73,9 @@ export default function LoginPage() {
           
           {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
-          <Button type="submit" className="w-full">Iniciar sesión</Button>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Cargando...' : 'Iniciar sesión'}
+          </Button>
         </form>
       </div>
     </div>

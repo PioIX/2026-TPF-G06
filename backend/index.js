@@ -42,7 +42,6 @@ io.on("connection", (socket) => {
   socket.on("register", async (data, callback) => {
     console.log("📥 Datos recibidos en el servidor:", data);
 
-    const foto = data.fotoPerfil || '/default-profile.png';
 
     try {
       // 1. Verificar si el usuario o mail ya existe
@@ -58,17 +57,17 @@ io.on("connection", (socket) => {
         });
       }
 
-      // 2. Insertar nuevo usuario con su foto
+  
       await realizarQuery(`
-        INSERT INTO Usuarios (nombre, contra, mail, foto_perfil) VALUES
-        ('${data.nombre}', '${data.contra}', '${data.mail}', '${foto}');
+        INSERT INTO Usuarios (nombre, contra, mail) VALUES
+        ('${data.nombre}', '${data.contra}', '${data.mail}');
       `);
 
       console.log("✅ Usuario insertado con éxito en MySQL");
       callback({
         ok: true,
         msg: "Usuario registrado con éxito",
-        usuario: { nombre: data.nombre, mail: data.mail, foto_perfil: foto }
+        usuario: { nombre: data.nombre, mail: data.mail }
       });
 
     } catch (error) {
@@ -99,7 +98,7 @@ io.on("connection", (socket) => {
 
       // 2. Consultar datos del emisor para adjuntarlos al evento emitido
       const emisor = await realizarQuery(
-        "SELECT nombre, foto_perfil FROM Usuarios WHERE id_usuario = ?",
+        "SELECT nombre FROM Usuarios WHERE id_usuario = ?",
         [id_emisor]
       );
 
@@ -110,7 +109,6 @@ io.on("connection", (socket) => {
         contenido,
         fecha_hora: new Date(),
         nombre: emisor[0]?.nombre,
-        foto_perfil: emisor[0]?.foto_perfil,
       };
 
       // 3. Emitir a TODOS los conectados en la sala del chat

@@ -6,20 +6,11 @@ import { io } from 'socket.io-client';
 
 let socket;
 
-const FOTOS_DISPONIBLES = [
-  { id: 1, url: "/foto1.jpeg", nombre: "Opción 1" },
-  { id: 2, url: "/perro.jpg", nombre: "Opción 2" },
-  { id: 3, url: "/conejo.jpg", nombre: "Opción 3" }
-];
-
-const FOTO_DEFAULT = { id: 0, url: "/default-profile.png", nombre: "Por defecto" };
-
 export default function RegistroPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [mail, setMail] = useState('');
   const [password, setPassword] = useState('');
-  const [fotoPerfil, setFotoPerfil] = useState(FOTO_DEFAULT);
 
   useEffect(() => {
     socket = io("http://localhost:4000");
@@ -49,8 +40,7 @@ export default function RegistroPage() {
     socket.emit("register", {
       nombre: username,
       mail: mail,
-      contra: password,
-      fotoPerfil: fotoPerfil.url
+      contra: password
     }, (respuesta) => {
       if (respuesta && respuesta.ok) {
         alert("Registro exitoso");
@@ -88,32 +78,6 @@ export default function RegistroPage() {
             onChange={(event) => setPassword(event.target.value)}
             className="w-full p-2 border border-gray-300 rounded text-black outline-none focus:border-blue-500"
           />
-
-          <h3 className="font-semibold text-sm text-gray-700">Elige tu foto de perfil (Opcional):</h3>
-
-          <ul className="flex flex-wrap gap-2 justify-center list-none p-0">
-            <li
-              onClick={() => setFotoPerfil(FOTO_DEFAULT)}
-              className={`p-1 border rounded cursor-pointer text-center ${
-                fotoPerfil?.id === FOTO_DEFAULT.id ? 'border-blue-600 border-2' : 'border-gray-300'
-              }`}
-            >
-              <img src={FOTO_DEFAULT.url} alt="Foto por defecto" className="w-12 h-12 object-cover rounded-full" />
-              <small className="block text-[10px] mt-1">Sin foto</small>
-            </li>
-
-            {FOTOS_DISPONIBLES.map(foto => (
-              <li
-                key={foto.id}
-                onClick={() => setFotoPerfil(foto)}
-                className={`p-1 border rounded cursor-pointer text-center ${
-                  fotoPerfil?.id === foto.id ? 'border-blue-600 border-2' : 'border-gray-300'
-                }`}
-              >
-                <img src={foto.url} alt={foto.nombre} className="w-12 h-12 object-cover rounded-full" />
-              </li>
-            ))}
-          </ul>
 
           <button 
             type="submit"

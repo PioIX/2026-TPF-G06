@@ -38,17 +38,12 @@ Funcionalidades desarrolladas
 *Integrantes responsables:* Guadalupe Atienza, Delfina Ciceran, Candela Langan y Victoria Jimenez
 *Fecha estimada de finalización:* 18/11/26
 
-*Tarea                              Responsable     Fecha estimada*
-*Registro e inicio de sesión:*
-*DER*                                Langan
-*CSS*
-*Backend*
-*Frontend*
-
-## Usuarios
-
-| Nombre | Edad | Ciudad |
+| Tarea | Responsable | Fecha estimada |
 |--------|------|--------|
-| Cande  | 17   | Buenos Aires |
-| Juan   | 18   | Córdoba |
-| Sofía  | 16   | Rosario |
+| Registro e inicio de sesión:  |    |  |
+| DER   | Langan   | 7/10 |
+| READ.ME |  Jimenez  | 8/10 |
+| CSS  |    |  |
+| FOTOS | Jimenez | 8/10 |
+| Backend   |    |  |
+| Frontend  |    |  |

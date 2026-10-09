@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from "@/components/Button";
+import './login.css'; // <-- Importa el archivo CSS aquí
 
 export default function LoginPage() {
   const [mail, setMail] = useState('');
@@ -28,14 +29,10 @@ export default function LoginPage() {
       const data = await res.json();
       console.log("Respuesta de Login:", data);
 
-      // El backend devuelve { respuesta: { ok: true, msg: "..." }, existe: [...] }
       if (res.ok && data.respuesta?.ok) {
-        // Guardamos el primer registro de la lista 'existe' como el usuario logueado
         if (data.existe && data.existe.length > 0) {
           localStorage.setItem('usuario', JSON.stringify(data.existe[0]));
         }
-
-        // Redirigimos al chat
         router.push('/partidas');
       } else {
         setError(data.respuesta?.msg || data.message || 'Credenciales incorrectas');
@@ -49,18 +46,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-4">Iniciar Sesión</h1>
+    <div className="login-container">
+      <div className="login-card">
+        <h1 className="login-title">Iniciar Sesión</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="login-form">
           <input 
             type="email" 
             placeholder="Mail" 
             value={mail}
             onChange={(e) => setMail(e.target.value)}
             required
-            className="w-full p-2 border border-gray-300 rounded text-black outline-none focus:border-blue-500"
+            className="login-input"
           />
           <input 
             type="password" 
@@ -68,12 +65,12 @@ export default function LoginPage() {
             value={contra}
             onChange={(e) => setContra(e.target.value)}
             required
-            className="w-full p-2 border border-gray-300 rounded text-black outline-none focus:border-blue-500"
+            className="login-input"
           />
           
-          {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+          {error && <p className="login-error">{error}</p>}
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading} className="login-button">
             {loading ? 'Cargando...' : 'Iniciar sesión'}
           </Button>
         </form>

@@ -1,130 +1,142 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800&display=swap');
 
-/* Contenedor principal con el fondo */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+
 .login-container {
   min-height: 100vh;
   width: 100%;
+  padding: 16px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url('/fondo.png') no-repeat center center / cover;
-  font-family: 'Fredoka', 'Arial Rounded MT Bold', sans-serif;
-  padding: 1rem;
+
+  background:
+    linear-gradient(
+      rgba(35, 20, 16, 0.12),
+      rgba(35, 20, 16, 0.12)
+    ),
+    url('/loginfondo.png') center / cover no-repeat;
+
+  font-family: 'DM Sans', sans-serif;
 }
 
-/* Tarjeta contenedora de Login */
+/* Sin tarjeta ni recuadro */
 .login-card {
-  background: rgba(255, 248, 235, 0.96);
-  border: 4px solid #3d1b00;
-  border-radius: 24px;
-  padding: 2.5rem 2rem;
   width: 100%;
-  max-width: 380px;
-  box-shadow: 
-    0 10px 0 #200f00,
-    0 15px 25px rgba(0, 0, 0, 0.5);
+  max-width: 245px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
   text-align: center;
 }
 
-/* Título retro Fast Food */
+/* Oculta el título superior */
 .login-title {
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: #f72c25;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 1.5rem;
-  text-shadow: 
-    3px 3px 0px #fcc011,
-    -2px -2px 0px #fff,
-    3px 3px 0px #3d1b00,
-    0px 3px 0px #3d1b00,
-    -3px 0px 0px #3d1b00;
+  display: none;
 }
 
-/* Formulario e Inputs */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 10px;
+  padding: 30px;
+  border-radius: 25px;
+  background-color: rgba(255, 255, 2355, 0.5);
+  color: #ffffff;
 }
 
+/* Campos de entrada */
 .login-input {
   width: 100%;
-  padding: 0.85rem 1.2rem;
-  border: 3.5px solid #3d1b00;
-  border-radius: 16px;
-  background-color: #ffffff;
-  color: #3d1b00;
-  font-size: 1rem;
+  box-sizing: border-box;
+  padding: 11px 13px;
+
+  background: rgba(255, 247, 231, 0.96);
+  color: #482820;
+
+  border: 1px solid #8b3935;
+  border-radius: 7px;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
   font-weight: 600;
-  font-family: 'Fredoka', sans-serif;
+
   outline: none;
-  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .login-input::placeholder {
-  color: #a0826d;
+  color: #8b7164;
+  opacity: 1;
 }
 
 .login-input:focus {
-  border-color: #fcc011;
-  box-shadow: 0 0 0 4px rgba(252, 192, 17, 0.4);
+  border-color: #702727;
+  box-shadow: 0 0 0 3px rgba(112, 39, 39, 0.16);
+  background: #fffaf0;
 }
 
-/* Cartel de Error */
-.login-error {
-  background-color: #ffe5e5;
-  color: #d32f2f;
-  border: 2px solid #d32f2f;
-  border-radius: 12px;
-  padding: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-/* Botón estilo arcade 3D (Amarillo a Naranja) */
+/* Botón retro elegante */
 .login-button {
-  background: linear-gradient(180deg, #ffdc33 0%, #ffa800 100%);
-  color: #3d1b00;
-  font-family: 'Fredoka', sans-serif;
-  font-size: 1.25rem;
-  font-weight: 800;
-  padding: 0.8rem 1.5rem;
-  border: 3.5px solid #3d1b00;
-  border-radius: 20px;
-  cursor: pointer;
-  box-shadow: 
-    0 6px 0 #8d4f00,
-    0 8px 10px rgba(0, 0, 0, 0.3);
-  transition: all 0.1s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   width: 100%;
+  margin-top: 3px;
+  padding: 11px 12px;
+
+  background: #842f32;
+  color: #fff3df;
+
+  border: 1px solid #6d2428;
+  border-radius: 7px;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+
+  box-shadow: 0 3px 0 #54201f;
+  cursor: pointer;
+
+  transition: background 0.2s, transform 0.2s;
 }
 
 .login-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 8px 0 #8d4f00,
-    0 12px 12px rgba(0, 0, 0, 0.3);
+  background: #6f2529;
+  transform: translateY(-1px);
 }
 
 .login-button:active:not(:disabled) {
-  transform: translateY(4px);
-  box-shadow: 
-    0 2px 0 #8d4f00,
-    0 4px 6px rgba(0, 0, 0, 0.3);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #54201f;
 }
 
 .login-button:disabled {
-  opacity: 0.7;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
-.login-container {
-  /* ... */
-  background: url('/loginfondo.png') no-repeat center center / cover;
-  /* ... */
+/* Mensaje de error */
+.login-error {
+  margin: 0;
+  padding: 8px 10px;
+
+  background: rgba(255, 247, 231, 0.97);
+  color: #842f32;
+
+  border: 1px solid #842f32;
+  border-radius: 7px;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 14px;
+  }
+
+  .login-card {
+    max-width: 230px;
+  }
 }

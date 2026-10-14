@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
+import './registro.css';
 
 let socket;
 
@@ -51,42 +52,47 @@ export default function RegistroPage() {
     });
   }
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-4">Registro</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            className="w-full p-2 border border-gray-300 rounded text-black outline-none focus:border-blue-500"
-          />
-          <input
-            type="email"
-            placeholder="Mail"
-            value={mail}
-            onChange={(event) => setMail(event.target.value)}
-            className="w-full p-2 border border-gray-300 rounded text-black outline-none focus:border-blue-500"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full p-2 border border-gray-300 rounded text-black outline-none focus:border-blue-500"
-          />
+return (
+  <div className="registro-container">
+    <div className="registro-card">
+      <h1 className="registro-title">
+        Crear cuenta
+      </h1>
 
-          <button 
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition"
-          >
-            Registrarse
-          </button>
-        </form>
-      </div>
+      <form onSubmit={handleSubmit} className="registro-form">
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          className="registro-input"
+        />
+
+        <input
+          type="email"
+          placeholder="Mail"
+          value={mail}
+          onChange={(event) => setMail(event.target.value)}
+          className="registro-input"
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          className="registro-input"
+        />
+
+        <button
+          type="submit"
+          className="registro-button"
+        >
+          Registrarse
+        </button>
+      </form>
     </div>
-  );
+  </div>
+);
 }

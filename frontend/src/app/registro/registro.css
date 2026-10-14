@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+
+.registro-container {
+  min-height: 100vh;
+  width: 100%;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    linear-gradient(
+      rgba(255, 255, 255, 0.12),
+      rgba(255, 255, 255, 0.12)
+    ),
+    url('/loginfondo.png') center / cover no-repeat;
+
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Contenedor sin tarjeta blanca */
+.registro-card {
+  width: 100%;
+  max-width: 300px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: center;
+}
+
+/* Título retro */
+.registro-title {
+  margin: 0 0 24px;
+  color: #fff9e9;
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 700;
+  text-shadow:
+    0 2px 4px rgba(60, 20, 15, 0.8),
+    0 0 12px rgba(255, 220, 170, 0.3);
+}
+
+/* Formulario */
+.registro-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Campos */
+.registro-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+
+  background: rgba(255, 249, 233, 0.88);
+  color: #482820;
+
+  border: 1px solid #8b3935;
+  border-radius: 7px;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s,
+    background 0.2s;
+}
+
+.registro-input::placeholder {
+  color: #8b7164;
+  opacity: 1;
+}
+
+.registro-input:focus {
+  border-color: #702727;
+  background: rgba(255, 250, 240, 0.97);
+  box-shadow: 0 0 0 3px rgba(255, 249, 233, 0.25);
+}
+
+/* Botón */
+.registro-button {
+  width: 100%;
+  margin-top: 5px;
+  padding: 12px;
+
+  background: #842f32;
+  color: #fff3df;
+
+  border: 1px solid #6d2428;
+  border-radius: 7px;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+
+  box-shadow: 0 3px 0 #54201f;
+  cursor: pointer;
+
+  transition: background 0.2s, transform 0.2s;
+}
+
+.registro-button:hover {
+  background: #6f2529;
+  transform: translateY(-1px);
+}
+
+.registro-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #54201f;
+}
+
+@media (max-width: 480px) {
+  .registro-container {
+    padding: 18px;
+  }
+
+  .registro-card {
+    max-width: 280px;
+  }
+
+  .registro-title {
+    font-size: 30px;
+  }
+}

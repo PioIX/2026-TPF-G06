@@ -151,3 +151,47 @@ app.post('/login', async function (req, res) {
         res.send({ message: "usuario no existe registrate", ok: false });
     }
 });
+
+
+// 1. Endpoint para obtener TODOS los ingredientes
+app.get('/api/ingredientes', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+    res.json(ingredientes);
+  } catch (error) {
+    console.error("❌ Error al consultar ingredientes:", error);
+    res.status(500).json({ error: "Error al obtener ingredientes de MySQL" });
+  }
+});
+
+// 2. Endpoint para generar una orden/receta ALEATORIA
+app.get('/api/orden-aleatoria', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+
+    const panInf = ingredientes.find(i => i.seccion === 'abajo');
+    const panSup = ingredientes.find(i => i.seccion === 'arriba');
+
+    const rellenosPosibles = ingredientes.filter(
+      i => i.seccion !== 'abajo' && i.seccion !== 'arriba'
+    );
+
+    if (!panInf || !panSup) {
+      return res.status(400).json({ error: 'Faltan los panes en la tabla Ingredientes' });
+    }
+
+    const cantidadRelleno = Math.floor(Math.random() * 3) + 2;
+    const relleno = [];
+
+    for (let i = 0; i < cantidadRelleno; i++) {
+      const ingredienteAzar = rellenosPosibles[Math.floor(Math.random() * rellenosPosibles.length)];
+      relleno.push(ingredienteAzar);
+    }
+
+    const recetaValida = [panInf, ...relleno, panSup];
+    res.json(recetaValida);
+  } catch (error) {
+    console.error("❌ Error al generar receta:", error);
+    res.status(500).json({ error: "Error interno al generar receta" });
+  }
+});

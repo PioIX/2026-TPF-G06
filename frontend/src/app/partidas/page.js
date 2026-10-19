@@ -1,168 +1,318 @@
-/*'use client';
+
+'use client';
 
 import { useState, useEffect } from 'react';
+import './partidas.css';
 
-export interface Ingrediente {
-  id: number;
-  nombre: string;
-  seccion: 'abajo' | 'arriba' | 'carnes' | 'quesos' | 'medio';
-  tipo: string; // URL de la imagen
-}
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:4000/api';
+
+import './partidas.css';
 
 export default function JuegoHamburguesa() {
-  const [todosLosIngredientes, setTodosLosIngredientes] = useState<Ingrediente[]>([]);
-  const [recetaObjetivo, setRecetaObjetivo] = useState<Ingrediente[]>([]);
-  const [miHamburguesa, setMiHamburguesa] = useState<Ingrediente[]>([]);
-  const [filtroSeccion, setFiltroSeccion] = useState<string>('todos');
-  const [cargando, setCargando] = useState<boolean>(true);
+  const [todosLosIngredientes, setTodosLosIngredientes] = useState([]);
+  const [recetaObjetivo, setRecetaObjetivo] = useState([]);
+  const [miHamburguesa, setMiHamburguesa] = useState([]);
+  const [filtroSeccion, setFiltroSeccion] = useState('todos');
 
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const [tiempo, setTiempo] = useState(60);
+  const [puntaje, setPuntaje] = useState(350);
+  const [pausado, setPausado] = useState(false);
+
+  // Obtener ingredientes y pedido aleatorio
   const iniciarJuego = async () => {
     setCargando(true);
+    setError('');
     setMiHamburguesa([]);
+    setTiempo(60);
+    setPausado(false);
 
     try {
-      // 1. Obtener la orden aleatoria a armar
-      const resOrden = await fetch(`${API_URL}/orden-aleatoria`);
-      const ordenData = await resOrden.json();
-      setRecetaObjetivo(ordenData);
+      const [resOrden, resIngredientes] = await Promise.all([
+        fetch(`${API_URL}/orden-aleatoria`),
+        fetch(`${API_URL}/ingredientes`),
+      ]);
 
-      // 2. Obtener lista completa de ingredientes (solo la primera vez)
-      if (todosLosIngredientes.length === 0) {
-        const resIng = await fetch(`${API_URL}/ingredientes`);
-        const ingData = await resIng.json();
-        setTodosLosIngredientes(ingData);
+      if (!resOrden.ok || !resIngredientes.ok) {
+        throw new Error('No se pudieron obtener los datos.');
       }
+
+      const ordenData = await resOrden.json();
+      const ingredientesData = await resIngredientes.json();
+
+      if (!Array.isArray(ordenData) || !Array.isArray(ingredientesData)) {
+        throw new Error('La respuesta del servidor no es válida.');
+      }
+
+      setRecetaObjetivo(ordenData);
+      setTodosLosIngredientes(ingredientesData);
     } catch (error) {
-      console.error('Error al conectar con la API Express:', error);
+      console.error('Error al conectar con el backend:', error);
+      setError(
+        'No se pudo conectar con el servidor. Comprobá que el backend esté funcionando.'
+      );
     } finally {
       setCargando(false);
     }
   };
 
+  // Cargar el primer pedido
   useEffect(() => {
     iniciarJuego();
   }, []);
 
-  const agregarIngrediente = (ingrediente: Ingrediente) => {
-    setMiHamburguesa((prev) => [...prev, ingrediente]);
+  // Cronómetro
+  useEffect(() => {
+    if (cargando || pausado || tiempo <= 0 || error) {
+      return;
+    }
+
+    const intervalo = setInterval(() => {
+      setTiempo((anterior) => Math.max(0, anterior - 1));
+    }, 1000);
+
+    return () => clearInterval(intervalo);
+  }, [cargando, pausado, tiempo, error]);
+
+  // Agregar un ingrediente arriba del anterior
+  const agregarIngrediente = (ingrediente) => {
+    if (pausado || tiempo <= 0 || cargando || error) {
+      return;
+    }
+
+    setMiHamburguesa((anterior) => [...anterior, ingrediente]);
   };
 
+  // Eliminar el último ingrediente agregado
   const deshacer = () => {
-    setMiHamburguesa((prev) => prev.slice(0, -1));
+    setMiHamburguesa((anterior) => anterior.slice(0, -1));
   };
 
+  // Verificar el pedido
   const verificar = () => {
+    if (tiempo <= 0 || pausado || cargando || error) {
+      return;
+    }
+
     if (miHamburguesa.length !== recetaObjetivo.length) {
       alert('¡La cantidad de ingredientes no coincide!');
       return;
     }
 
     const esCorrecta = miHamburguesa.every(
-      (ing, idx) => ing.id === recetaObjetivo[idx].id
+      (ingrediente, indice) =>
+        ingrediente.id === recetaObjetivo[indice].id
     );
 
     if (esCorrecta) {
-      alert('¡Excelente! Hamburguesa entregada a tiempo 🍔✨');
+      setPuntaje((anterior) => anterior + 100);
+      alert('¡Pedido correcto! Ganaste 100 puntos.');
       iniciarJuego();
     } else {
-      alert('¡Ups! Te equivocaste en el orden o en los ingredientes.');
+      alert('El pedido no coincide. ¡Probá de nuevo!');
     }
   };
 
+  // Filtrar ingredientes por categoría
   const ingredientesFiltrados =
     filtroSeccion === 'todos'
       ? todosLosIngredientes
-      : todosLosIngredientes.filter((i) => i.seccion === filtroSeccion);
+      : todosLosIngredientes.filter(
+          (ingrediente) => ingrediente.seccion === filtroSeccion
+        );
+
+  const formatearTiempo = (segundos) => {
+    const minutos = Math.floor(segundos / 60);
+    const resto = segundos % 60;
+
+    return `${String(minutos).padStart(2, '0')}:${String(resto).padStart(2, '0')}`;
+  };
 
   if (cargando) {
-    return <div className="p-8 text-center text-lg font-semibold">Cargando pedido...</div>;
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-amber-50">
+        <p className="text-xl font-bold text-amber-900">
+          Preparando la cocina...
+        </p>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen flex flex-col gap-4 items-center justify-center bg-amber-50 p-6">
+        <p className="text-center text-red-700">{error}</p>
+        <button
+          onClick={iniciarJuego}
+          className="rounded-xl bg-amber-800 px-6 py-3 font-bold text-white"
+        >
+          Reintentar
+        </button>
+      </main>
+    );
   }
 
   return (
-    <div className="flex flex-wrap justify-center gap-8 p-6 bg-gray-100 min-h-screen font-sans">
-      {/* 1. Receta del Cliente }
-      <div className="w-72 bg-white p-5 rounded-xl shadow-md flex flex-col items-center">
-        <h3 className="font-bold text-lg mb-4 text-gray-800">Pedido del Cliente</h3>
-        <div className="flex flex-col items-center">
-          {recetaObjetivo.map((ingrediente, idx) => (
-            <img
-              key={idx}
-              src={ingrediente.tipo}
-              alt={ingrediente.nombre}
-              title={ingrediente.nombre}
-              className="w-14 -mb-3 object-contain"
-            />
-          ))}
-        </div>
-      </div>
+    <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-[#fffaf1] shadow-xl">
 
-      {/* 2. Hamburguesa del Jugador }
-      <div className="w-72 bg-white p-5 rounded-xl shadow-md flex flex-col">
-        <h3 className="font-bold text-lg mb-4 text-center text-gray-800">Tu Hamburguesa</h3>
-        <div className="flex-1 flex flex-col-reverse items-center min-h-[280px] border-b-4 border-amber-800 justify-start">
-          {miHamburguesa.map((ingrediente, idx) => (
-            <img
-              key={idx}
-              src={ingrediente.tipo}
-              alt={ingrediente.nombre}
-              title={ingrediente.nombre}
-              className="w-20 -mb-3 object-contain"
-            />
-          ))}
-        </div>
-        <div className="flex gap-2 mt-4">
+        {/* Barra superior */}
+        <header className="flex flex-wrap items-center justify-between gap-3 bg-[#fffaf1] p-4">
+          <div className="flex items-center gap-2 font-extrabold text-[#692d20]">
+            <span className="text-2xl">◷</span>
+            <span className="text-xl">{formatearTiempo(tiempo)}</span>
+          </div>
+
+          <div className="flex items-center gap-2 font-extrabold text-amber-900">
+            <span className="text-2xl">★</span>
+            <span className="text-xl">{puntaje}</span>
+          </div>
+
           <button
-            onClick={deshacer}
-            className="flex-1 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition"
+            onClick={() => setPausado(!pausado)}
+            disabled={tiempo <= 0}
+            className="rounded-full border-2 border-[#54251c] bg-[#713629] px-4 py-2 text-sm font-bold text-white hover:bg-[#54251c] disabled:opacity-50"
           >
-            Deshacer
+            {pausado ? 'Continuar' : 'Pausar'}
           </button>
+
           <button
-            onClick={verificar}
-            className="flex-1 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition"
+            onClick={iniciarJuego}
+            className="rounded-full bg-amber-200 px-4 py-2 text-sm font-bold text-amber-950 hover:bg-amber-300"
           >
-            Servir
+            Reiniciar
           </button>
-        </div>
-      </div>
+        </header>
 
-      {/* 3. Despensa con Filtros de Sección }
-      <div className="w-80 bg-white p-5 rounded-xl shadow-md">
-        <h3 className="font-bold text-lg mb-3 text-gray-800">Ingredientes</h3>
+        {/* Pedido del cliente */}
+        <section className="mx-3 rounded-2xl border-2 border-[#713629] bg-[#fff4df] p-3 sm:mx-5 sm:p-4">
+          <h2 className="mb-3 text-center text-lg font-extrabold text-[#54251c]">
+            PEDIDO DEL CLIENTE
+          </h2>
 
-        {/* Pestañas de Filtro }
-        <div className="flex flex-wrap gap-1 mb-4">
-          {['todos', 'abajo', 'carnes', 'quesos', 'medio', 'arriba'].map((sec) => (
+          <div className="flex min-h-16 flex-wrap items-center justify-center gap-1">
+            {recetaObjetivo.map((ingrediente, indice) => (
+              <img
+                key={`${ingrediente.id}-${indice}`}
+                src={ingrediente.tipo}
+                alt={ingrediente.nombre}
+                title={ingrediente.nombre}
+                className="h-12 w-12 object-contain sm:h-14 sm:w-14"
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Zona de armado */}
+        <section className="zona-armado">
+          <h2 className="titulo-hamburguesa">
+            TU HAMBURGUESA
+          </h2>
+
+          <div className="plato-hamburguesa">
+            {miHamburguesa.length === 0 ? (
+              <p className="mensaje-vacio">
+                ¡Elegí los ingredientes para empezar!
+              </p>
+            ) : (
+              <div className="pila-hamburguesa">
+                {miHamburguesa.map((ingrediente, indice) => (
+                  <img
+                    key={`${ingrediente.id}-${indice}`}
+                    src={ingrediente.tipo}
+                    alt={ingrediente.nombre}
+                    title={ingrediente.nombre}
+                    className="imagen-ingrediente"
+                    style={{
+                      order: indice,
+                      zIndex: indice + 1,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Botones de ingredientes */}
+        <section className="bg-[#fffaf1] p-4 sm:p-5">
+          <h2 className="mb-3 text-center text-lg font-extrabold text-[#54251c]">
+            INGREDIENTES
+          </h2>
+
+          <div className="mb-4 flex flex-wrap justify-center gap-2">
+            {[
+              { valor: 'todos', texto: 'Todos' },
+              { valor: 'abajo', texto: 'Panes base' },
+              { valor: 'carnes', texto: 'Carnes' },
+              { valor: 'quesos', texto: 'Quesos' },
+              { valor: 'medio', texto: 'Otros' },
+              { valor: 'arriba', texto: 'Panes superiores' },
+            ].map((seccion) => (
+              <button
+                key={seccion.valor}
+                onClick={() => setFiltroSeccion(seccion.valor)}
+                className={`rounded-full border px-3 py-2 text-sm font-bold transition ${
+                  filtroSeccion === seccion.valor
+                    ? 'border-amber-900 bg-amber-800 text-white'
+                    : 'border-amber-900/20 bg-white text-amber-950 hover:bg-amber-100'
+                }`}
+              >
+                {seccion.texto}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {ingredientesFiltrados.map((ingrediente) => (
+              <button
+                key={ingrediente.id}
+                onClick={() => agregarIngrediente(ingrediente)}
+                disabled={pausado || tiempo <= 0}
+                className="flex min-h-24 flex-col items-center justify-center rounded-xl border-2 border-[#e1c9a9] bg-white p-3 transition hover:border-amber-700 hover:bg-amber-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <img
+                  src={`/images/${ingrediente.tipo}.png`}
+                  alt={ingrediente.nombre}
+                  className="h-12 w-14 object-contain"
+                />
+                <span className="mt-1 text-center text-sm font-bold text-[#54251c]">
+                  {ingrediente.nombre}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Botones de acción */}
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
-              key={sec}
-              onClick={() => setFiltroSeccion(sec)}
-              className={`px-2.5 py-1 text-xs font-medium rounded capitalize border transition ${
-                filtroSeccion === sec
-                  ? 'bg-amber-500 text-white border-amber-600'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300'
-              }`}
+              onClick={deshacer}
+              disabled={miHamburguesa.length === 0 || pausado || tiempo <= 0}
+              className="flex-1 rounded-xl border-2 border-[#54251c] bg-[#713629] px-4 py-3 font-extrabold text-white hover:bg-[#54251c] disabled:opacity-50"
             >
-              {sec}
+              ↶ DESHACER
             </button>
-          ))}
-        </div>
 
-        {/* Grilla de Selección de Ingredientes }
-        <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto p-1">
-          {ingredientesFiltrados.map((ing) => (
             <button
-              key={ing.id}
-              onClick={() => agregarIngrediente(ing)}
-              className="flex flex-col items-center p-2 border-2 border-gray-200 rounded-lg hover:border-amber-500 hover:scale-105 transition bg-white"
+              onClick={verificar}
+              disabled={pausado || tiempo <= 0}
+              className="flex-1 rounded-xl border-2 border-green-900 bg-green-700 px-4 py-3 font-extrabold text-white hover:bg-green-800 disabled:opacity-50"
             >
-              <img src={ing.tipo} alt={ing.nombre} className="w-12 h-12 object-contain" />
-              <span className="text-xs mt-1 text-gray-700 font-medium">{ing.nombre}</span>
+              ✓ ENTREGAR
             </button>
-          ))}
-        </div>
+          </div>
+
+          {tiempo === 0 && (
+            <p className="mt-4 text-center font-extrabold text-red-700">
+              ¡Se acabó el tiempo! Reiniciá para jugar otra vez.
+            </p>
+          )}
+        </section>
       </div>
-    </div>
+    </main>
   );
-}*/
+
+  
+}

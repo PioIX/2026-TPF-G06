@@ -1,0 +1,15 @@
+.partidas {
+<<<<<<< Updated upstream
+  width: 100%;
+  min-height: 100vh;
+=======
+background:
+  
+    url('frontend/public/cocina hamburgeusa.png') center / cover no-repeat;
+>>>>>>> Stashed changes
+
+  background-image: url('/cocina.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}

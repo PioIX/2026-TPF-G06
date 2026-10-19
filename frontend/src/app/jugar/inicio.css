@@ -1,0 +1,120 @@
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+.inicio-container {
+min-height: 100vh;
+width: 100%;
+box-sizing: border-box;
+display: flex;
+justify-content: center;
+align-items: center;
+padding: 20px;
+
+background:
+linear-gradient(
+rgba(35, 20, 16, 0.18),
+rgba(35, 20, 16, 0.18)
+),
+url('/loginfondo.png') center / cover no-repeat;
+
+font-family: 'DM Sans', sans-serif;
+}
+
+.inicio-contenido {
+width: 100%;
+max-width: 230px;
+display: flex;
+flex-direction: column;
+gap: 14px;
+}
+
+.inicio-boton {
+width: 100%;
+padding: 13px 16px;
+border-radius: 7px;
+font-family: 'DM Sans', sans-serif;
+font-size: 14px;
+font-weight: 800;
+letter-spacing: 1px;
+text-transform: uppercase;
+cursor: pointer;
+transition: 0.2s ease;
+}
+
+.jugar-boton {
+background: #842f32;
+color: #fff3df;
+border: 1px solid #6d2428;
+box-shadow: 0 4px 0 #54201f;
+}
+
+.jugar-boton:hover {
+background: #6f2529;
+transform: translateY(-2px);
+}
+
+.instrucciones-boton {
+background: #fff3df;
+color: #542b23;
+border: 1px solid #842f32;
+box-shadow: 0 4px 0 rgba(48, 27, 21, 0.65);
+}
+
+.instrucciones-boton:hover {
+background: #f0dfc1;
+transform: translateY(-2px);
+}
+
+/* Fondo oscuro del popup */
+.popup-overlay {
+position: fixed;
+inset: 0;
+z-index: 1000;
+display: flex;
+justify-content: center;
+align-items: center;
+padding: 20px;
+box-sizing: border-box;
+background: rgba(25, 15, 12, 0.72);
+}
+
+/* Ventana de instrucciones */
+.popup-instrucciones {
+position: relative;
+width: 100%;
+max-width: 480px;
+min-height: 300px;
+box-sizing: border-box;
+padding: 35px 25px 25px;
+background: #fff3df;
+border: 2px solid #842f32;
+border-radius: 10px;
+box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.popup-cerrar {
+position: absolute;
+top: 7px;
+right: 12px;
+border: none;
+background: transparent;
+color: #842f32;
+font-size: 30px;
+cursor: pointer;
+}
+
+.popup-contenido {
+color: #542b23;
+font-size: 14px;
+line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+.inicio-contenido {
+max-width: 215px;
+}
+
+.popup-instrucciones {
+min-height: 280px;
+}
+}

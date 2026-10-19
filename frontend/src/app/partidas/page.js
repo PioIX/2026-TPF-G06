@@ -1,4 +1,4 @@
-'use client';
+/*'use client';
 
 import { useState, useEffect } from 'react';
 
@@ -82,7 +82,7 @@ export default function JuegoHamburguesa() {
 
   return (
     <div className="flex flex-wrap justify-center gap-8 p-6 bg-gray-100 min-h-screen font-sans">
-      {/* 1. Receta del Cliente */}
+      {/* 1. Receta del Cliente }
       <div className="w-72 bg-white p-5 rounded-xl shadow-md flex flex-col items-center">
         <h3 className="font-bold text-lg mb-4 text-gray-800">Pedido del Cliente</h3>
         <div className="flex flex-col items-center">
@@ -98,7 +98,7 @@ export default function JuegoHamburguesa() {
         </div>
       </div>
 
-      {/* 2. Hamburguesa del Jugador */}
+      {/* 2. Hamburguesa del Jugador }
       <div className="w-72 bg-white p-5 rounded-xl shadow-md flex flex-col">
         <h3 className="font-bold text-lg mb-4 text-center text-gray-800">Tu Hamburguesa</h3>
         <div className="flex-1 flex flex-col-reverse items-center min-h-[280px] border-b-4 border-amber-800 justify-start">
@@ -128,11 +128,11 @@ export default function JuegoHamburguesa() {
         </div>
       </div>
 
-      {/* 3. Despensa con Filtros de Sección */}
+      {/* 3. Despensa con Filtros de Sección }
       <div className="w-80 bg-white p-5 rounded-xl shadow-md">
         <h3 className="font-bold text-lg mb-3 text-gray-800">Ingredientes</h3>
 
-        {/* Pestañas de Filtro */}
+        {/* Pestañas de Filtro }
         <div className="flex flex-wrap gap-1 mb-4">
           {['todos', 'abajo', 'carnes', 'quesos', 'medio', 'arriba'].map((sec) => (
             <button
@@ -149,7 +149,7 @@ export default function JuegoHamburguesa() {
           ))}
         </div>
 
-        {/* Grilla de Selección de Ingredientes */}
+        {/* Grilla de Selección de Ingredientes }
         <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto p-1">
           {ingredientesFiltrados.map((ing) => (
             <button
@@ -165,4 +165,4 @@ export default function JuegoHamburguesa() {
       </div>
     </div>
   );
-}
+}*/

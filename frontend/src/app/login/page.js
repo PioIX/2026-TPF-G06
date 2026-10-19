@@ -33,7 +33,7 @@ export default function LoginPage() {
         if (data.existe && data.existe.length > 0) {
           localStorage.setItem('usuario', JSON.stringify(data.existe[0]));
         }
-        router.push('/partidas');
+        router.push('/jugar');
       } else {
         setError(data.respuesta?.msg || data.message || 'Credenciales incorrectas');
       }

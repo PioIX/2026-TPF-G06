@@ -1,17 +1,25 @@
 "use client";
 
-import React from "react";
-import ChatItem from "./ChatItem";
+import ChatItem from "./ChatItem.js";
+import styles from "./ChatList.module.css";
 
-export default function ChatList({ chats = [], onSelectChat }) {
+export default function ChatList({chats,onSeleccionarChat,}) {
   if (chats.length === 0) {
-    return <p className="p-4 text-center text-gray-500 text-sm">No tienes chats disponibles</p>;
+    return (
+      <p className={styles.vacio}>
+        No tenés chats todavía.
+      </p>
+    );
   }
 
   return (
-    <div className="flex flex-col overflow-y-auto h-full">
+    <div className={styles.lista}>
       {chats.map((chat) => (
-        <ChatItem key={chat.id_chat} chat={chat} onSelect={onSelectChat} />
+        <ChatItem
+          key={chat.id_chat}
+          chat={chat}
+          onClick={onSeleccionarChat}
+        />
       ))}
     </div>
   );

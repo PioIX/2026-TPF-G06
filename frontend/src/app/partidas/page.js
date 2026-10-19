@@ -17,7 +17,7 @@ export default function JuegoHamburguesa() {
   const [puntaje, setPuntaje] = useState(350);
   const [pausado, setPausado] = useState(false);
 
-  // Obtener los ingredientes y el pedido aleatorio
+  // Obtener ingredientes y pedido aleatorio
   const iniciarJuego = async () => {
     setCargando(true);
     setError('');
@@ -59,7 +59,7 @@ export default function JuegoHamburguesa() {
     iniciarJuego();
   }, []);
 
-  // Cronómetro de 60 segundos
+  // Cronómetro
   useEffect(() => {
     if (cargando || pausado || tiempo <= 0 || error) {
       return;
@@ -72,7 +72,7 @@ export default function JuegoHamburguesa() {
     return () => clearInterval(intervalo);
   }, [cargando, pausado, tiempo, error]);
 
-  // Agregar un ingrediente a la hamburguesa
+  // Agregar un ingrediente arriba del anterior
   const agregarIngrediente = (ingrediente) => {
     if (pausado || tiempo <= 0 || cargando || error) {
       return;
@@ -86,7 +86,7 @@ export default function JuegoHamburguesa() {
     setMiHamburguesa((anterior) => anterior.slice(0, -1));
   };
 
-  // Comprobar si la hamburguesa coincide con el pedido
+  // Verificar el pedido
   const verificar = () => {
     if (tiempo <= 0 || pausado || cargando || error) {
       return;
@@ -202,26 +202,32 @@ export default function JuegoHamburguesa() {
         </section>
 
         {/* Zona de armado */}
-        <section className="mt-4 flex min-h-[300px] flex-col items-center justify-end border-y-8 border-[#6f3e27] bg-[#bd8960] px-4 pt-5">
-          <h2 className="mb-3 rounded-full bg-[#fff4df] px-4 py-1 text-sm font-bold text-[#54251c]">
+        <section className="zona-armado">
+          <h2 className="titulo-hamburguesa">
             TU HAMBURGUESA
           </h2>
 
-          <div className="flex min-h-[230px] w-full flex-col-reverse items-center justify-start pb-5">
-            {miHamburguesa.map((ingrediente, indice) => (
-              <img
-                key={`${ingrediente.id}-${indice}`}
-                src={ingrediente.tipo}
-                alt={ingrediente.nombre}
-                title={ingrediente.nombre}
-                className="z-10 -mb-3 h-14 w-36 object-contain sm:h-16 sm:w-44"
-              />
-            ))}
-
-            {miHamburguesa.length === 0 && (
-              <p className="my-auto rounded-xl bg-white/80 p-3 text-center text-sm font-semibold text-amber-950">
+          <div className="plato-hamburguesa">
+            {miHamburguesa.length === 0 ? (
+              <p className="mensaje-vacio">
                 ¡Elegí los ingredientes para empezar!
               </p>
+            ) : (
+              <div className="pila-hamburguesa">
+                {miHamburguesa.map((ingrediente, indice) => (
+                  <img
+                    key={`${ingrediente.id}-${indice}`}
+                    src={ingrediente.tipo}
+                    alt={ingrediente.nombre}
+                    title={ingrediente.nombre}
+                    className="imagen-ingrediente"
+                    style={{
+                      order: indice,
+                      zIndex: indice + 1,
+                    }}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </section>
@@ -264,7 +270,7 @@ export default function JuegoHamburguesa() {
                 className="flex min-h-24 flex-col items-center justify-center rounded-xl border-2 border-[#e1c9a9] bg-white p-3 transition hover:border-amber-700 hover:bg-amber-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <img
-                  src={ingrediente.tipo}
+                  src={`/images/${ingrediente.tipo}.png`}
                   alt={ingrediente.nombre}
                   className="h-12 w-14 object-contain"
                 />

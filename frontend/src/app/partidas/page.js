@@ -2,8 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import './partidas.css';
+
 
 const API_URL = 'http://localhost:4000/api';
+
+import './partidas.css';
 
 export default function JuegoHamburguesa() {
   const [todosLosIngredientes, setTodosLosIngredientes] = useState([]);
@@ -309,4 +313,6 @@ export default function JuegoHamburguesa() {
       </div>
     </main>
   );
+
+  
 }

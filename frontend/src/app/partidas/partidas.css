@@ -1,6 +1,9 @@
 .partidas {
-background:
-  
-    url('/loginfondo.png') center / cover no-repeat;
+  width: 100%;
+  min-height: 100vh;
 
+  background-image: url('/cocina.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }

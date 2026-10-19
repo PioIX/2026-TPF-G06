@@ -9,7 +9,9 @@ Backend base (Node.js + Express + Socket.IO) que se entrega a los alumnos para e
 - `sendMessage`: reenvía el mensaje a todos los clientes de la sala actual.
 - `eventoPersonalizado`: incrementa un contador y responde con `respuestaPersonalizada` (el contador es por cliente, no compartido).
 
-## Cómo iniciarlo
+
+
+## Cómo iniciarlo 
 
 ```bash
 npm install

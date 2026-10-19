@@ -195,3 +195,102 @@ app.get('/api/orden-aleatoria', async (req, res) => {
     res.status(500).json({ error: "Error interno al generar receta" });
   }
 });
+
+
+
+
+
+
+
+
+
+
+// CREACION DE SALAS - NO BORRAR
+
+// LISTADO DE CHATS INDIVIDUALES:
+app.get("/sala/:id_usuario", async function (req, res) {
+  try {
+    const { id_usuario } = req.params;
+
+    const chats = await realizarQuery(
+      `
+      SELECT 
+        c.id_chat,
+        u_otro.nombre AS nombre_contacto
+      FROM UsuariosEnChat uec
+      JOIN Chats c 
+        ON uec.id_chat = c.id_chat
+      LEFT JOIN Usuarios u_otro
+        ON u_otro.id_usuario = (
+          SELECT uec_sub.id_usuario 
+          FROM UsuariosEnChat uec_sub
+          WHERE uec_sub.id_chat = c.id_chat 
+            AND uec_sub.id_usuario != ${id_usuario}
+          LIMIT 1
+        )
+      WHERE uec.id_usuario = ${id_usuario}
+      `
+    );
+
+    res.send({
+      ok: true,
+      chats,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Error al listar chats",
+      error: error.message,
+    });
+  }
+});
+
+
+// CREACION DE CHAT INDIVIDUAL:
+app.post("/sala/individual", async function (req, res) {
+  try {
+    const { id_usuario_creador, correo_destinatario } = req.body;
+
+    const destinatarios = await realizarQuery(
+      `SELECT id_usuario FROM Usuarios WHERE mail = "${correo_destinatario}"`
+    );
+
+    if (destinatarios.length === 0) {
+      return res.status(404).send({
+        message: "El usuario destinatario no existe"
+      });
+    }
+
+    const id_destinatario = destinatarios[0].id_usuario;
+
+    if (Number(id_usuario_creador) === Number(id_destinatario)) {
+      return res.status(400).send({
+        message: "No puedes crear un chat individual contigo mismo"
+      });
+    }
+
+    const resultadoChat = await realizarQuery(
+      `INSERT INTO Chats VALUES ()`
+    );
+    const id_chat = resultadoChat.insertId;
+
+    await realizarQuery(
+      `INSERT INTO UsuariosEnChat (id_chat, id_usuario) VALUES (${id_chat}, ${id_usuario_creador})`
+    );
+
+    // 3. ¡IMPORTANTE! Insertar también al usuario destinatario en el chat
+    await realizarQuery(
+      `INSERT INTO UsuariosEnChat (id_chat, id_usuario) VALUES (${id_chat}, ${id_destinatario})`
+    );
+
+    res.send({
+      ok: true,
+      message: "Chat individual creado con éxito",
+      id_chat
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Error al crear chat individual",
+      error: error.message
+    });
+  }
+});

@@ -1,0 +1,117 @@
+/* Contenedor con la imagen del atardecer */
+.container {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: flex-end; /* Posiciona el menú en la parte inferior para despejar el cartel */
+  justify-content: center;
+  padding-bottom: 3rem;
+  background-image: url('/Atardecer en el Diner Fast Food Rush.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* Sombra suave de ambiente al atardecer */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg, 
+    rgba(20, 10, 5, 0.1) 0%, 
+    rgba(35, 12, 8, 0.55) 100%
+  );
+  z-index: 1;
+}
+
+/* Caja contenedora de botones alineada al estilo neón retro */
+.menuBox {
+  position: relative;
+  z-index: 2;
+  background: rgba(28, 14, 12, 0.82); /* Fondo café oscuro de diner */
+  border: 3px solid #ff4d0d; /* Naranja neón inspirada en el atardecer */
+  outline: 3px solid #ffcc00; /* Amarillo brillante */
+  border-radius: 20px;
+  padding: 1.8rem 2.2rem;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  box-shadow: 
+    0 0 20px rgba(255, 77, 13, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.7);
+}
+
+.welcomeText {
+  color: #ffda79;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+  text-shadow: 0 0 8px rgba(255, 218, 121, 0.6);
+}
+
+/* Disposición de botones */
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Estilos base de los botones */
+.btnLogin, 
+.btnRegister {
+  padding: 0.95rem 1.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border-radius: 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 5px 0px rgba(0, 0, 0, 0.4);
+}
+
+/* Botón 1: Iniciar Sesión (Rojo Neón del cartel) */
+.btnLogin {
+  background: linear-gradient(180deg, #e63946 0%, #b8121f 100%);
+  color: #ffffff;
+  border: 2px solid #ff8892;
+}
+
+.btnLogin:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 8px 0px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(230, 57, 70, 0.7);
+  background: linear-gradient(180deg, #ff4d5a 0%, #cc1624 100%);
+}
+
+.btnLogin:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.4);
+}
+
+/* Botón 2: Registrarse (Naranja/Amarillo Neón) */
+.btnRegister {
+  background: linear-gradient(180deg, #ff9f1c 0%, #d47a00 100%);
+  color: #2b0b00;
+  border: 2px solid #ffe1a8;
+}
+
+.btnRegister:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 8px 0px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(255, 159, 28, 0.7);
+  background: linear-gradient(180deg, #ffb03a 0%, #e68500 100%);
+}
+
+.btnRegister:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.4);
+}

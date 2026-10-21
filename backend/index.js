@@ -369,54 +369,58 @@ const jugadoresEnPartida = [
 
 io.on("connection", (socket) => {
 
-  // Escuchar cuando un cliente solicita crear una sala
   socket.on("crearSALA", (dataPartida) => {
-    // Notifica a TODOS los sockets conectados que hay una nueva sala disponible
+    // Notifica a todos los usuarios para que ejecuten cargarPartidas()
     io.emit("salaCreada", dataPartida);
   });
 
-  // Cuando un jugador selecciona/entra a una sala
+
   socket.on("unirse_sala", ({ id_partida, id_usuario }) => {
-    console.log(id_partida, id_usuario)
     socket.join(`partida_${id_partida}`);
+    console.log("ASDJKH")
+    // 1. Buscar si la partida ya existe en el arreglo
+    let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
 
-    if (jugadoresEnPartida[id_partida] == undefined) {
-      jugadoresEnPartida.push({
-        id_partida: id_partida,
-       jugadores: []
-      })
+    // 2. Si no existe, la creamos y la agregamos al arreglo
+    if (!partida) {
+      partida = { id_partida: id_partida, jugadores: [] };
+      jugadoresEnPartida.push(partida);
     }
 
-    if (jugadoresEnPartida[id_partida].jugadores == undefined) {
-      jugadoresEnPartida[id_partida].jugadores = [];
+    // 3. Evitamos duplicar al usuario
+    if (!partida.jugadores.includes(id_usuario)) {
+      partida.jugadores.push(id_usuario);
     }
 
-    jugadoresEnPartida[id_partida].id_partida = id_partida;
-
-    // Evitamos duplicar al mismo usuario si se reconecta
-    if (!jugadoresEnPartida[id_partida].jugadores.includes(id_usuario)) {
-      jugadoresEnPartida[id_partida].jugadores.push(id_usuario);
-    }
-    console.log(jugadoresEnPartida)
-    // Si ya se unieron 2 usuarios distintos
-    /*
-    if (jugadoresEnPartida[id_partida].length >= 2) {
-      // Avisamos a TODOS los sockets conectados en esa sala que arranquen
+    console.log(`Usuario ${id_usuario} se unió a la partida ${id_partida}`);
+    console.log("Estado de salas:", JSON.stringify(jugadoresEnPartida, null, 2));
+    console.log("partida.juygadores", partida.jugadores)
+    console.log(partida, "partida")
+    // 4. Si hay 2 o más jugadores, iniciar
+    if (partida.jugadores.length == 2) {
       io.to(`partida_${id_partida}`).emit("iniciar_partida", {
         id_partida,
-        jugadores: jugadoresEnPartida[id_partida]
+        jugadores: partida.jugadores
       });
     }
-    */
   });
 
-  // Cuando el usuario sale de la selección
   socket.on("salir_sala", ({ id_partida, id_usuario }) => {
     socket.leave(`partida_${id_partida}`);
-    if (jugadoresEnPartida[id_partida]) {
-      jugadoresEnPartida[id_partida] = jugadoresEnPartida[id_partida].filter(
-        (id) => id !== id_usuario
-      );
+
+    const partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
+
+    if (partida) {
+      // Filtrar al usuario que sale
+      partida.jugadores = partida.jugadores.filter(id => id !== id_usuario);
+
+      // Si la sala queda vacía, eliminar el objeto del arreglo
+      if (partida.jugadores.length === 0) {
+        const indice = jugadoresEnPartida.findIndex(p => p.id_partida === id_partida);
+        if (indice !== -1) {
+          jugadoresEnPartida.splice(indice, 1);
+        }
+      }
     }
   });
 });

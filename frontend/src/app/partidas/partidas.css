@@ -1,10 +1,9 @@
 .partidas {
-background:
-  
-    url('frontend/public/cocina.png') center / cover no-repeat;
-
-  background-image: url('/cocina.png');
+/*background: url('cocina.png') center / cover no-repeat; */
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
+}
+
+.imagen-ingrediente{
 }

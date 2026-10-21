@@ -1,9 +1,15 @@
-.partidas {
-/*background: url('cocina.png') center / cover no-repeat; */
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+.pila-hamburguesa {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-end;
 }
 
-.imagen-ingrediente{
+.imagen-ingrediente {
+  display: block;
+  object-fit: contain;
+  margin-top: -85px;
+  position: relative;
+  width: 140px;
+  height: auto;
 }

@@ -3,8 +3,8 @@ CREATE TABLE Ingredientes (
     nombre VARCHAR(200),
     seccion VARCHAR(200),
     id_partida INT NOT NULL,
-	FOREIGN KEY (id_partida) REFERENCES Partidas(id_partida)
-    
+    tipo VARCHAR(20000),
+	FOREIGN KEY (id_partida) REFERENCES Partidas(id_partida)   
 );
 
 CREATE TABLE Partidas (

@@ -26,7 +26,7 @@ export default function JuegoHamburguesa() {
     setCargando(true);
     setError('');
     setMiHamburguesa([]);
-    setTiempo(60);
+    setTiempo(1000000);
     setPausado(false);
 
     try {
@@ -156,7 +156,7 @@ export default function JuegoHamburguesa() {
 
   return (
   
-    <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans" style={{backgroundImage: "url(cocina.png)", width:1500, height: 700}}>
+    <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans" style={{backgroundImage: "url(cocina.png)", width:1600, height: 800}}>
       <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-[#fffaf1] shadow-xl">
 
         {/* Barra superior */}
@@ -200,7 +200,11 @@ export default function JuegoHamburguesa() {
                 src={ingrediente.tipo}
                 alt={ingrediente.nombre}
                 title={ingrediente.nombre}
-                className="h-12 w-12 object-contain sm:h-14 sm:w-14"
+                className="object-contain"
+                style={{
+                  width: '100px',
+                  height: '50px',
+                }}
               />
             ))}
           </div>
@@ -229,6 +233,11 @@ export default function JuegoHamburguesa() {
                     style={{
                       order: indice,
                       zIndex: indice + 1,
+                      width:
+                        ingrediente.nombre === 'pan abajo' || ingrediente.nombre === 'pan arriba'? '160px': 
+                        ingrediente.nombre === 'paty' || ingrediente.nombre === 'pollo' || ingrediente.nombre === 'veggie'? '150px': '140px',
+                      
+                      height: 'auto', 
                     }}
                   />
                 ))}
@@ -277,7 +286,11 @@ export default function JuegoHamburguesa() {
                 <img
                   src={`${ingrediente.tipo}`}
                   alt={ingrediente.nombre}
-                  className="h-12 w-14 object-contain"
+                 style={{
+                    width: '60px',
+                    height: '60px',
+                    objectFit: 'contain',
+                  }}
                 />
                 <span className="mt-1 text-center text-sm font-bold text-[#54251c]">
                   {ingrediente.nombre}

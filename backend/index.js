@@ -135,7 +135,7 @@ app.post('/login', async function (req, res) {
     try {
       let respuesta = {
             ok: false,
-            msg: "No se pudo loguear"
+            msg: "¿No tienes cuenta? Regístrate aquí"
         };
         let existe = await realizarQuery(`
             SELECT * FROM Usuarios WHERE mail = '${req.body.mail}' AND contra = '${req.body.contra}'
@@ -208,7 +208,7 @@ app.get('/api/orden-aleatoria', async (req, res) => {
 // CREACION DE SALAS - NO BORRAR
 
 // LISTADO DE CHATS INDIVIDUALES:
-app.get("/sala/:id_usuario", async function (req, res) {
+/*app.get("/sala/:id_usuario", async function (req, res) {
   try {
     const { id_usuario } = req.params;
 
@@ -293,4 +293,73 @@ app.post("/sala/individual", async function (req, res) {
       error: error.message
     });
   }
+});*/
+
+app.get("/sala/partidas", async function (req, res) {
+  try {
+    const partidas = await realizarQuery(`
+      SELECT 
+        p.id_partida,
+        p.nombre_partida,
+        p.id_usuario,
+        p.hora_final,
+        p.ranking,
+        u.nombre AS creador_nombre
+      FROM Partidas p
+      LEFT JOIN Usuarios u ON p.id_usuario = u.id_usuario
+    `);
+    
+    return res.json({ ok: true, partidas });
+  } catch (error) {
+    console.error("Error al obtener partidas:", error.message);
+    return res.status(500).json({ ok: false, message: error.message });
+  }
 });
+
+// 2. Crear una nueva partida
+app.post("/sala/crear-partida", async function (req, res) {
+  try {
+    const { id_usuario_creador, nombre_partida, ranking } = req.body;
+
+    // Validación de ID de usuario
+    if (!id_usuario_creador) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: "Usuario no identificado. Inicia sesión nuevamente." 
+      });
+    }
+
+    if (!nombre_partida) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: "Debe ingresar un nombre para la partida." 
+      });
+    }
+
+    // Generar formato DATETIME válido para MySQL (YYYY-MM-DD HH:MM:SS)
+    const hora_final = new Date(Date.now() + 3600000)
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+    const valRanking = ranking || 0;  
+    const query = `
+      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final, ranking) 
+      VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}', ${valRanking})
+    `;
+
+    const resultado = await realizarQuery(query);
+
+    return res.json({
+      ok: true,
+      message: "Partida creada con éxito",
+      id_partida: resultado.insertId
+    });
+  } catch (error) {
+    console.error("Error exacto en MySQL:", error.message);
+    return res.status(500).json({ 
+      ok: false, 
+      message: "Error en la base de datos: " + error.message 
+    });
+  }
+});
+ 

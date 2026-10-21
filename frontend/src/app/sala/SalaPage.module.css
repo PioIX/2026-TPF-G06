@@ -1,176 +1,444 @@
-/* SalaPage.module.css */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Oswald:wght@500&display=swap');
 
+/* Mantel a cuadros rojo y crema */
 .salaContainer {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
-  padding: 2rem;
   box-sizing: border-box;
-
-  /* Fondo de pantalla usando la imagen */
-  background: url('/salas.jpeg') no-repeat center center fixed;
-  background-size: cover;
-
-  font-family: 'Comic Sans MS', 'Trebuchet MS', cursive, sans-serif;
-  color: #3b0c0c;
-
+  padding: 14px 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
   align-items: center;
+  gap: 12px;
+
+  font-family: 'DM Sans', sans-serif;
+  color: #482820;
+
+  background:
+    linear-gradient(rgba(35, 14, 8, 0.14), rgba(35, 14, 8, 0.14)),
+    conic-gradient(#c8281e 25%, #f4e4c6 0 50%, #c8281e 0 75%, #f4e4c6 0) 0 0 / 96px 96px;
 }
 
-/* Encabezado */
 .header {
   width: 100%;
-  max-width: 900px;
+  max-width: 1460px;
   display: flex;
+  justify-content: flex-end;
+}
+
+.btnLogout {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 2px solid #6e1d17;
+  background: #fbf1dc;
+  color: #482820;
+  font: 600 14px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.btnLogout:hover {
+  background: #f3e2bd;
+}
+
+/* El menú abierto, de dos páginas */
+.paper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1800px;
+  box-sizing: border-box;
+  display: flex;
+  padding: 12px;
+  background: #fbf1dc;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 3px #6e1d17,
+    0 24px 60px rgba(30, 8, 4, 0.5);
+}
+
+.pin {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 0.8fr) 1.7fr;
+  grid-template-rows: minmax(0, 1fr);
+  border: 4px double #9c2f25;
+  border-radius: 9px;
+}
+
+/* Página izquierda */
+.left {
+  display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 1rem;
+  gap: 24px;
+  padding: 40px 36px;
+  border-right: 4px double #9c2f25;
+  overflow: auto;
 }
 
 .title {
-  font-size: 2.2rem;
-  color: #fff;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: 
-    0 0 5px #ff1a1a,
-    0 0 10px #ff1a1a,
-    0 0 20px #e60000,
-    0 0 30px #e60000;
   margin: 0;
+  padding-left: 0.14em;
+  text-align: center;
+  font: 500 clamp(40px, 3.6vw, 60px) / 1 'Oswald', sans-serif;
+  letter-spacing: 0.14em;
+  color: #9c2f25;
 }
 
-/* Botones con estética diner */
-.btnPrimary {
-  background-color: #d92323;
-  color: #fff;
-  border: 2px solid #fff;
-  padding: 0.7rem 1.4rem;
-  font-size: 1rem;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease;
+.tag {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 15px;
+  color: #842f32;
 }
 
-.btnPrimary:hover {
-  background-color: #b51a1a;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+.tag::before,
+.tag::after {
+  content: '';
+  flex: 1;
+  height: 3px;
+  border-top: 1px solid #9c2f25;
+  border-bottom: 1px solid #9c2f25;
 }
 
-.btnDanger {
-  background-color: #2b2b2b;
-  color: #fff;
-  border: 2px solid #a82424;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.9rem;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.special {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 20px 22px;
+  text-align: center;
+  border: 2px dashed #9c2f25;
+  border-radius: 10px;
+  background: #f6e5c2;
 }
 
-.btnDanger:hover {
-  background-color: #a82424;
-  color: #fff;
+.specialLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: #842f32;
 }
 
-/* Paneles que simulan la carta/menú beige */
-.cardPanel {
+.specialTitle {
+  font: 500 26px / 1.1 'Oswald', sans-serif;
+  letter-spacing: 0.03em;
+  color: #482820;
+}
+
+.burger {
+  width: 150px;
+  align-self: center;
+  flex: none;
+}
+
+/* Página derecha */
+.right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 34px 44px 28px;
+}
+
+.sec {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.secTitle {
+  margin: 0;
+  font: 500 24px 'Oswald', sans-serif;
+  letter-spacing: 0.1em;
+  color: #9c2f25;
+}
+
+.secLine {
+  flex: 1;
+  border-top: 2px solid #9c2f25;
+}
+
+.secCount {
+  font-size: 15px;
+  color: #6b4b3e;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.empty {
+  margin: 24px 0;
+  font-size: 18px;
+  color: #6b4b3e;
+}
+
+/* Lista estilo carta */
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  column-width: 320px;
+  column-gap: 56px;
+  column-rule: 1px solid #e3cfa6;
+}
+
+.menuItem {
+  break-inside: avoid;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
   width: 100%;
-  max-width: 900px;
-  background-color: rgba(24df, 243, 226, 0.95);
-  background-color: #fcf4e4;
-  border: 4px solid #b81c1c;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-}
-
-.cardPanel h2 {
-  margin-top: 0;
-  color: #8b0000;
-  border-bottom: 2px dashed #b81c1c;
-  padding-bottom: 0.5rem;
-  text-transform: uppercase;
-}
-
-/* Grilla de partidas que simula la distribución por columnas */
-.partidasList {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.partidaItem {
-  background-color: #fff8eb;
-  border: 2px solid #d97b7b;
-  border-radius: 8px;
-  padding: 1rem;
+  padding: 18px 14px;
+  border: 0;
+  border-bottom: 1px solid #eedfbf;
+  background: none;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font: 400 18px 'DM Sans', sans-serif;
+  color: #6b4b3e;
 }
 
-.partidaItem:hover {
-  background-color: #ffe6e6;
-  border-color: #b81c1c;
-  transform: scale(1.02);
+.row:hover {
+  background: #f6e6c4;
 }
 
-.partidaSeleccionada {
-  background-color: #ffd6d6;
-  border: 2px solid #b81c1c;
-  box-shadow: 0 0 8px rgba(184, 28, 28, 0.5);
+.row:focus-visible {
+  outline: 3px solid #e8b02f;
+  outline-offset: 2px;
 }
 
-.partidaItem h3 {
-  margin: 0 0 0.5rem 0;
-  color: #900c0c;
+.partidaSeleccionada,
+.partidaSeleccionada:hover {
+  background: #f3d98f;
+  box-shadow: inset 5px 0 0 #9c2f25;
 }
 
-.partidaItem p {
+.name {
+  font: 500 26px 'Oswald', sans-serif;
+  color: #842f32;
+}
+
+.dots {
+  flex: 1;
+  margin: 0 12px;
+  border-bottom: 2px dotted #c9a97a;
+}
+
+/* Banda roja con el estado de tu orden */
+.dock {
+  margin-top: 20px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: #9c2f25;
+  color: rgba(251, 241, 220, 0.92);
+  font-size: 17px;
+}
+
+.dockMain {
   margin: 0;
-  font-size: 0.85rem;
-  color: #555;
 }
 
-/* Modal Estilo Retro */
+.dockMain strong {
+  font-weight: 600;
+  color: #fbf1dc;
+}
+
+.dockSub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #ffd27a;
+}
+
+/* Botones */
+.btn {
+  height: 46px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 6px;
+  background: #e8b02f;
+  color: #482820;
+  font: 500 17px 'Oswald', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 0 #a97812;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+}
+
+.btn:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 1px 0 #a97812;
+}
+
+.btn:focus-visible,
+.btnLogout:focus-visible,
+.btnGhost:focus-visible {
+  outline: 3px solid #e8b02f;
+  outline-offset: 2px;
+}
+
+.btnGhost {
+  height: 46px;
+  padding: 0 20px;
+  border: 2px solid #9c2f25;
+  border-radius: 6px;
+  background: transparent;
+  color: #842f32;
+  font: 600 15px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.btnGhost:hover {
+  background: #f3e2bd;
+}
+
+/* Modal: una hoja del mismo menú */
 .modalOverlay {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(35, 14, 8, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .modalContent {
-  background-color: #fcf4e4;
-  border: 5px solid #b81c1c;
-  border-radius: 16px;
-  padding: 2rem;
   width: 90%;
-  max-width: 420px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  max-width: 440px;
+  box-sizing: border-box;
+  padding: 12px;
+  background: #fbf1dc;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 3px #6e1d17,
+    0 24px 60px rgba(30, 8, 4, 0.5);
 }
 
-.modalContent h2 {
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 28px 24px;
+  border: 4px double #9c2f25;
+  border-radius: 9px;
+}
+
+.modalTitle {
   margin: 0;
-  color: #8b0000;
+  padding-left: 0.1em;
   text-align: center;
-  border-bottom: 2px solid #b81c1c;
-  padding-bottom: 0.5rem;
+  font: 500 30px / 1 'Oswald', sans-serif;
+  letter-spacing: 0.1em;
+  color: #9c2f25;
+}
+
+.modalLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #842f32;
+}
+
+.modalInput {
+  width: 100%;
+  box-sizing: border-box;
+  height: 46px;
+  padding: 0 14px;
+  background: #fff8ea;
+  color: #482820;
+  border: 2px solid #c9a97a;
+  border-radius: 6px;
+  font: 400 16px 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modalInput::placeholder {
+  color: #8b7164;
+  opacity: 1;
+}
+
+.modalInput:focus-visible {
+  border-color: #9c2f25;
+  box-shadow: 0 0 0 3px rgba(232, 176, 47, 0.6);
+}
+
+.modalError {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f6d5cf;
+  color: #842f32;
+  font-size: 14px;
 }
 
 .modalActions {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.modalActions .btn {
+  flex: 1;
+}
+
+/* Pantallas angostas: vuelve a una sola página vertical */
+@media (max-width: 900px) {
+  .salaContainer {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .paper,
+  .pin {
+    display: block;
+  }
+
+  .left {
+    border-right: 0;
+    border-bottom: 4px double #9c2f25;
+    padding: 26px 20px;
+  }
+
+  .special {
+    margin-top: 22px;
+  }
+
+  .burger {
+    display: none;
+  }
+
+  .right {
+    padding: 24px 20px;
+  }
+
+  .scroll {
+    overflow: visible;
+  }
+
+  .menu {
+    column-width: auto;
+    column-count: 1;
+  }
+
+  .dock {
+    position: sticky;
+    bottom: 12px;
+    box-shadow: 0 10px 24px rgba(30, 8, 4, 0.35);
+  }
 }

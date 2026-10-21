@@ -1,4 +1,4 @@
-
+/*
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -159,7 +159,7 @@ export default function JuegoHamburguesa() {
     <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans" style={{backgroundImage: "url(cocina.png)", width:1500, height: 700}}>
       <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-[#fffaf1] shadow-xl">
 
-        {/* Barra superior */}
+        {/* Barra superior }
         <header className="flex flex-wrap items-center justify-between gap-3 bg-[#fffaf1] p-4">
           <div className="flex items-center gap-2 font-extrabold text-[#692d20]">
             <span className="text-2xl">◷</span>
@@ -187,7 +187,7 @@ export default function JuegoHamburguesa() {
           </button>
         </header>
 
-        {/* Pedido del cliente */}
+        {/* Pedido del cliente/}
         <section className="mx-3 rounded-2xl border-2 border-[#713629] bg-[#fff4df] p-3 sm:mx-5 sm:p-4">
           <h2 className="mb-3 text-center text-lg font-extrabold text-[#54251c]">
             PEDIDO DEL CLIENTE
@@ -206,7 +206,7 @@ export default function JuegoHamburguesa() {
           </div>
         </section>
 
-        {/* Zona de armado */}
+        {/* Zona de armado /}
         <section className="zona-armado">
           <h2 className="titulo-hamburguesa">
             TU HAMBURGUESA
@@ -237,7 +237,7 @@ export default function JuegoHamburguesa() {
           </div>
         </section>
 
-        {/* Botones de ingredientes */}
+        {/* Botones de ingredientes }
         <section className="bg-[#fffaf1] p-4 sm:p-5">
           <h2 className="mb-3 text-center text-lg font-extrabold text-[#54251c]">
             INGREDIENTES
@@ -286,7 +286,7 @@ export default function JuegoHamburguesa() {
             ))}
           </div>
 
-          {/* Botones de acción */}
+          {/* Botones de acción }
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={deshacer}
@@ -316,4 +316,4 @@ export default function JuegoHamburguesa() {
   );
 
   
-}
+}*/

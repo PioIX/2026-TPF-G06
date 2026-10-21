@@ -32,4 +32,4 @@ const useSocket = (options = { withCredentials: false }, serverUrl = "ws://local
   return { socket, isConnected };
 };
 
-export { useSocket };
+export default  useSocket ;

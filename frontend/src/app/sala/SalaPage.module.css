@@ -1,0 +1,176 @@
+/* SalaPage.module.css */
+
+.salaContainer {
+  min-height: 100vh;
+  width: 100%;
+  padding: 2rem;
+  box-sizing: border-box;
+
+  /* Fondo de pantalla usando la imagen */
+  background: url('/salas.jpeg') no-repeat center center fixed;
+  background-size: cover;
+
+  font-family: 'Comic Sans MS', 'Trebuchet MS', cursive, sans-serif;
+  color: #3b0c0c;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+/* Encabezado */
+.header {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+}
+
+.title {
+  font-size: 2.2rem;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 
+    0 0 5px #ff1a1a,
+    0 0 10px #ff1a1a,
+    0 0 20px #e60000,
+    0 0 30px #e60000;
+  margin: 0;
+}
+
+/* Botones con estética diner */
+.btnPrimary {
+  background-color: #d92323;
+  color: #fff;
+  border: 2px solid #fff;
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btnPrimary:hover {
+  background-color: #b51a1a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btnDanger {
+  background-color: #2b2b2b;
+  color: #fff;
+  border: 2px solid #a82424;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnDanger:hover {
+  background-color: #a82424;
+  color: #fff;
+}
+
+/* Paneles que simulan la carta/menú beige */
+.cardPanel {
+  width: 100%;
+  max-width: 900px;
+  background-color: rgba(24df, 243, 226, 0.95);
+  background-color: #fcf4e4;
+  border: 4px solid #b81c1c;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.cardPanel h2 {
+  margin-top: 0;
+  color: #8b0000;
+  border-bottom: 2px dashed #b81c1c;
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+/* Grilla de partidas que simula la distribución por columnas */
+.partidasList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.partidaItem {
+  background-color: #fff8eb;
+  border: 2px solid #d97b7b;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.partidaItem:hover {
+  background-color: #ffe6e6;
+  border-color: #b81c1c;
+  transform: scale(1.02);
+}
+
+.partidaSeleccionada {
+  background-color: #ffd6d6;
+  border: 2px solid #b81c1c;
+  box-shadow: 0 0 8px rgba(184, 28, 28, 0.5);
+}
+
+.partidaItem h3 {
+  margin: 0 0 0.5rem 0;
+  color: #900c0c;
+}
+
+.partidaItem p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* Modal Estilo Retro */
+.modalOverlay {
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalContent {
+  background-color: #fcf4e4;
+  border: 5px solid #b81c1c;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalContent h2 {
+  margin: 0;
+  color: #8b0000;
+  text-align: center;
+  border-bottom: 2px solid #b81c1c;
+  padding-bottom: 0.5rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}

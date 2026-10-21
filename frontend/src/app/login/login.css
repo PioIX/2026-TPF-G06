@@ -117,7 +117,7 @@
 }
 
 /* Mensaje de error */
-.login-error {
+.login-error-button {
   margin: 0;
   padding: 8px 10px;
 
@@ -129,7 +129,10 @@
 
   font-size: 12px;
   font-weight: 700;
+
+  cursor: pointer;
 }
+
 
 @media (max-width: 480px) {
   .login-container {

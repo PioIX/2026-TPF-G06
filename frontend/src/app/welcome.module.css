@@ -31,8 +31,8 @@
 .menuBox {
   position: relative;
   z-index: 2;
-  background: rgba(28, 14, 12, 0.82); /* Fondo café oscuro de diner */
-  border: 3px solid #ff4d0d; /* Naranja neón inspirada en el atardecer */
+  background: rgba(179, 71, 28, 0.1);/* Fondo café oscuro de diner */
+  border: 3px solid #ff4e0dcf; /* Naranja neón inspirada en el atardecer */
   outline: 3px solid #ffcc00; /* Amarillo brillante */
   border-radius: 20px;
   padding: 1.8rem 2.2rem;

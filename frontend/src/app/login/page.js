@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from "@/components/Button";
-import './login.css'; // <-- Importa el archivo CSS aquí
+import './login.css';
 
 export default function LoginPage() {
   const [mail, setMail] = useState('');
@@ -36,6 +36,7 @@ export default function LoginPage() {
         router.push('/jugar');
       } else {
         setError(data.respuesta?.msg || data.message || 'Credenciales incorrectas');
+        
       }
     } catch (err) {
       console.error(err);
@@ -68,11 +69,19 @@ export default function LoginPage() {
             className="login-input"
           />
           
-          {error && <p className="login-error">{error}</p>}
+          {error && (
+            <button 
+              type="button" 
+              className="login-input login-error-button"
+              onClick={() => router.push('/registro')}
+            >
+              {error}
+            </button>
+          )}
 
-          <Button type="submit" disabled={loading} className="login-button">
+          <button type="submit" disabled={loading} className="login-button">
             {loading ? 'Cargando...' : 'Iniciar sesión'}
-          </Button>
+          </button>
         </form>
       </div>
     </div>

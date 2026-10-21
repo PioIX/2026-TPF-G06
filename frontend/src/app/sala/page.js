@@ -73,7 +73,7 @@ export default function SalaPage() {
     return () => {
       socket.off("iniciar_partida");
     };
-  }, [router]);
+  }, [socket]);
 
   async function cargarPartidas() {
     try {

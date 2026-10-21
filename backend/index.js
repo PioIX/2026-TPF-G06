@@ -294,7 +294,6 @@ app.post("/sala/individual", async function (req, res) {
     });
   }
 });*/
-
 app.get("/sala/partidas", async function (req, res) {
   try {
     const partidas = await realizarQuery(`
@@ -321,7 +320,6 @@ app.post("/sala/crear-partida", async function (req, res) {
   try {
     const { id_usuario_creador, nombre_partida, ranking } = req.body;
 
-    // Validación de ID de usuario
     if (!id_usuario_creador) {
       return res.status(400).json({ 
         ok: false, 
@@ -336,7 +334,6 @@ app.post("/sala/crear-partida", async function (req, res) {
       });
     }
 
-    // Generar formato DATETIME válido para MySQL (YYYY-MM-DD HH:MM:SS)
     const hora_final = new Date(Date.now() + 3600000)
       .toISOString()
       .slice(0, 19)
@@ -362,4 +359,68 @@ app.post("/sala/crear-partida", async function (req, res) {
     });
   }
 });
- 
+
+const jugadoresEnPartida = [
+  {
+    //id_partida: 0,
+    //jugadores: []
+  }
+];
+
+io.on("connection", (socket) => {
+
+  socket.on("crearSALA", (dataPartida) => {
+    // Notifica a todos los usuarios para que ejecuten cargarPartidas()
+    io.emit("salaCreada", dataPartida);
+  });
+
+
+  socket.on("unirse_sala", ({ id_partida, id_usuario }) => {
+    socket.join(`partida_${id_partida}`);
+    console.log("ASDJKH")
+    // 1. Buscar si la partida ya existe en el arreglo
+    let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
+
+    // 2. Si no existe, la creamos y la agregamos al arreglo
+    if (!partida) {
+      partida = { id_partida: id_partida, jugadores: [] };
+      jugadoresEnPartida.push(partida);
+    }
+
+    // 3. Evitamos duplicar al usuario
+    if (!partida.jugadores.includes(id_usuario)) {
+      partida.jugadores.push(id_usuario);
+    }
+
+    console.log(`Usuario ${id_usuario} se unió a la partida ${id_partida}`);
+    console.log("Estado de salas:", JSON.stringify(jugadoresEnPartida, null, 2));
+    console.log("partida.juygadores", partida.jugadores)
+    console.log(partida, "partida")
+    // 4. Si hay 2 o más jugadores, iniciar
+    if (partida.jugadores.length == 2) {
+      io.to(`partida_${id_partida}`).emit("iniciar_partida", {
+        id_partida,
+        jugadores: partida.jugadores
+      });
+    }
+  });
+
+  socket.on("salir_sala", ({ id_partida, id_usuario }) => {
+    socket.leave(`partida_${id_partida}`);
+
+    const partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
+
+    if (partida) {
+      // Filtrar al usuario que sale
+      partida.jugadores = partida.jugadores.filter(id => id !== id_usuario);
+
+      // Si la sala queda vacía, eliminar el objeto del arreglo
+      if (partida.jugadores.length === 0) {
+        const indice = jugadoresEnPartida.findIndex(p => p.id_partida === id_partida);
+        if (indice !== -1) {
+          jugadoresEnPartida.splice(indice, 1);
+        }
+      }
+    }
+  });
+});

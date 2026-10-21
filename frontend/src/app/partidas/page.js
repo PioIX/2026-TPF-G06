@@ -155,7 +155,8 @@ export default function JuegoHamburguesa() {
   }
 
   return (
-    <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans">
+  
+    <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans" style={{backgroundImage: "url(cocina.png)", width:1500, height: 700}}>
       <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-[#fffaf1] shadow-xl">
 
         {/* Barra superior */}
@@ -274,7 +275,7 @@ export default function JuegoHamburguesa() {
                 className="flex min-h-24 flex-col items-center justify-center rounded-xl border-2 border-[#e1c9a9] bg-white p-3 transition hover:border-amber-700 hover:bg-amber-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <img
-                  src={`/images/${ingrediente.tipo}.png`}
+                  src={`${ingrediente.tipo}`}
                   alt={ingrediente.nombre}
                   className="h-12 w-14 object-contain"
                 />

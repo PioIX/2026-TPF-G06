@@ -16,7 +16,7 @@ Funcionalidades desarrolladas
 - Generador de pedidos aleatorios que indican qué hamburguesa o combo 
 - Sistema de validación que compara la hamburguesa armada con el pedido objetivo y otorga puntos al acertar. 
 - Temporizador de tiempo límite para entregar cada pedido. 
-- Contador de puntaje en tiempo real y registro del ranking 
+- Contador de puntaje en tiempo real y registro del ranking. 
 - Botón de reiniciar partida.
 
 ### Principales características esperadas del producto final

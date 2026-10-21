@@ -294,7 +294,6 @@ app.post("/sala/individual", async function (req, res) {
     });
   }
 });*/
-
 app.get("/sala/partidas", async function (req, res) {
   try {
     const partidas = await realizarQuery(`
@@ -321,7 +320,6 @@ app.post("/sala/crear-partida", async function (req, res) {
   try {
     const { id_usuario_creador, nombre_partida, ranking } = req.body;
 
-    // Validación de ID de usuario
     if (!id_usuario_creador) {
       return res.status(400).json({ 
         ok: false, 
@@ -336,7 +334,6 @@ app.post("/sala/crear-partida", async function (req, res) {
       });
     }
 
-    // Generar formato DATETIME válido para MySQL (YYYY-MM-DD HH:MM:SS)
     const hora_final = new Date(Date.now() + 3600000)
       .toISOString()
       .slice(0, 19)
@@ -362,4 +359,64 @@ app.post("/sala/crear-partida", async function (req, res) {
     });
   }
 });
- 
+
+const jugadoresEnPartida = [
+  {
+    //id_partida: 0,
+    //jugadores: []
+  }
+];
+
+io.on("connection", (socket) => {
+
+  // Escuchar cuando un cliente solicita crear una sala
+  socket.on("crearSALA", (dataPartida) => {
+    // Notifica a TODOS los sockets conectados que hay una nueva sala disponible
+    io.emit("salaCreada", dataPartida);
+  });
+
+  // Cuando un jugador selecciona/entra a una sala
+  socket.on("unirse_sala", ({ id_partida, id_usuario }) => {
+    console.log(id_partida, id_usuario)
+    socket.join(`partida_${id_partida}`);
+
+    if (jugadoresEnPartida[id_partida] == undefined) {
+      jugadoresEnPartida.push({
+        id_partida: id_partida,
+       jugadores: []
+      })
+    }
+
+    if (jugadoresEnPartida[id_partida].jugadores == undefined) {
+      jugadoresEnPartida[id_partida].jugadores = [];
+    }
+
+    jugadoresEnPartida[id_partida].id_partida = id_partida;
+
+    // Evitamos duplicar al mismo usuario si se reconecta
+    if (!jugadoresEnPartida[id_partida].jugadores.includes(id_usuario)) {
+      jugadoresEnPartida[id_partida].jugadores.push(id_usuario);
+    }
+    console.log(jugadoresEnPartida)
+    // Si ya se unieron 2 usuarios distintos
+    /*
+    if (jugadoresEnPartida[id_partida].length >= 2) {
+      // Avisamos a TODOS los sockets conectados en esa sala que arranquen
+      io.to(`partida_${id_partida}`).emit("iniciar_partida", {
+        id_partida,
+        jugadores: jugadoresEnPartida[id_partida]
+      });
+    }
+    */
+  });
+
+  // Cuando el usuario sale de la selección
+  socket.on("salir_sala", ({ id_partida, id_usuario }) => {
+    socket.leave(`partida_${id_partida}`);
+    if (jugadoresEnPartida[id_partida]) {
+      jugadoresEnPartida[id_partida] = jugadoresEnPartida[id_partida].filter(
+        (id) => id !== id_usuario
+      );
+    }
+  });
+});

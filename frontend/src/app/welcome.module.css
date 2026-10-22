@@ -1,117 +1,251 @@
-/* Contenedor con la imagen del atardecer */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700&display=swap');
+
+/* ---------- Escena ---------- */
 .container {
+  --ladrillo: #8f3a2d;
+  --ladrillo-oscuro: #6f2a20;
+  --crema: #f5ecdb;
+  --papel: #fbf6ea;
+  --texto: #34261f;
+  /* alto de la calle; el diner se apoya sobre la vereda */
+  --calle: clamp(250px, 36vh, 380px);
+  /* ancho del diner: los locales se calculan a partir de este valor para mantener la escala */
+  --dinerW: min(680px, 82vw, calc((100vh - var(--calle) * 0.72 - 64px) * 1.52));
+
   position: relative;
   min-height: 100vh;
-  width: 100%;
-  display: flex;
-  align-items: flex-end; /* Posiciona el menú en la parte inferior para despejar el cartel */
-  justify-content: center;
-  padding-bottom: 3rem;
-  background-image: url('/Atardecer en el Diner Fast Food Rush.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100dvh;
   overflow: hidden;
+  isolation: isolate;
+  background: #1b2335;
+  font-family: 'Nunito Sans', system-ui, sans-serif;
 }
 
-/* Sombra suave de ambiente al atardecer */
+/* Capa 1: ciudad al atardecer (public/ciudad.webp) */
+.container::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 var(--calle) 0;
+  z-index: 0;
+  background: url('/ciudad.png') center bottom / cover no-repeat;
+}
+
+/* Capa 2: vereda, cordón y asfalto */
+.container::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--calle);
+  z-index: 1;
+  background:
+    url('/grano.png') 0 0 / 256px 256px repeat,
+    radial-gradient(ellipse 34% 55% at 42% 12%, rgba(255, 196, 120, 0.28), transparent 70%) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(90deg, transparent 0 138px, rgba(0, 0, 0, 0.22) 138px 140px) top / 100% 34% no-repeat,
+    repeating-linear-gradient(90deg, #cdbf9f 0 70px, transparent 70px 150px) 0 84% / 100% 4px no-repeat,
+    linear-gradient(to bottom,
+      #7d746a 0 34%,
+      #a39a8d 34% 36%,
+      #4d4a45 36% 38%,
+      #26292f 38% 100%);
+}
+
+/* Capa 3: tinte de atardecer y viñeta (no recibe clics) */
 .overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg, 
-    rgba(20, 10, 5, 0.1) 0%, 
-    rgba(35, 12, 8, 0.55) 100%
-  );
-  z-index: 1;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 30% at 50% 62%, rgba(255, 168, 90, 0.16), transparent 70%),
+    linear-gradient(to bottom, rgba(40, 20, 50, 0.16) 0%, rgba(24, 18, 34, 0) 35%, rgba(20, 12, 8, 0) 65%, rgba(20, 12, 8, 0.5) 100%),
+    radial-gradient(ellipse at 50% 55%, transparent 50%, rgba(14, 6, 12, 0.5) 100%);
 }
 
-/* Caja contenedora de botones alineada al estilo neón retro */
-.menuBox {
-  position: relative;
+/* ---------- Locales vecinos (public/locales.webp) ---------- */
+/* Misma escala que el diner: el hueco central es del tamaño del diner */
+.locales {
+  position: absolute;
   z-index: 2;
-  background: rgba(179, 71, 28, 0.1);/* Fondo café oscuro de diner */
-  border: 3px solid #ff4e0dcf; /* Naranja neón inspirada en el atardecer */
-  outline: 3px solid #ffcc00; /* Amarillo brillante */
-  border-radius: 20px;
-  padding: 1.8rem 2.2rem;
-  max-width: 420px;
-  width: 90%;
+  left: 50%;
+  bottom: calc(var(--calle) * 0.72);
+  transform: translateX(-50%);
+  width: calc(var(--dinerW) * 5.625);
+  aspect-ratio: 3600 / 460;
+  background: url('/locales.png') right / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* ---------- Diner clickeable ---------- */
+.dinerButton {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: calc(var(--calle) * 0.72);
+  transform: translateX(-50%);
+  width: var(--dinerW);
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.6s ease;
+}
+
+.dinerImg {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.25));
+  transition: transform 0.25s ease, filter 0.25s ease;
+  animation: subir 0.8s ease-out both;
+}
+
+.dinerOn {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: auto;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.6s ease;
+}
+
+/* Al tocar el diner: se prende la luz y brilla alrededor */
+.encendido {
+  filter: drop-shadow(0 0 40px rgba(255, 186, 100, 0.6));
+  cursor: default;
+}
+
+.encendido .dinerOn {
+  opacity: 1;
+}
+
+.encendido .dinerHint {
+  background: #f6dfa8;
+  color: var(--texto);
+}
+
+.dinerButton:hover .dinerImg,
+.dinerButton:focus-visible .dinerImg {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.3)) brightness(1.08);
+}
+
+.dinerButton:focus-visible {
+  outline: 3px solid #f3dfae;
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
+
+/* ---------- Panel de botones ---------- */
+.menuBox {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(92vw, 520px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px 16px;
   text-align: center;
-  backdrop-filter: blur(6px);
-  box-shadow: 
-    0 0 20px rgba(255, 77, 13, 0.4),
-    0 10px 30px rgba(0, 0, 0, 0.7);
+  background: rgba(28, 20, 16, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(245, 236, 219, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .welcomeText {
-  color: #ffda79;
-  font-size: 1.1rem;
-  font-weight: 900;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  margin-bottom: 1.2rem;
-  text-shadow: 0 0 8px rgba(255, 218, 121, 0.6);
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(0.95rem, 3vw, 1.15rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--crema);
 }
 
-/* Disposición de botones */
 .buttonGroup {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  gap: 10px;
 }
 
-/* Estilos base de los botones */
-.btnLogin, 
+.btnLogin,
 .btnRegister {
-  padding: 0.95rem 1.5rem;
-  font-size: 1.1rem;
-  font-weight: 800;
-  border-radius: 12px;
+  flex: 1;
+  padding: 12px 10px;
+  font: 700 0.88rem 'Nunito Sans', system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  border-radius: 8px;
   cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  transition: all 0.2s ease;
-  box-shadow: 0 5px 0px rgba(0, 0, 0, 0.4);
+  transition: filter 0.15s ease, background 0.15s ease, transform 0.08s ease;
 }
 
-/* Botón 1: Iniciar Sesión (Rojo Neón del cartel) */
 .btnLogin {
-  background: linear-gradient(180deg, #e63946 0%, #b8121f 100%);
-  color: #ffffff;
-  border: 2px solid #ff8892;
+  color: #fbf3e4;
+  background: linear-gradient(180deg, #a2463a 0%, var(--ladrillo) 55%, var(--ladrillo-oscuro) 100%);
+  border: 1px solid var(--ladrillo-oscuro);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 3px 6px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
 
 .btnLogin:hover {
-  transform: translateY(-3px);
-  box-shadow: 
-    0 8px 0px rgba(0, 0, 0, 0.4),
-    0 0 15px rgba(230, 57, 70, 0.7);
-  background: linear-gradient(180deg, #ff4d5a 0%, #cc1624 100%);
+  filter: brightness(1.08);
 }
 
-.btnLogin:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.4);
-}
-
-/* Botón 2: Registrarse (Naranja/Amarillo Neón) */
 .btnRegister {
-  background: linear-gradient(180deg, #ff9f1c 0%, #d47a00 100%);
-  color: #2b0b00;
-  border: 2px solid #ffe1a8;
+  color: var(--crema);
+  background: transparent;
+  border: 1px solid rgba(245, 236, 219, 0.55);
 }
 
 .btnRegister:hover {
-  transform: translateY(-3px);
-  box-shadow: 
-    0 8px 0px rgba(0, 0, 0, 0.4),
-    0 0 15px rgba(255, 159, 28, 0.7);
-  background: linear-gradient(180deg, #ffb03a 0%, #e68500 100%);
+  background: rgba(245, 236, 219, 0.12);
 }
 
+.btnLogin:active,
 .btnRegister:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.4);
+  transform: translateY(1px);
+}
+
+.btnLogin:focus-visible,
+.btnRegister:focus-visible {
+  outline: 2px solid #f3dfae;
+  outline-offset: 3px;
+}
+
+/* ---------- Animaciones ---------- */
+@keyframes subir {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes flotar {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dinerImg,
+  .dinerHint { animation: none; }
+  .dinerOn,
+  .dinerButton,
+  .dinerImg,
+  .btnLogin,
+  .btnRegister { transition: none; }
+}
+
+/* ---------- Pantallas bajas (celulares apaisados) ---------- */
+@media (max-height: 520px) {
+  .container { --calle: 210px; }
+  .welcomeText { display: none; }
+  .menuBox { padding: 12px; }
 }

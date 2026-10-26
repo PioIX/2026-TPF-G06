@@ -18,21 +18,34 @@
    el juego escala igual en cualquier pantalla y las zonas
    siempre quedan sobre el plato y la parrilla del fondo.
    ========================================================= */
+/* =========================================================
+   ESCENARIO
+   Todo se mide en "cqw" (1% del ancho del escenario), así
+   el juego escala igual en cualquier pantalla y las zonas
+   siempre quedan sobre el plato y la parrilla del fondo.
+   ========================================================= */
 
+/* Ocupa toda la pantalla. El fondo se estira para llenarla; solo en
+   ventanas muy raras (más anchas que 2.4:1 o más altas que 1.45:1)
+   quedan franjas oscuras para no deformar demasiado la imagen. */
 .juego {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #1a0f0c;
   overflow: hidden;
+  z-index: 50;
 }
 
 .escenario {
   position: relative;
   container-type: inline-size;
-  width: min(100vw, calc(100vh * 1671 / 941));
-  aspect-ratio: 1671 / 941;
+  width: min(100vw, calc(100vh * 2.4));
+  height: min(100vh, calc(100vw / 1.45));
+  width: min(100vw, calc(100dvh * 2.4));
+  height: min(100dvh, calc(100vw / 1.45));
   background: url('/cocina.png') center / 100% 100% no-repeat;
   overflow: hidden;
   user-select: none;
@@ -126,7 +139,7 @@
 }
 
 .ticket-marca {
-  width: 1.2em;
+  min-width: 1.2em;
   text-align: center;
   font-weight: 900;
 }
@@ -537,4 +550,43 @@
 @keyframes aparecer {
   from { opacity: 0; transform: translateX(-50%) translateY(-1cqw); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* =========================================================
+   MILKSHAKES
+   ========================================================= */
+
+.ticket-extra {
+  margin-top: 0.4em;
+  padding-top: 0.4em;
+  border-top: 2px dashed #b9a78c;
+}
+
+.ticket-icono.emoji {
+  width: 2.4em;
+  text-align: center;
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+.ticket-item.hecho .ticket-icono.emoji {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.bandeja.maquina {
+  cursor: pointer;
+}
+
+/* la máquina late mientras falte preparar un milkshake */
+.bandeja.pendiente {
+  animation: pulso 1.5s ease-in-out infinite;
+}
+
+@keyframes pulso {
+  0%, 100% {
+    box-shadow: 0 0 0 0.15cqw rgba(255, 160, 205, 0.25), 0 0 0.6cqw rgba(255, 150, 200, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 0.25cqw rgba(255, 175, 215, 0.95), 0 0 1.8cqw rgba(255, 150, 200, 0.85);
+  }
 }

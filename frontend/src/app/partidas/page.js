@@ -342,11 +342,20 @@ const API_URL = 'http://localhost:4000/api';
 // Tiempo de cada pedido (lo dejé como lo tenías; ponelo en 60 para la versión final)
 const TIEMPO_PARTIDA = 1000000;
 
-// Mientras no exista la página de la parrilla, true = al soltar una carne en la
-// parrilla se agrega directo a la hamburguesa (para poder probar todo el flujo).
-// Cuando tengas la página, ponelo en false y creá la ruta RUTA_PARRILLA.
-const MODO_PRUEBA_PARRILLA = true;
+// false = al soltar una carne en la parrilla se va a la página /parrilla.
+// true  = (solo para pruebas) la carne se agrega directo a la hamburguesa.
+const MODO_PRUEBA_PARRILLA = false;
 const RUTA_PARRILLA = '/parrilla';
+
+// Milkshakes: al tocar la máquina del fondo se va a otra página (todavía no existe).
+// Mientras tanto, true = al tocar la máquina se da el milkshake por hecho (para probar).
+const MODO_PRUEBA_MILKSHAKE = true;
+const RUTA_MILKSHAKE = '/milkshake';
+const PROBABILIDAD_MILKSHAKE = 0.6; // 1 = todos los pedidos piden milkshake
+const MAX_MILKSHAKES = 2; // cantidad máxima de milkshakes por pedido
+
+// Zona clickeable de la máquina de milkshakes (en % del escenario)
+const MAQUINA_MILKSHAKE = { left: 68.3, top: 25, width: 10.7, height: 21 };
 
 // true = dibuja un recuadro verde sobre cada bandeja con su nombre,
 // para ajustar las posiciones de BANDEJAS si no coinciden con el fondo.
@@ -375,6 +384,26 @@ const clave = (ing) =>
 const NOMBRES_CARNE = ['paty', 'pollo', 'veggie'];
 const esCarne = (ing) =>
   ing?.seccion === 'carnes' || NOMBRES_CARNE.includes(normalizar(ing?.nombre));
+
+const esPan = (ing) => /(^|\s)pan(\s|$)/.test(normalizar(ing?.nombre));
+
+// Todo pedido lleva al menos una carne. Si el backend mandó un pedido sin
+// carne, se agrega una al azar justo arriba del pan de abajo.
+const asegurarCarne = (orden, ingredientes) => {
+  const carnes = ingredientes.filter(esCarne);
+  const yaTiene = orden.some(
+    (o) => esCarne(o) || carnes.some((c) => clave(c) === clave(o))
+  );
+  if (yaTiene || carnes.length === 0) return orden;
+
+  const carne = carnes[Math.floor(Math.random() * carnes.length)];
+  const iPanAbajo = orden.findIndex(
+    (o) => o.seccion === 'abajo' || (esPan(o) && !normalizar(o.nombre).includes('arriba'))
+  );
+  const nueva = [...orden];
+  nueva.splice(iPanAbajo >= 0 ? iPanAbajo + 1 : 0, 0, carne);
+  return nueva;
+};
 
 /* ---------------------------------------------------------
    Bandejas del fondo (cocina.png). Posiciones en % del escenario.
@@ -517,6 +546,16 @@ const recortarImagen = (src) =>
     img.src = src;
   });
 
+// Partida guardada al salir hacia la parrilla / máquina de milkshakes
+const leerPartidaGuardada = () => {
+  try {
+    const texto = sessionStorage.getItem('partida');
+    return texto ? JSON.parse(texto) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 /* =========================================================
    COMPONENTE
    ========================================================= */
@@ -533,6 +572,10 @@ export default function JuegoHamburguesa() {
   const [tiempo, setTiempo] = useState(60);
   const [puntaje, setPuntaje] = useState(350);
   const [pausado, setPausado] = useState(false);
+
+  // Milkshakes pedidos / ya preparados en este pedido
+  const [milkshakesPedidos, setMilkshakesPedidos] = useState(0);
+  const [milkshakesListos, setMilkshakesListos] = useState(0);
 
   // Imágenes recortadas: { '/lechuga.png': { url, w, h } }
   const [recortes, setRecortes] = useState({});
@@ -575,34 +618,81 @@ export default function JuegoHamburguesa() {
     setZonaActiva(null);
   };
 
-  // Obtener ingredientes y pedido aleatorio
-  const iniciarJuego = async () => {
+  // Obtener ingredientes y pedido aleatorio.
+  // Si viene una partida guardada (al volver de la parrilla o de los
+  // milkshakes) se retoma en vez de empezar un pedido nuevo.
+  const iniciarJuego = async (guardada = null) => {
+    // OJO: algunos botones llaman a esta función con el evento del click
+    const partida =
+      guardada && Array.isArray(guardada.recetaObjetivo) ? guardada : null;
+
     setCargando(true);
     setError('');
-    setMiHamburguesa([]);
-    setTiempo(TIEMPO_PARTIDA);
     setPausado(false);
     cancelarMano();
 
+    if (!partida) {
+      sessionStorage.removeItem('partida');
+      setMiHamburguesa([]);
+      setTiempo(TIEMPO_PARTIDA);
+      setMilkshakesListos(0);
+    }
+
     try {
-      const [resOrden, resIngredientes] = await Promise.all([
-        fetch(`${API_URL}/orden-aleatoria`),
+      const [resIngredientes, resOrden] = await Promise.all([
         fetch(`${API_URL}/ingredientes`),
+        partida ? Promise.resolve(null) : fetch(`${API_URL}/orden-aleatoria`),
       ]);
 
-      if (!resOrden.ok || !resIngredientes.ok) {
+      if (!resIngredientes.ok || (resOrden && !resOrden.ok)) {
         throw new Error('No se pudieron obtener los datos.');
       }
 
-      const ordenData = await resOrden.json();
       const ingredientesData = await resIngredientes.json();
+      const ordenData = partida ? partida.recetaObjetivo : await resOrden.json();
 
       if (!Array.isArray(ordenData) || !Array.isArray(ingredientesData)) {
         throw new Error('La respuesta del servidor no es válida.');
       }
 
-      setRecetaObjetivo(ordenData);
-      setTodosLosIngredientes(ingredientesData);
+      if (partida) {
+        // El tiempo siguió corriendo mientras estabas en la otra página
+        const transcurrido = Math.floor(
+          (Date.now() - (partida.guardadoEn ?? Date.now())) / 1000
+        );
+
+        let hamburguesa = Array.isArray(partida.miHamburguesa)
+          ? partida.miHamburguesa
+          : [];
+
+        // Carne cocinada en la parrilla: se suma a la hamburguesa
+        if (partida.resultadoParrilla === 'cocinada' && partida.ingredienteACocinar) {
+          hamburguesa = [...hamburguesa, partida.ingredienteACocinar];
+        }
+
+        setRecetaObjetivo(ordenData);
+        setTodosLosIngredientes(ingredientesData);
+        setMiHamburguesa(hamburguesa);
+        setTiempo(Math.max(0, (partida.tiempo ?? TIEMPO_PARTIDA) - transcurrido));
+        setPuntaje(partida.puntaje ?? 0);
+        setMilkshakesPedidos(partida.milkshakesPedidos ?? 0);
+        setMilkshakesListos(partida.milkshakesListos ?? 0);
+        sessionStorage.removeItem('partida');
+
+        if (partida.resultadoParrilla === 'quemada') {
+          mostrarAviso('🔥 ¡Se quemó la carne! Agarrá otra y volvé a cocinarla');
+        } else if (partida.resultadoParrilla === 'cocinada') {
+          mostrarAviso('🍖 ¡Carne en su punto! Ya está en tu hamburguesa');
+        }
+      } else {
+        setRecetaObjetivo(asegurarCarne(ordenData, ingredientesData));
+        setTodosLosIngredientes(ingredientesData);
+        setMilkshakesPedidos(
+          Math.random() < PROBABILIDAD_MILKSHAKE
+            ? 1 + Math.floor(Math.random() * MAX_MILKSHAKES)
+            : 0
+        );
+      }
     } catch (error) {
       console.error('Error al conectar con el backend:', error);
       setError(
@@ -615,7 +705,7 @@ export default function JuegoHamburguesa() {
 
   // Cargar el primer pedido
   useEffect(() => {
-    iniciarJuego();
+    iniciarJuego(leerPartidaGuardada());
     return () => clearTimeout(avisoTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -731,10 +821,58 @@ export default function JuegoHamburguesa() {
         recetaObjetivo,
         tiempo,
         puntaje,
+        milkshakesPedidos,
+        milkshakesListos,
+        guardadoEn: Date.now(),
         ingredienteACocinar: ingrediente,
       })
     );
     router.push(RUTA_PARRILLA);
+  };
+
+  // Tocar la máquina de milkshakes
+  const tocarMaquinaMilkshake = () => {
+    // Si hay un ingrediente en la mano, este click solo lo suelta
+    if (!activoRef.current || manoRef.current) return;
+
+    if (milkshakesPedidos === 0) {
+      mostrarAviso('Este pedido no lleva milkshake');
+      return;
+    }
+    if (milkshakesListos >= milkshakesPedidos) {
+      mostrarAviso('Ya preparaste todos los milkshakes 🥤');
+      return;
+    }
+
+    if (MODO_PRUEBA_MILKSHAKE) {
+      setMilkshakesListos((n) => n + 1);
+      mostrarAviso('🥤 Milkshake listo (modo prueba)');
+      return;
+    }
+
+    // Guardamos la partida para retomarla al volver de la máquina
+    sessionStorage.setItem(
+      'partida',
+      JSON.stringify({
+        miHamburguesa,
+        recetaObjetivo,
+        tiempo,
+        puntaje,
+        milkshakesPedidos,
+        milkshakesListos,
+        guardadoEn: Date.now(),
+      })
+    );
+    router.push(RUTA_MILKSHAKE);
+  };
+
+  // Pantalla completa
+  const alternarPantallaCompleta = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.();
+    }
   };
 
   // Se ejecuta cuando soltás el ingrediente
@@ -873,8 +1011,13 @@ export default function JuegoHamburguesa() {
     );
 
     if (esCorrecta) {
-      setPuntaje((anterior) => anterior + 100);
-      alert('¡Pedido correcto! Ganaste 100 puntos.');
+      if (milkshakesListos < milkshakesPedidos) {
+        alert('¡Falta preparar el milkshake! Tocá la máquina de milkshakes.');
+        return;
+      }
+      const puntos = 100 + milkshakesPedidos * 50;
+      setPuntaje((anterior) => anterior + puntos);
+      alert(`¡Pedido correcto! Ganaste ${puntos} puntos.`);
       iniciarJuego();
     } else {
       alert('El pedido no coincide. ¡Probá de nuevo!');
@@ -899,10 +1042,12 @@ export default function JuegoHamburguesa() {
     correctos++;
   }
   const hayError = miHamburguesa.length > correctos;
-  const pedidoCompleto =
+  const hamburguesaCompleta =
     !hayError &&
     recetaObjetivo.length > 0 &&
     correctos === recetaObjetivo.length;
+  const faltanMilkshakes = milkshakesListos < milkshakesPedidos;
+  const pedidoCompleto = hamburguesaCompleta && !faltanMilkshakes;
 
   const sostieneParrilla = mano && esCarne(mano);
   const sostienePlato = mano && !esCarne(mano);
@@ -940,7 +1085,7 @@ export default function JuegoHamburguesa() {
       <main className="min-h-screen flex flex-col gap-4 items-center justify-center bg-amber-50 p-6">
         <p className="text-center text-red-700">{error}</p>
         <button
-          onClick={iniciarJuego}
+          onClick={() => iniciarJuego()}
           className="rounded-xl bg-amber-800 px-6 py-3 font-bold text-white"
         >
           Reintentar
@@ -1016,7 +1161,30 @@ export default function JuegoHamburguesa() {
             })}
           </ul>
 
+          {milkshakesPedidos > 0 && (
+            <ul className="ticket-lista ticket-extra">
+              {Array.from({ length: milkshakesPedidos }).map((_, i) => {
+                const hecho = i < milkshakesListos;
+                return (
+                  <li
+                    key={`milkshake-${i}`}
+                    className={`ticket-item ${hecho ? 'hecho' : ''} ${
+                      i === milkshakesListos ? 'siguiente' : ''
+                    }`}
+                  >
+                    <span className="ticket-icono emoji">🥤</span>
+                    <span className="ticket-nombre">Milkshake</span>
+                    <span className="ticket-marca">{hecho ? '✓' : ''}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
           {hayError && <p className="ticket-nota error">¡Ese no va! Usá DESHACER</p>}
+          {!hayError && hamburguesaCompleta && faltanMilkshakes && (
+            <p className="ticket-nota">Falta el milkshake 🥤</p>
+          )}
           {pedidoCompleto && <p className="ticket-nota ok">¡Listo! Entregalo 👉</p>}
         </aside>
 
@@ -1037,8 +1205,15 @@ export default function JuegoHamburguesa() {
           >
             {pausado ? 'Continuar' : 'Pausar'}
           </button>
-          <button onClick={iniciarJuego} className="hud-boton claro">
+          <button onClick={() => iniciarJuego()} className="hud-boton claro">
             Reiniciar
+          </button>
+          <button
+            onClick={alternarPantallaCompleta}
+            className="hud-boton"
+            title="Pantalla completa"
+          >
+            ⛶
           </button>
         </header>
 
@@ -1098,6 +1273,23 @@ export default function JuegoHamburguesa() {
             height: `${bandeja.height}%`,
           })
         )}
+
+        {/* Máquina de milkshakes (del fondo) */}
+        <button
+          type="button"
+          data-nombre="Milkshakes"
+          title="Milkshakes"
+          onPointerDown={tocarMaquinaMilkshake}
+          className={`bandeja maquina ${
+            faltanMilkshakes ? 'pendiente' : ''
+          } ${!activo ? 'deshabilitado' : ''}`}
+          style={{
+            left: `${MAQUINA_MILKSHAKE.left}%`,
+            top: `${MAQUINA_MILKSHAKE.top}%`,
+            width: `${MAQUINA_MILKSHAKE.width}%`,
+            height: `${MAQUINA_MILKSHAKE.height}%`,
+          }}
+        />
 
         {/* Ingredientes del backend que no tienen bandeja dibujada */}
         {sinBandeja.length > 0 && (

@@ -7,11 +7,24 @@ const API_URL = 'http://localhost:4000/api';
 
 const TIEMPO_INICIAL = 60;
 
+// Imágenes (van en la carpeta /public)
+const PAPAS_IMG = '/papas.png';
+const BEBIDA_IMG = '/bebida.png';
+
 // Tamaño de la hamburguesa respecto al plato del fondo (1 = tamaño base).
 const TAM_HAMBURGUESA = 1.3;
 
-// Ancho de referencia de cocina.png (1672 px). Sirve para pasar px a % del escenario.
+// Ancho de referencia de la cocina (1672 px). Sirve para pasar px a % del escenario.
 const ANCHO_REF = 1672;
+
+const TAMANOS = ['chica', 'mediana', 'grande'];
+
+// Ancho de la imagen en la escena (en cqw) según el tamaño pedido
+const TAM_PAPAS = { chica: 8, mediana: 10, grande: 12 };
+const TAM_BEBIDA = { chica: 8, mediana: 10.5, grande: 13 };
+
+// En las tarjetas del menú se muestran más chicas que en la escena
+const FACTOR_TARJETA = 0.45;
 
 const SECCIONES = [
   { valor: 'todos', texto: 'Todos' },
@@ -20,12 +33,19 @@ const SECCIONES = [
   { valor: 'quesos', texto: 'Quesos' },
   { valor: 'medio', texto: 'Otros' },
   { valor: 'arriba', texto: 'Panes sup.' },
+  { valor: 'papas', texto: '🍟 Papas', extra: true },
+  { valor: 'bebida', texto: '🥤 Bebida', extra: true },
 ];
+
+const etiquetaPapas = (t) => `Papas ${t === 'grande' ? 'grandes' : t + 's'}`;
+const etiquetaBebida = (t) => `Cola ${t}`;
 
 export default function JuegoHamburguesa() {
   const [todosLosIngredientes, setTodosLosIngredientes] = useState([]);
-  const [recetaObjetivo, setRecetaObjetivo] = useState([]);
+  const [pedido, setPedido] = useState({ hamburguesa: [], papas: null, bebida: null });
   const [miHamburguesa, setMiHamburguesa] = useState([]);
+  const [papasElegidas, setPapasElegidas] = useState(null); // 'chica' | 'mediana' | 'grande' | null
+  const [bebidaElegida, setBebidaElegida] = useState(null);
   const [filtroSeccion, setFiltroSeccion] = useState('todos');
 
   const [cargando, setCargando] = useState(true);
@@ -37,41 +57,57 @@ export default function JuegoHamburguesa() {
   const [mensaje, setMensaje] = useState(null); // { texto, tipo: 'ok' | 'mal' }
   const timeoutMensaje = useRef(null);
 
+  const recetaObjetivo = pedido.hamburguesa;
+
   const mostrarMensaje = (texto, tipo) => {
     setMensaje({ texto, tipo });
     clearTimeout(timeoutMensaje.current);
-    timeoutMensaje.current = setTimeout(() => setMensaje(null), 1800);
+    timeoutMensaje.current = setTimeout(() => setMensaje(null), 2000);
   };
 
   useEffect(() => () => clearTimeout(timeoutMensaje.current), []);
 
-  // Obtener ingredientes y pedido aleatorio
+  // Obtener ingredientes y pedido aleatorio completo
   const iniciarJuego = async () => {
     setCargando(true);
     setError('');
     setMiHamburguesa([]);
+    setPapasElegidas(null);
+    setBebidaElegida(null);
     setMensaje(null);
     setTiempo(TIEMPO_INICIAL);
     setPausado(false);
 
     try {
-      const [resOrden, resIngredientes] = await Promise.all([
-        fetch(`${API_URL}/orden-aleatoria`),
+      const [resPedido, resIngredientes] = await Promise.all([
+        fetch(`${API_URL}/pedido-aleatorio`),
         fetch(`${API_URL}/ingredientes`),
       ]);
 
-      if (!resOrden.ok || !resIngredientes.ok) {
-        throw new Error('No se pudieron obtener los datos.');
+      if (!resPedido.ok) {
+        throw new Error(
+          `/pedido-aleatorio respondió ${resPedido.status}. ` +
+            (resPedido.status === 404
+              ? 'El backend no tiene ese endpoint: pegalo en index.js y reiniciá el servidor.'
+              : 'Mirá la consola del backend para ver el error.')
+        );
+      }
+      if (!resIngredientes.ok) {
+        throw new Error(`/ingredientes respondió ${resIngredientes.status}.`);
       }
 
-      const ordenData = await resOrden.json();
+      const pedidoData = await resPedido.json();
       const ingredientesData = await resIngredientes.json();
 
-      if (!Array.isArray(ordenData) || !Array.isArray(ingredientesData)) {
+      if (!pedidoData || !Array.isArray(pedidoData.hamburguesa) || !Array.isArray(ingredientesData)) {
         throw new Error('La respuesta del servidor no es válida.');
       }
 
-      setRecetaObjetivo(ordenData);
+      setPedido({
+        hamburguesa: pedidoData.hamburguesa,
+        papas: pedidoData.papas ?? null,
+        bebida: pedidoData.bebida ?? null,
+      });
       setTodosLosIngredientes(ingredientesData);
     } catch (err) {
       console.error('Error al conectar con el backend:', err);
@@ -110,6 +146,16 @@ export default function JuegoHamburguesa() {
     setMiHamburguesa((anterior) => anterior.slice(0, -1));
   };
 
+  // Elegir un tamaño; tocar el mismo tamaño otra vez lo quita
+  const elegirPapas = (tamano) => {
+    if (juegoBloqueado) return;
+    setPapasElegidas((actual) => (actual === tamano ? null : tamano));
+  };
+  const elegirBebida = (tamano) => {
+    if (juegoBloqueado) return;
+    setBebidaElegida((actual) => (actual === tamano ? null : tamano));
+  };
+
   const verificar = () => {
     if (juegoBloqueado) return;
 
@@ -118,17 +164,46 @@ export default function JuegoHamburguesa() {
       return;
     }
 
-    const esCorrecta = miHamburguesa.every(
+    const hamburguesaOk = miHamburguesa.every(
       (ingrediente, indice) => ingrediente.id === recetaObjetivo[indice].id
     );
-
-    if (esCorrecta) {
-      setPuntaje((anterior) => anterior + 100);
-      mostrarMensaje('¡Pedido correcto! +100 puntos', 'ok');
-      setTimeout(iniciarJuego, 1200);
-    } else {
-      mostrarMensaje('El pedido no coincide. ¡Probá de nuevo!', 'mal');
+    if (!hamburguesaOk) {
+      mostrarMensaje('La hamburguesa no coincide. ¡Probá de nuevo!', 'mal');
+      return;
     }
+
+    const papasPedidas = pedido.papas ?? null;
+    if (papasElegidas !== papasPedidas) {
+      mostrarMensaje(
+        !papasPedidas
+          ? 'El cliente no pidió papas.'
+          : !papasElegidas
+          ? 'Faltan las papas.'
+          : 'Las papas no son del tamaño pedido.',
+        'mal'
+      );
+      return;
+    }
+
+    const bebidaPedida = pedido.bebida?.tamano ?? null;
+    if (bebidaElegida !== bebidaPedida) {
+      mostrarMensaje(
+        !bebidaPedida
+          ? 'El cliente no pidió bebida.'
+          : !bebidaElegida
+          ? 'Falta la bebida.'
+          : 'La bebida no es del tamaño pedido.',
+        'mal'
+      );
+      return;
+    }
+
+    // Más puntos por pedidos más completos
+    const extras = (papasPedidas ? 1 : 0) + (bebidaPedida ? 1 : 0);
+    const ganados = 100 + extras * 40;
+    setPuntaje((anterior) => anterior + ganados);
+    mostrarMensaje(`¡Pedido correcto! +${ganados} puntos`, 'ok');
+    setTimeout(iniciarJuego, 1200);
   };
 
   const ingredientesFiltrados =
@@ -154,6 +229,9 @@ export default function JuegoHamburguesa() {
   // Si la hamburguesa se hace muy alta, se achica para no tapar el resto
   const escala = Math.max(0.5, Math.min(1, 7 / Math.max(miHamburguesa.length, 1)));
 
+  const estadoExtra = (elegido, pedido_) =>
+    elegido == null ? '' : elegido === pedido_ ? 'bien' : 'mal';
+
   if (cargando) {
     return (
       <main className="pantalla-centro">
@@ -173,23 +251,24 @@ export default function JuegoHamburguesa() {
     );
   }
 
+  const mostrandoTamanos = filtroSeccion === 'papas' || filtroSeccion === 'bebida';
+
   return (
     <main className="juego">
-      {/* ───────── Barra superior ───────── */}
-      <header className="barra-superior">
-        <div className="dato dato-tiempo">
-          <span className="dato-icono">◷</span>
-          <span>{formatearTiempo(tiempo)}</span>
-        </div>
+      {/* ───────── Escenario: la cocina de fondo ───────── */}
+      <div className="escenario">
+        {/* HUD flotante: tiempo, puntaje y controles */}
+        <header className="hud">
+          <div className="dato dato-tiempo">
+            <span className="dato-icono">◷</span>
+            <span>{formatearTiempo(tiempo)}</span>
+          </div>
 
-        <h1 className="logo">Fast Food Rush</h1>
+          <div className="dato dato-puntaje">
+            <span className="dato-icono">★</span>
+            <span>{puntaje}</span>
+          </div>
 
-        <div className="dato dato-puntaje">
-          <span className="dato-icono">★</span>
-          <span>{puntaje}</span>
-        </div>
-
-        <div className="barra-botones">
           <button
             onClick={() => setPausado(!pausado)}
             disabled={tiempo <= 0}
@@ -200,11 +279,8 @@ export default function JuegoHamburguesa() {
           <button onClick={iniciarJuego} className="btn btn-claro btn-chico">
             Reiniciar
           </button>
-        </div>
-      </header>
+        </header>
 
-      {/* ───────── Escenario: la cocina de fondo ───────── */}
-      <div className="escenario">
         {/* Ticket del pedido, sobre la heladera (izquierda) */}
         <div className="ticket-wrap">
           <aside className="ticket" aria-label="Pedido del cliente">
@@ -240,6 +316,51 @@ export default function JuegoHamburguesa() {
               })}
             </ol>
 
+            {(pedido.papas || pedido.bebida) && (
+              <>
+                <div className="ticket-seccion">ACOMPAÑAMIENTO</div>
+                <ul className="ticket-lista ticket-extras">
+                  {pedido.papas && (
+                    <li
+                      className={`ticket-item ${estadoExtra(papasElegidas, pedido.papas)}`}
+                    >
+                      <span className="ticket-num">+</span>
+                      <img src={PAPAS_IMG} alt="Papas" className="ticket-img" />
+                      <span className="ticket-nombre">{etiquetaPapas(pedido.papas)}</span>
+                      <span className="ticket-check">
+                        {estadoExtra(papasElegidas, pedido.papas) === 'bien'
+                          ? '✓'
+                          : estadoExtra(papasElegidas, pedido.papas) === 'mal'
+                          ? '✗'
+                          : ''}
+                      </span>
+                    </li>
+                  )}
+                  {pedido.bebida && (
+                    <li
+                      className={`ticket-item ${estadoExtra(
+                        bebidaElegida,
+                        pedido.bebida.tamano
+                      )}`}
+                    >
+                      <span className="ticket-num">+</span>
+                      <img src={BEBIDA_IMG} alt="Bebida" className="ticket-img" />
+                      <span className="ticket-nombre">
+                        {etiquetaBebida(pedido.bebida.tamano)}
+                      </span>
+                      <span className="ticket-check">
+                        {estadoExtra(bebidaElegida, pedido.bebida.tamano) === 'bien'
+                          ? '✓'
+                          : estadoExtra(bebidaElegida, pedido.bebida.tamano) === 'mal'
+                          ? '✗'
+                          : ''}
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              </>
+            )}
+
             <div className="ticket-total">
               {miHamburguesa.length} / {recetaObjetivo.length} ingredientes
             </div>
@@ -252,6 +373,19 @@ export default function JuegoHamburguesa() {
         )}
         {miHamburguesa.length === 0 && (
           <p className="mensaje-vacio">¡Elegí los ingredientes para empezar!</p>
+        )}
+
+        {/* Bebida (izquierda del plato) */}
+        {bebidaElegida && (
+          <img
+            key={`bebida-${bebidaElegida}`}
+            src={BEBIDA_IMG}
+            alt="Bebida"
+            title="Tocá para quitar"
+            className="extra-escena extra-bebida"
+            style={{ width: `${TAM_BEBIDA[bebidaElegida]}cqw` }}
+            onClick={() => !juegoBloqueado && setBebidaElegida(null)}
+          />
         )}
 
         {/* Hamburguesa, apoyada sobre el plato del fondo */}
@@ -271,6 +405,19 @@ export default function JuegoHamburguesa() {
           ))}
         </div>
 
+        {/* Papas (derecha del plato) */}
+        {papasElegidas && (
+          <img
+            key={`papas-${papasElegidas}`}
+            src={PAPAS_IMG}
+            alt="Papas"
+            title="Tocá para quitar"
+            className="extra-escena extra-papas"
+            style={{ width: `${TAM_PAPAS[papasElegidas]}cqw` }}
+            onClick={() => !juegoBloqueado && setPapasElegidas(null)}
+          />
+        )}
+
         {/* Bandeja de ingredientes (abajo) + acciones */}
         <div className="dock">
           <section className="mostrador">
@@ -281,7 +428,7 @@ export default function JuegoHamburguesa() {
                   role="tab"
                   aria-selected={filtroSeccion === seccion.valor}
                   onClick={() => setFiltroSeccion(seccion.valor)}
-                  className={`pestana ${
+                  className={`pestana ${seccion.extra ? 'extra' : ''} ${
                     filtroSeccion === seccion.valor ? 'activa' : ''
                   }`}
                 >
@@ -291,19 +438,52 @@ export default function JuegoHamburguesa() {
             </div>
 
             <div className="bandeja">
-              <div className="rejilla-ingredientes">
-                {ingredientesFiltrados.map((ingrediente) => (
-                  <button
-                    key={ingrediente.id}
-                    onClick={() => agregarIngrediente(ingrediente)}
-                    disabled={juegoBloqueado}
-                    className="tarjeta-ingrediente"
-                  >
-                    <img src={ingrediente.tipo} alt={ingrediente.nombre} />
-                    <span>{ingrediente.nombre}</span>
-                  </button>
-                ))}
-              </div>
+              {mostrandoTamanos ? (
+                <div className="rejilla-tamanos">
+                  {TAMANOS.map((tamano) => {
+                    const esPapas = filtroSeccion === 'papas';
+                    const seleccionado = esPapas
+                      ? papasElegidas === tamano
+                      : bebidaElegida === tamano;
+                    const ancho =
+                      (esPapas ? TAM_PAPAS : TAM_BEBIDA)[tamano] * FACTOR_TARJETA;
+
+                    return (
+                      <button
+                        key={tamano}
+                        onClick={() =>
+                          esPapas ? elegirPapas(tamano) : elegirBebida(tamano)
+                        }
+                        disabled={juegoBloqueado}
+                        className={`tarjeta-tamano ${seleccionado ? 'sel' : ''}`}
+                      >
+                        <span className="tarjeta-tamano-img">
+                          <img
+                            src={esPapas ? PAPAS_IMG : BEBIDA_IMG}
+                            alt={esPapas ? 'Papas' : 'Bebida'}
+                            style={{ width: `${ancho}cqw` }}
+                          />
+                        </span>
+                        <span className="tarjeta-tamano-nombre">{tamano}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rejilla-ingredientes">
+                  {ingredientesFiltrados.map((ingrediente) => (
+                    <button
+                      key={ingrediente.id}
+                      onClick={() => agregarIngrediente(ingrediente)}
+                      disabled={juegoBloqueado}
+                      className="tarjeta-ingrediente"
+                    >
+                      <img src={ingrediente.tipo} alt={ingrediente.nombre} />
+                      <span>{ingrediente.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 

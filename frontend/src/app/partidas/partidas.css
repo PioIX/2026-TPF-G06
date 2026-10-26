@@ -1,4 +1,10 @@
-
+/* ============================================================
+   Fast Food Rush – pantalla de partida
+   Todo se dibuja sobre la ilustración cocina.png (16:9).
+   El escenario es un contenedor que escala con la ventana y
+   todas las medidas internas usan "cqw" (1cqw = 1% del ancho
+   del escenario), así nada se desacomoda al cambiar el tamaño.
+   ============================================================ */
 
 :root {
   --marron-oscuro: #54251c;
@@ -415,19 +421,3 @@
   .barra-superior { grid-template-columns: 1fr 1fr; height: auto; padding: 8px 12px; }
   .logo { grid-column: 1 / -1; order: -1; font-size: 1.1rem; }
 }
-.pila-hamburguesa {
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.imagen-ingrediente {
-  display: block;
-  object-fit: contain;
-  margin-top: -85px;
-  position: relative;
-  width: 140px;
-  height: auto;
-}
-

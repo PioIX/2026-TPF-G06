@@ -1,9 +1,416 @@
-.partidas {
-/*background: url('cocina.png') center / cover no-repeat; */
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+
+:root {
+  --marron-oscuro: #54251c;
+  --marron: #713629;
+  --crema: #fffaf1;
+  --crema-2: #fff4df;
+  --acero-claro: #d3d9de;
+  --acero: #9aa3aa;
+  --acero-oscuro: #4b535a;
+
+  /* ── Posición del plato dentro de cocina.png (ajustá si lo movés) ── */
+  --plato-x: 49.8%;   /* centro horizontal del plato */
+  --plato-y: 37%;     /* distancia desde ABAJO del escenario hasta donde se apoya la pila */
+
+  /* Cuánto se montan unos ingredientes sobre otros (en cqw, a tamaño 1) */
+  --solape-ingredientes: -4.8cqw;
+
+  --alto-header: 58px;
 }
 
-.imagen-ingrediente{
+/* ---------- Estructura general ---------- */
+
+.juego {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #2a1a12;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.pantalla-centro {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  background: #fffbeb;
+  padding: 24px;
+}
+.texto-cargando { font-size: 1.25rem; font-weight: 800; color: #78350f; }
+.texto-error { color: #b91c1c; text-align: center; }
+
+/* ---------- Barra superior ---------- */
+
+.barra-superior {
+  width: 100%;
+  height: var(--alto-header);
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 0 22px;
+  background: var(--crema);
+  border-bottom: 3px solid #d6a66b;
+  box-sizing: border-box;
+}
+
+.logo {
+  margin: 0;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--marron-oscuro);
+}
+
+.dato {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+.dato-tiempo { color: var(--marron); }
+.dato-puntaje { color: #92400e; }
+.dato-icono { font-size: 1.5rem; }
+
+.barra-botones { display: flex; gap: 8px; }
+
+/* ---------- Botones genéricos ---------- */
+
+.btn {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-chico { padding: 8px 16px; font-size: 0.875rem; }
+
+.btn-marron { background: var(--marron); border-color: var(--marron-oscuro); color: #fff; }
+.btn-marron:hover:not(:disabled) { background: var(--marron-oscuro); }
+.btn-claro { background: #fde68a; color: #451a03; }
+.btn-claro:hover:not(:disabled) { background: #fcd34d; }
+.btn-verde { background: #15803d; border-color: #14532d; color: #fff; }
+.btn-verde:hover:not(:disabled) { background: #166534; }
+
+/* ============================================================
+   ESCENARIO (la cocina de fondo, siempre en proporción 16:9)
+   ============================================================ */
+
+.escenario {
+  position: relative;
+  /* entra completo en la ventana sin scroll */
+  width: min(100vw, calc((100vh - var(--alto-header)) * 16 / 9));
+  aspect-ratio: 1672 / 941;
+  background: url('/cocina.png') center / 100% 100% no-repeat;
+  container-type: inline-size;   /* habilita las unidades cqw */
+  overflow: hidden;
+}
+
+/* ============================================================
+   TICKET (sobre la heladera, a la izquierda)
+   ============================================================ */
+
+.ticket-wrap {
+  position: absolute;
+  left: 1.2cqw;
+  top: 2cqw;
+  width: 16cqw;
+  filter: drop-shadow(0 0.5cqw 0.7cqw rgba(0, 0, 0, 0.45));
+  transform: rotate(-1.5deg);
+  z-index: 5;
+}
+
+.ticket {
+  position: relative;
+  background: #fffef9;
+  padding: 1.2cqw 1cqw 2cqw;
+  color: #3b2a22;
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: max(9px, 0.85cqw);   /* todo lo de adentro va en em */
+  /* borde inferior en zigzag */
+  --diente: 0.6cqw;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    50% / calc(var(--diente) * 2) 100%;
+          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    50% / calc(var(--diente) * 2) 100%;
+}
+
+.ticket-titulo {
+  margin: 0.2em 0 0;
+  text-align: center;
+  font-size: 1.7em;
+  letter-spacing: 0.25em;
+  font-weight: 900;
+}
+.ticket-sub {
+  margin: 0.2em 0 0.8em;
+  text-align: center;
+  font-size: 0.85em;
+  color: #8a6f60;
+  border-bottom: 2px dashed #c9b6a6;
+  padding-bottom: 0.8em;
+}
+
+.ticket-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  max-height: 22cqw;
+  overflow-y: auto;
+}
+
+.ticket-item {
+  display: grid;
+  grid-template-columns: 1.4em 3.6em 1fr 1.2em;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.2em 0.3em;
+  border-radius: 0.4em;
+  font-size: 1em;
+  transition: background 0.2s ease;
+}
+.ticket-num { font-weight: 800; color: #a08672; }
+.ticket-img { width: 3.6em; height: 2.1em; object-fit: contain; }
+.ticket-nombre { text-transform: capitalize; font-weight: 700; }
+.ticket-check { font-weight: 900; }
+
+.ticket-item.bien { background: #dcfce7; }
+.ticket-item.bien .ticket-check { color: #15803d; }
+.ticket-item.mal { background: #fee2e2; }
+.ticket-item.mal .ticket-check { color: #b91c1c; }
+
+.ticket-total {
+  margin-top: 0.9em;
+  padding-top: 0.8em;
+  border-top: 2px dashed #c9b6a6;
+  text-align: center;
+  font-size: 0.95em;
+  font-weight: 800;
+}
+
+/* ============================================================
+   HAMBURGUESA sobre el plato del fondo
+   ============================================================ */
+
+.pila-hamburguesa {
+  position: absolute;
+  left: var(--plato-x);
+  bottom: var(--plato-y);
+  translate: -50% 0;
+  transform-origin: bottom center;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 3;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+.imagen-ingrediente {
+  display: block;
+  position: relative;
+  margin-top: calc(var(--solape-ingredientes) * var(--tam, 1));
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0.25cqw 0.2cqw rgba(0, 0, 0, 0.25));
+  animation: caer 0.18s ease-out;
+}
+
+@keyframes caer {
+  from { transform: translateY(-1.5cqw); opacity: 0; }
+  to   { transform: translateY(0);       opacity: 1; }
+}
+
+.mensaje-vacio {
+  position: absolute;
+  top: 38%;
+  left: var(--plato-x);
+  transform: translateX(-50%);
+  margin: 0;
+  width: max-content;
+  max-width: 40cqw;
+  text-align: center;
+  font-size: max(11px, 1.15cqw);
+  font-weight: 800;
+  color: var(--marron);
+  background: rgba(255, 250, 241, 0.9);
+  padding: 0.5cqw 1.4cqw;
+  border-radius: 999px;
+  z-index: 4;
+}
+
+.mensaje-flotante {
+  position: absolute;
+  top: 3cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 0.8cqw 2cqw;
+  border-radius: 999px;
+  font-size: max(12px, 1.3cqw);
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0.5cqw 1cqw rgba(0, 0, 0, 0.35);
+  animation: caer 0.2s ease-out;
+}
+.mensaje-flotante.ok  { background: #15803d; }
+.mensaje-flotante.mal { background: #b91c1c; }
+
+/* ============================================================
+   DOCK: bandeja de acero con las pestañas pegadas arriba
+   (tapa las cubetas dibujadas del fondo y las reemplaza por
+   botones reales)
+   ============================================================ */
+
+.dock {
+  position: absolute;
+  left: 2.5cqw;
+  right: 2.5cqw;
+  bottom: 1.2cqw;
+  display: grid;
+  grid-template-columns: 1fr 14cqw;
+  gap: 1.2cqw;
+  align-items: end;
+  z-index: 6;
+  font-size: max(9px, 0.8cqw);
+}
+
+.mostrador { min-width: 0; }
+
+/* Pestañas tipo carpeta, de acero */
+.pestanas {
+  display: flex;
+  gap: 0.35cqw;
+  padding-left: 1cqw;
+  margin-bottom: -3px;
+  position: relative;
+  z-index: 2;
+}
+
+.pestana {
+  padding: 0.55cqw 1.3cqw 0.7cqw;
+  border: 3px solid var(--acero-oscuro);
+  border-bottom: none;
+  border-radius: 0.9cqw 0.9cqw 0 0;
+  background: linear-gradient(#7d868d, #5d666d);
+  color: #f1f4f6;
+  font-size: max(10px, 0.95cqw);
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.pestana:hover { background: linear-gradient(#939ca3, #6f787f); transform: translateY(-2px); }
+.pestana.activa {
+  background: linear-gradient(#eef1f3, var(--acero-claro));
+  color: var(--marron-oscuro);
+  transform: translateY(0);
+}
+
+/* Bandeja */
+.bandeja {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(#cfd5da, #a7b0b7);
+  border: 3px solid var(--acero-oscuro);
+  border-radius: 0 1.2cqw 1.2cqw 1.2cqw;
+  padding: 0.8cqw;
+  height: 15.5cqw;
+  overflow-y: auto;
+  box-shadow: inset 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.3);
+}
+
+.rejilla-ingredientes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.8cqw, 1fr));
+  gap: 0.6cqw;
+}
+
+.tarjeta-ingrediente {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2cqw;
+  min-height: 7cqw;
+  padding: 0.5cqw 0.3cqw;
+  background: #fff;
+  border: 2px solid #aab3ba;
+  border-radius: 0.9cqw;
+  box-shadow: 0 0.25cqw 0 #7f8990;       /* efecto de botón físico */
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.tarjeta-ingrediente img {
+  width: 5cqw;
+  height: 3.6cqw;
+  object-fit: contain;
+  transition: transform 0.15s ease;
+}
+.tarjeta-ingrediente span {
+  font-size: max(9px, 0.8cqw);
+  font-weight: 800;
+  text-align: center;
+  color: var(--marron-oscuro);
+  text-transform: capitalize;
+  line-height: 1.1;
+}
+.tarjeta-ingrediente:hover:not(:disabled) {
+  border-color: #c58b48;
+  transform: translateY(-2px);
+  box-shadow: 0 0.4cqw 0 #7f8990;
+}
+.tarjeta-ingrediente:hover:not(:disabled) img { transform: scale(1.1); }
+.tarjeta-ingrediente:active:not(:disabled) {
+  transform: translateY(0.25cqw);
+  box-shadow: 0 0 0 #7f8990;
+}
+.tarjeta-ingrediente:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Acciones: columna de la derecha, también de acero */
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+  padding: 0.9cqw;
+  height: 15.5cqw;
+  box-sizing: border-box;
+  justify-content: center;
+  background: linear-gradient(#cfd5da, #a7b0b7);
+  border: 3px solid var(--acero-oscuro);
+  border-radius: 1.2cqw;
+  box-shadow: inset 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.3);
+}
+
+.btn-grande {
+  flex: 1;
+  border-radius: 0.9cqw;
+  font-size: max(11px, 1.15cqw);
+  padding: 0 0.5cqw;
+}
+
+.fin-tiempo {
+  margin: 0;
+  text-align: center;
+  font-size: max(9px, 0.85cqw);
+  font-weight: 800;
+  color: #b91c1c;
+}
+
+/* ---------- Ventanas muy angostas (celular vertical) ---------- */
+@media (max-width: 700px) {
+  .barra-superior { grid-template-columns: 1fr 1fr; height: auto; padding: 8px 12px; }
+  .logo { grid-column: 1 / -1; order: -1; font-size: 1.1rem; }
 }

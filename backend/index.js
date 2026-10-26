@@ -338,7 +338,6 @@ app.get("/sala/partidas", async function (req, res) {
         p.nombre_partida,
         p.id_usuario,
         p.hora_final,
-        p.ranking,
         u.nombre AS creador_nombre
       FROM Partidas p
       LEFT JOIN Usuarios u ON p.id_usuario = u.id_usuario
@@ -354,7 +353,7 @@ app.get("/sala/partidas", async function (req, res) {
 // 2. Crear una nueva partida
 app.post("/sala/crear-partida", async function (req, res) {
   try {
-    const { id_usuario_creador, nombre_partida, ranking } = req.body;
+    const { id_usuario_creador, nombre_partida } = req.body;
 
     if (!id_usuario_creador) {
       return res.status(400).json({ 
@@ -374,10 +373,10 @@ app.post("/sala/crear-partida", async function (req, res) {
       .toISOString()
       .slice(0, 19)
       .replace("T", " ");
-    const valRanking = ranking || 0;  
+
     const query = `
-      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final, ranking) 
-      VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}', ${valRanking})
+      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final) 
+      VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}')
     `;
 
     const resultado = await realizarQuery(query);
@@ -395,6 +394,28 @@ app.post("/sala/crear-partida", async function (req, res) {
     });
   }
 });
+
+// Ranking de UNA partida: solo los jugadores que mandaron su puntaje
+  async function obtenerRanking(id_partida) {
+    return await realizarQuery(
+      `SELECT u.id_usuario, u.nombre, p.puntaje
+      FROM PuntajesPartida p
+      JOIN Usuarios u ON u.id_usuario = p.id_usuario
+      WHERE p.id_partida = ?
+      ORDER BY p.puntaje DESC`,
+      [id_partida]
+    );
+  }
+
+  app.get("/api/ranking/:id_partida", async (req, res) => {
+    try {
+      const ranking = await obtenerRanking(req.params.id_partida);
+      res.json({ ok: true, ranking });
+    } catch (error) {
+      console.error("❌ Error al obtener ranking:", error.message);
+      res.status(500).json({ ok: false, message: "Error al obtener el ranking" });
+    }
+  });
 
 const jugadoresEnPartida = [
   {
@@ -441,6 +462,7 @@ io.on("connection", (socket) => {
     }
   });
 
+
   socket.on("salir_sala", ({ id_partida, id_usuario }) => {
     socket.leave(`partida_${id_partida}`);
 
@@ -459,4 +481,29 @@ io.on("connection", (socket) => {
       }
     }
   });
+
+  socket.on("enviar_puntaje", async ({ id_partida, id_usuario, puntaje }, callback) => {
+    try {
+      await realizarQuery(
+        `INSERT INTO PuntajesPartida (id_partida, id_usuario, puntaje)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje)`,
+        [id_partida, id_usuario, puntaje]
+      );
+
+      const ranking = await obtenerRanking(id_partida);
+
+      io.to(`partida_${id_partida}`).emit("ranking_actualizado", {
+        id_partida,
+        ranking,
+        completo: ranking.length >= 2,
+      });
+
+      callback?.({ ok: true, ranking });
+    } catch (error) {
+      console.error("❌ Error al guardar puntaje:", error.message);
+      callback?.({ ok: false, msg: "Error al guardar el puntaje" });
+    }
+  });
+
 });

@@ -196,7 +196,43 @@ app.get('/api/orden-aleatoria', async (req, res) => {
   }
 });
 
+// 3. Pedido completo: hamburguesa + papas (opcional) + bebida (opcional)
+const TAMANOS = ['chica', 'mediana', 'grande'];
+const BEBIDAS = ['cola']; // agregá más cuando tengas más imágenes
+const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
+app.get('/api/pedido-aleatorio', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+
+    const panInf = ingredientes.find(i => i.seccion === 'abajo');
+    const panSup = ingredientes.find(i => i.seccion === 'arriba');
+    const rellenosPosibles = ingredientes.filter(
+      i => i.seccion !== 'abajo' && i.seccion !== 'arriba'
+    );
+
+    if (!panInf || !panSup) {
+      return res.status(400).json({ error: 'Faltan los panes en la tabla Ingredientes' });
+    }
+
+    const cantidadRelleno = Math.floor(Math.random() * 3) + 2;
+    const relleno = [];
+    for (let i = 0; i < cantidadRelleno; i++) {
+      relleno.push(elegir(rellenosPosibles));
+    }
+
+    res.json({
+      hamburguesa: [panInf, ...relleno, panSup],
+      papas: Math.random() < 0.6 ? elegir(TAMANOS) : null,
+      bebida: Math.random() < 0.6
+        ? { tipo: elegir(BEBIDAS), tamano: elegir(TAMANOS) }
+        : null,
+    });
+  } catch (error) {
+    console.error('❌ Error al generar pedido:', error);
+    res.status(500).json({ error: 'Error interno al generar pedido' });
+  }
+});
 
 
 

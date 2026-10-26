@@ -135,7 +135,7 @@ app.post('/login', async function (req, res) {
     try {
       let respuesta = {
             ok: false,
-            msg: "No se pudo loguear"
+            msg: "¿No tienes cuenta? Regístrate aquí"
         };
         let existe = await realizarQuery(`
             SELECT * FROM Usuarios WHERE mail = '${req.body.mail}' AND contra = '${req.body.contra}'
@@ -194,4 +194,233 @@ app.get('/api/orden-aleatoria', async (req, res) => {
     console.error("❌ Error al generar receta:", error);
     res.status(500).json({ error: "Error interno al generar receta" });
   }
+});
+
+
+
+
+
+
+
+
+
+
+// CREACION DE SALAS - NO BORRAR
+
+// LISTADO DE CHATS INDIVIDUALES:
+/*app.get("/sala/:id_usuario", async function (req, res) {
+  try {
+    const { id_usuario } = req.params;
+
+    const chats = await realizarQuery(
+      `
+      SELECT 
+        c.id_chat,
+        u_otro.nombre AS nombre_contacto
+      FROM UsuariosEnChat uec
+      JOIN Chats c 
+        ON uec.id_chat = c.id_chat
+      LEFT JOIN Usuarios u_otro
+        ON u_otro.id_usuario = (
+          SELECT uec_sub.id_usuario 
+          FROM UsuariosEnChat uec_sub
+          WHERE uec_sub.id_chat = c.id_chat 
+            AND uec_sub.id_usuario != ${id_usuario}
+          LIMIT 1
+        )
+      WHERE uec.id_usuario = ${id_usuario}
+      `
+    );
+
+    res.send({
+      ok: true,
+      chats,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Error al listar chats",
+      error: error.message,
+    });
+  }
+});
+
+
+// CREACION DE CHAT INDIVIDUAL:
+app.post("/sala/individual", async function (req, res) {
+  try {
+    const { id_usuario_creador, correo_destinatario } = req.body;
+
+    const destinatarios = await realizarQuery(
+      `SELECT id_usuario FROM Usuarios WHERE mail = "${correo_destinatario}"`
+    );
+
+    if (destinatarios.length === 0) {
+      return res.status(404).send({
+        message: "El usuario destinatario no existe"
+      });
+    }
+
+    const id_destinatario = destinatarios[0].id_usuario;
+
+    if (Number(id_usuario_creador) === Number(id_destinatario)) {
+      return res.status(400).send({
+        message: "No puedes crear un chat individual contigo mismo"
+      });
+    }
+
+    const resultadoChat = await realizarQuery(
+      `INSERT INTO Chats VALUES ()`
+    );
+    const id_chat = resultadoChat.insertId;
+
+    await realizarQuery(
+      `INSERT INTO UsuariosEnChat (id_chat, id_usuario) VALUES (${id_chat}, ${id_usuario_creador})`
+    );
+
+    // 3. ¡IMPORTANTE! Insertar también al usuario destinatario en el chat
+    await realizarQuery(
+      `INSERT INTO UsuariosEnChat (id_chat, id_usuario) VALUES (${id_chat}, ${id_destinatario})`
+    );
+
+    res.send({
+      ok: true,
+      message: "Chat individual creado con éxito",
+      id_chat
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Error al crear chat individual",
+      error: error.message
+    });
+  }
+});*/
+app.get("/sala/partidas", async function (req, res) {
+  try {
+    const partidas = await realizarQuery(`
+      SELECT 
+        p.id_partida,
+        p.nombre_partida,
+        p.id_usuario,
+        p.hora_final,
+        p.ranking,
+        u.nombre AS creador_nombre
+      FROM Partidas p
+      LEFT JOIN Usuarios u ON p.id_usuario = u.id_usuario
+    `);
+    
+    return res.json({ ok: true, partidas });
+  } catch (error) {
+    console.error("Error al obtener partidas:", error.message);
+    return res.status(500).json({ ok: false, message: error.message });
+  }
+});
+
+// 2. Crear una nueva partida
+app.post("/sala/crear-partida", async function (req, res) {
+  try {
+    const { id_usuario_creador, nombre_partida, ranking } = req.body;
+
+    if (!id_usuario_creador) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: "Usuario no identificado. Inicia sesión nuevamente." 
+      });
+    }
+
+    if (!nombre_partida) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: "Debe ingresar un nombre para la partida." 
+      });
+    }
+
+    const hora_final = new Date(Date.now() + 3600000)
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+    const valRanking = ranking || 0;  
+    const query = `
+      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final, ranking) 
+      VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}', ${valRanking})
+    `;
+
+    const resultado = await realizarQuery(query);
+
+    return res.json({
+      ok: true,
+      message: "Partida creada con éxito",
+      id_partida: resultado.insertId
+    });
+  } catch (error) {
+    console.error("Error exacto en MySQL:", error.message);
+    return res.status(500).json({ 
+      ok: false, 
+      message: "Error en la base de datos: " + error.message 
+    });
+  }
+});
+
+const jugadoresEnPartida = [
+  {
+    //id_partida: 0,
+    //jugadores: []
+  }
+];
+
+io.on("connection", (socket) => {
+
+  socket.on("crearSALA", (dataPartida) => {
+    // Notifica a todos los usuarios para que ejecuten cargarPartidas()
+    io.emit("salaCreada", dataPartida);
+  });
+
+
+  socket.on("unirse_sala", ({ id_partida, id_usuario }) => {
+    socket.join(`partida_${id_partida}`);
+    console.log("ASDJKH")
+    // 1. Buscar si la partida ya existe en el arreglo
+    let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
+
+    // 2. Si no existe, la creamos y la agregamos al arreglo
+    if (!partida) {
+      partida = { id_partida: id_partida, jugadores: [] };
+      jugadoresEnPartida.push(partida);
+    }
+
+    // 3. Evitamos duplicar al usuario
+    if (!partida.jugadores.includes(id_usuario)) {
+      partida.jugadores.push(id_usuario);
+    }
+
+    console.log(`Usuario ${id_usuario} se unió a la partida ${id_partida}`);
+    console.log("Estado de salas:", JSON.stringify(jugadoresEnPartida, null, 2));
+    console.log("partida.juygadores", partida.jugadores)
+    console.log(partida, "partida")
+    // 4. Si hay 2 o más jugadores, iniciar
+    if (partida.jugadores.length == 2) {
+      io.to(`partida_${id_partida}`).emit("iniciar_partida", {
+        id_partida,
+        jugadores: partida.jugadores
+      });
+    }
+  });
+
+  socket.on("salir_sala", ({ id_partida, id_usuario }) => {
+    socket.leave(`partida_${id_partida}`);
+
+    const partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
+
+    if (partida) {
+      // Filtrar al usuario que sale
+      partida.jugadores = partida.jugadores.filter(id => id !== id_usuario);
+
+      // Si la sala queda vacía, eliminar el objeto del arreglo
+      if (partida.jugadores.length === 0) {
+        const indice = jugadoresEnPartida.findIndex(p => p.id_partida === id_partida);
+        if (indice !== -1) {
+          jugadoresEnPartida.splice(indice, 1);
+        }
+      }
+    }
+  });
 });

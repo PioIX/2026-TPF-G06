@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { io } from 'socket.io-client';
 import './registro.css';
 
@@ -52,47 +53,56 @@ export default function RegistroPage() {
     });
   }
 
+  return (
+    <div className="registro-container">
+      <div className="registro-card">
+        <div className="registro-steel" />
 
-return (
-  <div className="registro-container">
-    <div className="registro-card">
-      <h1 className="registro-title">
-        Crear cuenta
-      </h1>
+        <form onSubmit={handleSubmit} className="registro-form">
+          <h1 className="registro-form-title">REGISTRO</h1>
 
-      <form onSubmit={handleSubmit} className="registro-form">
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          className="registro-input"
-        />
+          <input
+            type="text"
+            placeholder="Usuario"
+            aria-label="Usuario"
+            autoComplete="username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+            className="registro-input"
+          />
 
-        <input
-          type="email"
-          placeholder="Mail"
-          value={mail}
-          onChange={(event) => setMail(event.target.value)}
-          className="registro-input"
-        />
+          <input
+            type="email"
+            placeholder="Correo"
+            aria-label="Correo"
+            autoComplete="email"
+            value={mail}
+            onChange={(event) => setMail(event.target.value)}
+            required
+            className="registro-input"
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="registro-input"
-        />
+          <input
+            type="password"
+            placeholder="Contraseña"
+            aria-label="Contraseña"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            className="registro-input"
+          />
 
-        <button
-          type="submit"
-          className="registro-button"
-        >
-          Registrarse
-        </button>
-      </form>
+          <button type="submit" className="registro-button">
+            Registrarse
+          </button>
+
+          <p className="registro-alt">
+            ¿Ya tenés cuenta? <Link href="/login">Entrá</Link>
+          </p>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
 }

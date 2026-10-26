@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -50,8 +51,7 @@ export default function JuegoHamburguesa() {
     setCargando(true);
     setError('');
     setMiHamburguesa([]);
-    setMensaje(null);
-    setTiempo(TIEMPO_INICIAL);
+    setTiempo(60);
     setPausado(false);
 
     try {
@@ -174,13 +174,16 @@ export default function JuegoHamburguesa() {
   }
 
   return (
-    <main className="juego">
-      {/* ───────── Barra superior ───────── */}
-      <header className="barra-superior">
-        <div className="dato dato-tiempo">
-          <span className="dato-icono">◷</span>
-          <span>{formatearTiempo(tiempo)}</span>
-        </div>
+  
+    <main className="min-h-screen bg-[#eee9e2] p-3 sm:p-6 font-sans" style={{backgroundImage: "url(cocina.png)", width:1500, height: 700}}>
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-[#fffaf1] shadow-xl">
+
+        {/* Barra superior */}
+        <header className="flex flex-wrap items-center justify-between gap-3 bg-[#fffaf1] p-4">
+          <div className="flex items-center gap-2 font-extrabold text-[#692d20]">
+            <span className="text-2xl">◷</span>
+            <span className="text-xl">{formatearTiempo(tiempo)}</span>
+          </div>
 
         <h1 className="logo">Fast Food Rush</h1>
 
@@ -203,111 +206,107 @@ export default function JuegoHamburguesa() {
         </div>
       </header>
 
-      {/* ───────── Escenario: la cocina de fondo ───────── */}
-      <div className="escenario">
-        {/* Ticket del pedido, sobre la heladera (izquierda) */}
-        <div className="ticket-wrap">
-          <aside className="ticket" aria-label="Pedido del cliente">
-            <h2 className="ticket-titulo">PEDIDO</h2>
-            <p className="ticket-sub">Armalo de abajo hacia arriba</p>
+        {/* Pedido del cliente */}
+        <section className="mx-3 rounded-2xl border-2 border-[#713629] bg-[#fff4df] p-3 sm:mx-5 sm:p-4">
+          <h2 className="mb-3 text-center text-lg font-extrabold text-[#54251c]">
+            PEDIDO DEL CLIENTE
+          </h2>
 
-            <ol className="ticket-lista">
-              {recetaObjetivo.map((ingrediente, indice) => {
-                const puesto = miHamburguesa[indice];
-                const estado = !puesto
-                  ? ''
-                  : puesto.id === ingrediente.id
-                  ? 'bien'
-                  : 'mal';
+          <div className="flex min-h-16 flex-wrap items-center justify-center gap-1">
+            {recetaObjetivo.map((ingrediente, indice) => (
+              <img
+                key={`${ingrediente.id}-${indice}`}
+                src={ingrediente.tipo}
+                alt={ingrediente.nombre}
+                title={ingrediente.nombre}
+                className="h-12 w-12 object-contain sm:h-14 sm:w-14"
+              />
+            ))}
+          </div>
+        </section>
 
-                return (
-                  <li
+        {/* Zona de armado */}
+        <section className="zona-armado">
+          <h2 className="titulo-hamburguesa">
+            TU HAMBURGUESA
+          </h2>
+
+          <div className="plato-hamburguesa">
+            {miHamburguesa.length === 0 ? (
+              <p className="mensaje-vacio">
+                ¡Elegí los ingredientes para empezar!
+              </p>
+            ) : (
+              <div className="pila-hamburguesa">
+                {miHamburguesa.map((ingrediente, indice) => (
+                  <img
                     key={`${ingrediente.id}-${indice}`}
-                    className={`ticket-item ${estado}`}
-                  >
-                    <span className="ticket-num">{indice + 1}</span>
-                    <img
-                      src={ingrediente.tipo}
-                      alt={ingrediente.nombre}
-                      className="ticket-img"
-                    />
-                    <span className="ticket-nombre">{ingrediente.nombre}</span>
-                    <span className="ticket-check">
-                      {estado === 'bien' ? '✓' : estado === 'mal' ? '✗' : ''}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-
-            <div className="ticket-total">
-              {miHamburguesa.length} / {recetaObjetivo.length} ingredientes
-            </div>
-          </aside>
-        </div>
-
-        {/* Mensajes */}
-        {mensaje && (
-          <div className={`mensaje-flotante ${mensaje.tipo}`}>{mensaje.texto}</div>
-        )}
-        {miHamburguesa.length === 0 && (
-          <p className="mensaje-vacio">¡Elegí los ingredientes para empezar!</p>
-        )}
-
-        {/* Hamburguesa, apoyada sobre el plato del fondo */}
-        <div
-          className="pila-hamburguesa"
-          style={{ transform: `scale(${escala})`, '--tam': TAM_HAMBURGUESA }}
-        >
-          {miHamburguesa.map((ingrediente, indice) => (
-            <img
-              key={`${ingrediente.id}-${indice}`}
-              src={ingrediente.tipo}
-              alt={ingrediente.nombre}
-              title={ingrediente.nombre}
-              className="imagen-ingrediente"
-              style={{ zIndex: indice + 1, width: anchoEnCqw(ingrediente.nombre) }}
-            />
-          ))}
-        </div>
-
-        {/* Bandeja de ingredientes (abajo) + acciones */}
-        <div className="dock">
-          <section className="mostrador">
-            <div className="pestanas" role="tablist">
-              {SECCIONES.map((seccion) => (
-                <button
-                  key={seccion.valor}
-                  role="tab"
-                  aria-selected={filtroSeccion === seccion.valor}
-                  onClick={() => setFiltroSeccion(seccion.valor)}
-                  className={`pestana ${
-                    filtroSeccion === seccion.valor ? 'activa' : ''
-                  }`}
-                >
-                  {seccion.texto}
-                </button>
-              ))}
-            </div>
-
-            <div className="bandeja">
-              <div className="rejilla-ingredientes">
-                {ingredientesFiltrados.map((ingrediente) => (
-                  <button
-                    key={ingrediente.id}
-                    onClick={() => agregarIngrediente(ingrediente)}
-                    disabled={juegoBloqueado}
-                    className="tarjeta-ingrediente"
-                  >
-                    <img src={ingrediente.tipo} alt={ingrediente.nombre} />
-                    <span>{ingrediente.nombre}</span>
-                  </button>
+                    src={ingrediente.tipo}
+                    alt={ingrediente.nombre}
+                    title={ingrediente.nombre}
+                    className="imagen-ingrediente"
+                    style={{
+                      order: indice,
+                      zIndex: indice + 1,
+                    }}
+                  />
                 ))}
               </div>
-            </div>
-          </section>
+            )}
+          </div>
+        </section>
 
-          <div className="acciones">
+        {/* Botones de ingredientes */}
+        <section className="bg-[#fffaf1] p-4 sm:p-5">
+          <h2 className="mb-3 text-center text-lg font-extrabold text-[#54251c]">
+            INGREDIENTES
+          </h2>
+
+          <div className="mb-4 flex flex-wrap justify-center gap-2">
+            {[
+              { valor: 'todos', texto: 'Todos' },
+              { valor: 'abajo', texto: 'Panes base' },
+              { valor: 'carnes', texto: 'Carnes' },
+              { valor: 'quesos', texto: 'Quesos' },
+              { valor: 'medio', texto: 'Otros' },
+              { valor: 'arriba', texto: 'Panes superiores' },
+            ].map((seccion) => (
+              <button
+                key={seccion.valor}
+                onClick={() => setFiltroSeccion(seccion.valor)}
+                className={`rounded-full border px-3 py-2 text-sm font-bold transition ${
+                  filtroSeccion === seccion.valor
+                    ? 'border-amber-900 bg-amber-800 text-white'
+                    : 'border-amber-900/20 bg-white text-amber-950 hover:bg-amber-100'
+                }`}
+              >
+                {seccion.texto}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {ingredientesFiltrados.map((ingrediente) => (
+              <button
+                key={ingrediente.id}
+                onClick={() => agregarIngrediente(ingrediente)}
+                disabled={pausado || tiempo <= 0}
+                className="flex min-h-24 flex-col items-center justify-center rounded-xl border-2 border-[#e1c9a9] bg-white p-3 transition hover:border-amber-700 hover:bg-amber-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <img
+                  src={`${ingrediente.tipo}`}
+                  alt={ingrediente.nombre}
+                  className="h-12 w-14 object-contain"
+                />
+                <span className="mt-1 text-center text-sm font-bold text-[#54251c]">
+                  {ingrediente.nombre}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Botones de acción */}
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={deshacer}
               disabled={miHamburguesa.length === 0 || juegoBloqueado}
@@ -330,4 +329,6 @@ export default function JuegoHamburguesa() {
       </div>
     </main>
   );
+ //......
+  
 }

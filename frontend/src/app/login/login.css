@@ -1,5 +1,4 @@
-
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Oswald:wght@500&display=swap');
 
 .login-container {
   min-height: 100vh;
@@ -11,59 +10,62 @@
   justify-content: center;
 
   background:
-    linear-gradient(
-      rgba(35, 20, 16, 0.12),
-      rgba(35, 20, 16, 0.12)
-    ),
+    linear-gradient(rgba(35, 14, 8, 0.18), rgba(35, 14, 8, 0.18)),
     url('/loginfondo.png') center / cover no-repeat;
 
   font-family: 'DM Sans', sans-serif;
 }
 
-/* Sin tarjeta ni recuadro */
+/* Cartel rojo, como el "Burgers · Fries · Shakes" de la pared */
 .login-card {
   width: 100%;
-  max-width: 245px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  text-align: center;
-}
-
-/* Oculta el título superior */
-.login-title {
-  display: none;
+  max-width: 360px;
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 6px;
+  background: #9c2f25;
+  box-shadow:
+    0 0 0 3px #6e1d17,
+    0 24px 60px rgba(30, 8, 4, 0.5);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 30px;
-  border-radius: 25px;
-  background-color: rgba(255, 255, 2355, 0.5);
-  color: #ffffff;
+  gap: 12px;
+  padding: 26px 24px 22px;
+  border: 2px solid rgba(251, 241, 220, 0.85);
+  border-radius: 3px;
 }
 
-/* Campos de entrada */
+.login-form-title {
+  margin: 0 0 6px;
+  padding-left: 0.14em;
+  text-align: center;
+  color: #fbf1dc;
+  font-family: 'Oswald', sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.14em;
+}
+
 .login-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 11px 13px;
+  height: 46px;
+  padding: 0 14px;
 
-  background: rgba(255, 247, 231, 0.96);
+  background: #fbf1dc;
   color: #482820;
-
-  border: 1px solid #8b3935;
-  border-radius: 7px;
+  border: 1px solid #6e1d17;
+  border-radius: 6px;
 
   font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
 
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: box-shadow 0.15s;
 }
 
 .login-input::placeholder {
@@ -71,72 +73,116 @@
   opacity: 1;
 }
 
-.login-input:focus {
-  border-color: #702727;
-  box-shadow: 0 0 0 3px rgba(112, 39, 39, 0.16);
-  background: #fffaf0;
+.login-input:focus-visible {
+  box-shadow: 0 0 0 3px rgba(232, 176, 47, 0.6);
 }
 
-/* Botón retro elegante */
-.login-button {
-  width: 100%;
-  margin-top: 3px;
-  padding: 11px 12px;
+.login-password {
+  position: relative;
+}
 
-  background: #842f32;
-  color: #fff3df;
+.login-password .login-input {
+  padding-right: 70px;
+}
 
-  border: 1px solid #6d2428;
-  border-radius: 7px;
-
+.login-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  height: 34px;
+  padding: 0 10px;
+  background: none;
+  border: 0;
+  color: #842f32;
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-
-  box-shadow: 0 3px 0 #54201f;
+  font-weight: 600;
   cursor: pointer;
-
-  transition: background 0.2s, transform 0.2s;
 }
 
-.login-button:hover:not(:disabled) {
-  background: #6f2529;
-  transform: translateY(-1px);
-}
-
-.login-button:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #54201f;
-}
-
-.login-button:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-/* Mensaje de error */
 .login-error {
   margin: 0;
   padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffe3d0;
+  font-size: 13px;
+}
 
-  background: rgba(255, 247, 231, 0.97);
-  color: #842f32;
+/* Botón mostaza, como el pomo de la barra */
+.login-button {
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
 
-  border: 1px solid #842f32;
-  border-radius: 7px;
+  background: #e8b02f;
+  color: #482820;
+  border: 0;
+  border-radius: 6px;
 
-  font-size: 12px;
-  font-weight: 700;
+  font-family: 'Oswald', sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 0 #a97812;
+  cursor: pointer;
+
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+}
+
+.login-button:hover {
+  filter: brightness(1.06);
+}
+
+.login-button:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 1px 0 #a97812;
+}
+
+.login-button:focus-visible {
+  outline: 2px solid #fbf1dc;
+  outline-offset: 3px;
+}
+
+.login-button:disabled,
+.login-button:disabled:hover,
+.login-button:disabled:active {
+  opacity: 0.7;
+  cursor: wait;
+  filter: none;
+  transform: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 0 #a97812;
+}
+
+.login-alt {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(251, 241, 220, 0.8);
+}
+
+.login-alt a {
+  color: #ffd27a;
+  text-decoration: none;
+}
+
+.login-alt a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 480px) {
-  .login-container {
-    padding: 14px;
+  .login-card {
+    max-width: 320px;
   }
 
-  .login-card {
-    max-width: 230px;
+  .login-form-title {
+    font-size: 22px;
   }
 }

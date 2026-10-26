@@ -349,8 +349,8 @@ const RUTA_PARRILLA = '/parrilla';
 
 // Milkshakes: al tocar la máquina del fondo se va a otra página (todavía no existe).
 // Mientras tanto, true = al tocar la máquina se da el milkshake por hecho (para probar).
-const MODO_PRUEBA_MILKSHAKE = true;
-const RUTA_MILKSHAKE = '/milkshake';
+const MODO_PRUEBA_MILKSHAKE = false;
+const RUTA_MILKSHAKE = '/milkshakes';
 const PROBABILIDAD_MILKSHAKE = 0.6; // 1 = todos los pedidos piden milkshake
 const MAX_MILKSHAKES = 2; // cantidad máxima de milkshakes por pedido
 

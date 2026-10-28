@@ -1,0 +1,183 @@
+/* El escenario mantiene la proporción de la imagen (1671 x 941) */
+
+/* Papas crudas de la mesada */
+.mesada {
+  position: absolute;
+  z-index: 3;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mesada:hover,
+.mesada:focus-visible {
+  outline: 3px solid rgba(255, 245, 200, 0.9);
+  outline-offset: 3px;
+  background: rgba(255, 243, 176, 0.15);
+}
+.mesada:disabled {
+  cursor: default;
+  outline: none;
+  background: transparent;
+}
+
+/* Papas que viajan (mesada -> canasta, canasta -> bandeja) */
+.vuelo {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  filter: drop-shadow(0 14px 12px rgba(0, 0, 0, 0.5));
+}
+.vuelo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Canasta con papas dentro */
+.canasta {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.3, 1), filter 0.6s;
+}
+.sube {
+  z-index: 7;
+  transform: translateY(var(--dy)) scale(var(--escala));
+  filter: drop-shadow(0 16px 14px rgba(0, 0, 0, 0.55));
+}
+.sprite {
+  position: absolute;
+  inset: 0;
+}
+.contenido {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 8px;
+  animation: aparecer 0.3s ease-out both;
+}
+.cocidas,
+.burbujas {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+.cocidas {
+  background-image: var(--img-cocidas);
+  animation: aparecer 0.5s ease-out both;
+}
+@keyframes aparecer {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Burbujas del aceite mientras se fríe */
+.burbujas {
+  background-image:
+    radial-gradient(circle, rgba(255, 240, 180, 0.95) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(255, 225, 140, 0.8) 0 3px, transparent 4px);
+  background-size: 26px 34px, 41px 53px;
+  background-position: 0 0, 13px 20px;
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  animation: burbujear 1.1s linear infinite;
+}
+@keyframes burbujear {
+  to { background-position: 4px -34px, 17px -33px; }
+}
+
+/* Barra de cocción */
+.barra {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  border: 2px solid #fff6dc;
+  border-radius: 999px;
+  background: rgba(60, 20, 10, 0.7);
+  overflow: hidden;
+  pointer-events: none;
+}
+.barra span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #ffd24a, #ff9a1f);
+  animation: llenar linear forwards;
+}
+@keyframes llenar {
+  to { width: 100%; }
+}
+
+/* Zona tocable de la canasta lista */
+.asa {
+  position: absolute;
+  z-index: 9;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  outline: 3px solid rgba(255, 245, 200, 0.9);
+  outline-offset: 2px;
+  animation: pulso 1.1s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+.asa:disabled {
+  cursor: default;
+  outline: none;
+  animation: none;
+}
+@keyframes pulso {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 230, 140, 0); }
+  50%      { box-shadow: 0 0 20px 6px rgba(255, 230, 140, 0.75); }
+}
+
+/* Papas terminadas sobre el papel de la bandeja */
+.porcion {
+  position: absolute;
+  z-index: 9;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.35));
+  animation: aparecer 0.35s ease-out both;
+  -webkit-tap-highlight-color: transparent;
+}
+.porcion img {
+  object-fit: contain;
+}
+.porcion:hover,
+.porcion:focus-visible {
+  outline: 3px solid rgba(255, 245, 200, 0.9);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* Indicación al jugador */
+.mensaje {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  transform: translateX(-50%);
+  z-index: 10;
+  max-width: 90%;
+  padding: 0.3em 1.1em;
+  border: 3px solid #b51d1d;
+  border-radius: 999px;
+  background: #fff6dc;
+  color: #9c1414;
+  font: 700 clamp(12px, 1.9vw, 26px) "Trebuchet MS", system-ui, sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canasta { transition-duration: 0.01s; }
+  .burbujas, .asa { animation: none; }
+}

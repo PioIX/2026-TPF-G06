@@ -1,0 +1,550 @@
+/* =========================================================
+   PÁGINA DE LA PARRILLA
+   Usa la foto /fondo_parrilla.png (va en la carpeta "public").
+   La foto cubre toda la pantalla (como background-size: cover) y
+   todo lo que está encima se posiciona en % de la foto, así la
+   carne y el reloj siempre quedan sobre la parrilla.
+   Los tamaños usan "cqw" (1% del ancho de la escena).
+   ========================================================= */
+
+.parrilla {
+  position: fixed;
+  inset: 0;
+  container-type: inline-size;
+  overflow: hidden;
+  background: #140b08;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 50;
+}
+
+.parrilla.centrado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* sombra arriba para que se lea la barra superior */
+.parrilla::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 16vh;
+  background: linear-gradient(rgba(0, 0, 0, 0.7), transparent);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.parrilla img {
+  -webkit-user-drag: none;
+}
+
+.p-mensaje {
+  font-size: clamp(16px, 2cqw, 32px);
+  font-weight: 800;
+  text-align: center;
+}
+
+.p-tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5cqw;
+  padding: 3cqw;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 2cqw;
+}
+
+.p-boton {
+  padding: 0.8cqw 2cqw;
+  border: 3px solid #14532d;
+  border-radius: 1cqw;
+  background: #15803d;
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(13px, 1.3cqw, 22px);
+  cursor: pointer;
+}
+
+/* =========================================================
+   ESCENA (la foto)
+   ========================================================= */
+
+.escena {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, calc(100vh * 1.5));
+  height: max(100vh, calc(100vw / 1.5));
+  width: max(100vw, calc(100dvh * 1.5));
+  height: max(100dvh, calc(100vw / 1.5));
+  transform: translate(-50%, -50%);
+  background: url('/fondo_parrilla.png') center / 100% 100% no-repeat #2a2420;
+  container-type: inline-size;
+}
+
+/* resplandor de las brasas bajo la carne */
+.brasa {
+  position: absolute;
+  left: 18%;
+  top: 21%;
+  width: 46%;
+  height: 49%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 110, 20, 0.6),
+    rgba(255, 70, 0, 0.18) 45%,
+    transparent 68%
+  );
+  mix-blend-mode: screen;
+  filter: blur(1cqw);
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+/* =========================================================
+   BARRA SUPERIOR
+   ========================================================= */
+
+.p-hud {
+  position: absolute;
+  top: 1.4cqw;
+  left: 0;
+  right: 0;
+  padding: 0 2cqw;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 20;
+  font-size: clamp(12px, 1.2cqw, 22px);
+}
+
+.p-titulo {
+  margin: 0;
+  font-size: 2.2em;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  color: #fde68a;
+  text-shadow: 0 0.2cqw 0.6cqw rgba(0, 0, 0, 0.9);
+}
+
+.p-volver {
+  padding: 0.5em 1.2em;
+  border: 2px solid #54251c;
+  border-radius: 999px;
+  background: #713629;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1em;
+  cursor: pointer;
+}
+.p-volver:hover:not(:disabled) { background: #54251c; }
+.p-volver:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.p-datos {
+  display: flex;
+  gap: 1.2em;
+  padding: 0.5em 1.4em;
+  background: rgba(255, 250, 241, 0.95);
+  color: #692d20;
+  font-weight: 800;
+  border: 2px solid #713629;
+  border-radius: 999px;
+}
+
+/* =========================================================
+   LA CARNE (sobre las parrillas de la foto)
+   ========================================================= */
+
+.zona-carne {
+  position: absolute;
+  left: 21%;
+  top: 24%;
+  width: 40%;
+  height: 43%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 70cqw;
+}
+
+.sombra-carne {
+  position: absolute;
+  width: min(22cqw, 40vh);
+  height: 3.6cqw;
+  bottom: 14%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  filter: blur(1cqw);
+}
+
+.carne {
+  position: relative;
+  width: min(20cqw, 38vh);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: filter 0.2s;
+  filter: drop-shadow(0 0.8cqw 0.8cqw rgba(0, 0, 0, 0.6));
+}
+
+/* las tres versiones (cruda / cocida / quemada) apiladas */
+.capa {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.capa-cocido,
+.capa-quemado {
+  position: absolute;
+  inset: 0;
+}
+
+/* si el navegador no pudo generar las versiones, se simulan con filtros */
+.sin-variantes .capa-crudo {
+  filter: sepia(0.6) saturate(1.8) hue-rotate(-30deg) brightness(1.35);
+}
+.sin-variantes .capa-quemado {
+  filter: brightness(0.25) contrast(1.2);
+}
+
+/* lista para dar vuelta: brilla */
+.carne.lista {
+  animation: latido 0.7s ease-in-out infinite;
+}
+.carne.peligro {
+  animation: latido-rojo 0.35s ease-in-out infinite;
+}
+
+@keyframes latido {
+  0%, 100% { filter: drop-shadow(0 0 0.6cqw rgba(255, 230, 120, 0.5)) drop-shadow(0 0.8cqw 0.8cqw rgba(0, 0, 0, 0.6)); }
+  50%      { filter: drop-shadow(0 0 1.8cqw rgba(255, 230, 120, 1)) drop-shadow(0 0.8cqw 0.8cqw rgba(0, 0, 0, 0.6)); }
+}
+@keyframes latido-rojo {
+  0%, 100% { filter: drop-shadow(0 0 0.6cqw rgba(255, 70, 40, 0.6)) drop-shadow(0 0.8cqw 0.8cqw rgba(0, 0, 0, 0.6)); }
+  50%      { filter: drop-shadow(0 0 2cqw rgba(255, 70, 40, 1)) drop-shadow(0 0.8cqw 0.8cqw rgba(0, 0, 0, 0.6)); }
+}
+
+/* dar la vuelta: salta y gira */
+.carne.voltear {
+  animation: voltear 0.8s ease-in-out;
+}
+@keyframes voltear {
+  0%   { transform: translateY(0) rotateX(0deg) scale(1); }
+  50%  { transform: translateY(-7cqw) rotateX(180deg) scale(1.12); }
+  100% { transform: translateY(0) rotateX(360deg) scale(1); }
+}
+
+/* "todavía no": sacudida */
+.carne.sacudir {
+  animation: sacudir 0.4s;
+}
+@keyframes sacudir {
+  20% { transform: translateX(-0.8cqw) rotate(-3deg); }
+  40% { transform: translateX(0.8cqw) rotate(3deg); }
+  60% { transform: translateX(-0.5cqw) rotate(-2deg); }
+  80% { transform: translateX(0.5cqw) rotate(2deg); }
+}
+
+/* sale de la parrilla */
+.carne.servida {
+  animation: servir 0.7s ease-in forwards;
+}
+@keyframes servir {
+  to { transform: translateY(-14cqw) scale(0.8); opacity: 0; }
+}
+
+/* =========================================================
+   VAPOR, HUMO Y LLAMAS
+   ========================================================= */
+
+.efectos {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 0;
+  bottom: 30%;
+  pointer-events: none;
+}
+
+.vapor,
+.humo {
+  position: absolute;
+  bottom: 0;
+  width: 2.4cqw;
+  height: 2.4cqw;
+  border-radius: 50%;
+  opacity: 0;
+  animation: subir 1.9s ease-out infinite;
+}
+.vapor {
+  background: rgba(255, 255, 255, 0.4);
+  filter: blur(0.5cqw);
+}
+.humo {
+  width: 3.4cqw;
+  height: 3.4cqw;
+  background: rgba(25, 25, 25, 0.75);
+  filter: blur(0.7cqw);
+  animation-duration: 1.4s;
+}
+
+@keyframes subir {
+  0%   { transform: translateY(0) scale(0.5); opacity: 0; }
+  20%  { opacity: 0.8; }
+  100% { transform: translateY(-10cqw) scale(2); opacity: 0; }
+}
+
+.llama {
+  position: absolute;
+  bottom: 0;
+  font-size: 3.8cqw;
+  transform-origin: 50% 100%;
+  animation: llama 0.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 1cqw rgba(255, 120, 20, 0.9));
+}
+@keyframes llama {
+  from { transform: scale(0.85) rotate(-6deg); }
+  to   { transform: scale(1.15) rotate(6deg); }
+}
+
+/* =========================================================
+   PANEL: RELOJ, LADOS Y BOTÓN (sobre la parrilla, a la derecha)
+   ========================================================= */
+
+.p-panel {
+  position: absolute;
+  left: 64%;
+  top: 25%;
+  width: 21.5%;
+  height: 42%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 0.8cqw;
+  background: rgba(10, 8, 7, 0.68);
+  border: 0.2cqw solid rgba(255, 255, 255, 0.18);
+  border-radius: 1.5cqw;
+  font-size: clamp(10px, 1cqw, 18px);
+  box-shadow: 0 0.6cqw 2cqw rgba(0, 0, 0, 0.6);
+}
+
+.p-nombre {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 900;
+  text-transform: capitalize;
+  color: #fde68a;
+}
+
+.p-lados {
+  display: flex;
+  gap: 0.5cqw;
+}
+.p-lado {
+  padding: 0.25em 0.9em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 800;
+  font-size: 0.95em;
+  color: #cbd5e1;
+}
+.p-lado.activo {
+  background: #f59e0b;
+  color: #451a03;
+}
+.p-lado.hecho {
+  background: #15803d;
+  color: #fff;
+}
+
+/* reloj circular */
+.reloj {
+  --color: #4ade80;
+  width: 10cqw;
+  height: 10cqw;
+  border-radius: 50%;
+  background: conic-gradient(var(--color) var(--pct), rgba(255, 255, 255, 0.14) 0);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 1.4cqw rgba(0, 0, 0, 0.6);
+}
+.reloj.urgente {
+  --color: #ef4444;
+  animation: alarma 0.5s ease-in-out infinite alternate;
+}
+@keyframes alarma {
+  from { box-shadow: 0 0 0.8cqw rgba(239, 68, 68, 0.4); }
+  to   { box-shadow: 0 0 2.4cqw rgba(239, 68, 68, 1); }
+}
+
+.reloj-centro {
+  width: 8cqw;
+  height: 8cqw;
+  border-radius: 50%;
+  background: #1c1714;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.4cqw;
+}
+.reloj-centro strong {
+  font-size: 3.4em;
+  line-height: 1;
+  font-weight: 900;
+}
+.reloj-centro small {
+  margin-top: 0.2em;
+  font-size: 0.8em;
+  font-weight: 800;
+  color: #cbd5e1;
+  line-height: 1.1;
+}
+.reloj.urgente .reloj-centro strong,
+.reloj.urgente .reloj-centro small {
+  color: #fca5a5;
+}
+
+.p-accion {
+  width: 100%;
+  padding: 0.6em 1em;
+  border: 3px solid #475569;
+  border-radius: 0.9cqw;
+  background: #334155;
+  color: #94a3b8;
+  font-weight: 900;
+  font-size: 1.3em;
+  cursor: pointer;
+}
+.p-accion.activo {
+  border-color: #14532d;
+  background: #16a34a;
+  color: #fff;
+  animation: latido-boton 0.7s ease-in-out infinite alternate;
+}
+.p-accion:disabled {
+  cursor: not-allowed;
+}
+@keyframes latido-boton {
+  from { transform: scale(1); }
+  to   { transform: scale(1.05); }
+}
+
+/* mensaje sobre el borde de acero, debajo de la parrilla */
+.p-guia {
+  position: absolute;
+  left: 25%;
+  width: 50%;
+  top: 70.4%;
+  margin: 0;
+  padding: 0.5cqw 1cqw;
+  text-align: center;
+  background: rgba(10, 8, 7, 0.72);
+  border-radius: 999px;
+  font-size: clamp(12px, 1.3cqw, 22px);
+  font-weight: 800;
+  color: #e2e8f0;
+}
+.p-guia.urgente {
+  color: #fde68a;
+  font-weight: 900;
+}
+
+/* =========================================================
+   AYUDA, AVISOS Y RESULTADO
+   ========================================================= */
+
+.p-ayuda {
+  position: absolute;
+  left: 50%;
+  bottom: 2.5%;
+  transform: translateX(-50%);
+  max-width: 80%;
+  padding: 0.5cqw 1.6cqw;
+  background: rgba(10, 8, 7, 0.7);
+  border-radius: 999px;
+  text-align: center;
+  font-size: clamp(11px, 1.05cqw, 18px);
+  font-weight: 700;
+  color: #fde68a;
+  z-index: 15;
+}
+
+.p-aviso {
+  position: absolute;
+  left: 50%;
+  top: 11%;
+  transform: translateX(-50%);
+  padding: 0.7cqw 1.8cqw;
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: clamp(13px, 1.4cqw, 24px);
+  z-index: 30;
+  animation: aparecer-p 0.2s ease-out;
+}
+@keyframes aparecer-p {
+  from { opacity: 0; transform: translateX(-50%) translateY(-1cqw); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.p-resultado {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  animation: aparecer-fondo 0.3s ease-out;
+}
+@keyframes aparecer-fondo {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.p-resultado-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8cqw;
+  padding: 3cqw 5cqw;
+  border-radius: 2.5cqw;
+  text-align: center;
+  border: 0.4cqw solid;
+  animation: salto 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.p-resultado-card .grande {
+  font-size: 7cqw;
+  line-height: 1;
+}
+.p-resultado-card h2 {
+  margin: 0;
+  font-size: clamp(22px, 3cqw, 52px);
+  font-weight: 900;
+}
+.p-resultado-card p {
+  margin: 0;
+  font-size: clamp(13px, 1.4cqw, 24px);
+  font-weight: 700;
+  max-width: 34cqw;
+}
+.p-resultado-card.bien {
+  background: #14532d;
+  border-color: #4ade80;
+}
+.p-resultado-card.mal {
+  background: #450a0a;
+  border-color: #ef4444;
+}
+@keyframes salto {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}

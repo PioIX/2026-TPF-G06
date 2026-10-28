@@ -1,179 +1,80 @@
-
-
-:root {
-  --marron-oscuro: #54251c;
-  --marron: #713629;
-  --crema: #fffaf1;
-  --crema-2: #fff4df;
-  --acero-claro: #d3d9de;
-  --acero: #9aa3aa;
-  --acero-oscuro: #4b535a;
-
-  /* ── Posición del plato dentro de la imagen de la cocina ── */
-  --plato-x: 49.8%;   /* centro horizontal del plato */
-  --plato-y: 34%;     /* distancia desde ABAJO del escenario hasta donde se apoya la pila */
-
-  /* Cuánto se montan unos ingredientes sobre otros (en cqw, a tamaño 1) */
-  --solape-ingredientes: -4.8cqw;
-
-  /* ── Papas y bebida sobre el mostrador ── */
-  --papas-x: 65%;     /* centro horizontal de las papas (a la derecha del plato) */
-  --bebida-x: 34%;    /* centro horizontal de la bebida (a la izquierda del plato) */
-  --extras-y: 36%;    /* distancia desde ABAJO del escenario */
-}
-
-/* ---------- Pantalla completa, sin scroll ---------- */
-
-.juego {
+.partida-juego {
   position: fixed;
   inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a0f0c;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #2a1a12;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  z-index: 50;
 }
 
-/* Relleno de los costados: la misma cocina, difuminada y oscurecida */
-.juego::before {
-  content: '';
-  position: absolute;
-  inset: -30px;
-  background: url('/cocina2.png') center / cover no-repeat;
-  filter: blur(14px) brightness(0.55);
-}
-
-.pantalla-centro {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  align-items: center;
-  justify-content: center;
-  background: #fffbeb;
-  padding: 24px;
-}
-.texto-cargando { font-size: 1.25rem; font-weight: 800; color: #78350f; }
-.texto-error { color: #b91c1c; text-align: center; }
-
-/* ============================================================
-   ESCENARIO: entra siempre completo en la ventana
-   ============================================================ */
-
-.escenario {
+.partida-escenario {
   position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
-  aspect-ratio: 1672 / 941;
-  background: url('/cocina2.png') center / 100% 100% no-repeat;
-  container-type: inline-size;   /* habilita las unidades cqw */
+  container-type: inline-size;
+  width: min(100vw, calc(100vh * 2.4));
+  height: min(100vh, calc(100vw / 1.45));
+  width: min(100vw, calc(100dvh * 2.4));
+  height: min(100dvh, calc(100vw / 1.45));
+  background: url('/cocina.png') center / 100% 100% no-repeat;
   overflow: hidden;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: system-ui, sans-serif;
 }
 
-@supports (height: 100dvh) {
-  .escenario { width: min(100vw, calc(100dvh * 16 / 9)); }
+.partida-escenario img {
+  -webkit-user-drag: none;
 }
 
-/* ---------- Botones genéricos ---------- */
-
-.btn {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-.btn:active:not(:disabled) { transform: scale(0.96); }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.btn-marron { background: var(--marron); border-color: var(--marron-oscuro); color: #fff; }
-.btn-marron:hover:not(:disabled) { background: var(--marron-oscuro); }
-.btn-claro { background: #fde68a; color: #451a03; }
-.btn-claro:hover:not(:disabled) { background: #fcd34d; }
-.btn-verde { background: #15803d; border-color: #14532d; color: #fff; }
-.btn-verde:hover:not(:disabled) { background: #166534; }
-
-/* ============================================================
-   HUD flotante (arriba a la derecha)
-   ============================================================ */
-
-.hud {
-  position: absolute;
-  top: 1cqw;
-  right: 1.5cqw;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 1.3cqw;
-  padding: 0.6cqw 1.4cqw;
-  background: rgba(36, 22, 16, 0.82);
-  border: 2px solid rgba(214, 166, 107, 0.7);
-  border-radius: 999px;
-  box-shadow: 0 0.4cqw 1cqw rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-}
-
-.dato {
-  display: flex;
-  align-items: center;
-  gap: 0.5cqw;
-  font-weight: 800;
-  font-size: max(13px, 1.5cqw);
-  color: var(--crema);
-}
-.dato-tiempo { color: #ffd9c9; }
-.dato-puntaje { color: #fcd34d; }
-.dato-icono { font-size: 1.2em; }
-
-.btn-chico {
-  padding: 0.4cqw 1.1cqw;
-  font-size: max(10px, 1cqw);
-}
-
-/* ============================================================
-   TICKET (sobre la heladera, a la izquierda)
-   ============================================================ */
-
-.ticket-wrap {
-  position: absolute;
-  left: 1.2cqw;
-  top: 2cqw;
-  width: 16cqw;
-  filter: drop-shadow(0 0.5cqw 0.7cqw rgba(0, 0, 0, 0.45));
-  transform: rotate(-1.5deg);
-  z-index: 5;
-}
+/* =========================================================
+   TICKET (arriba a la izquierda)
+   ========================================================= */
 
 .ticket {
-  position: relative;
-  background: #fffef9;
-  padding: 1.2cqw 1cqw 2cqw;
-  color: #3b2a22;
-  font-family: 'Courier New', ui-monospace, monospace;
-  font-size: max(9px, 0.85cqw);   /* todo lo de adentro va en em */
-  /* borde inferior en zigzag */
-  --diente: 0.6cqw;
-  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
-    50% / calc(var(--diente) * 2) 100%;
-          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
-    50% / calc(var(--diente) * 2) 100%;
+  position: absolute;
+  left: 1.6cqw;
+  top: 2.4cqw;
+  width: 16cqw;
+  padding: 1cqw 1cqw 1.4cqw;
+  background: #fffdf5;
+  color: #3b2a20;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(10px, 0.95cqw, 17px);
+  transform: rotate(-1.5deg);
+  box-shadow: 0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+/* borde en zigzag abajo */
+.ticket::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.8cqw;
+  height: 0.8cqw;
+  background:
+    linear-gradient(135deg, #fffdf5 25%, transparent 25%) -0.5cqw 0,
+    linear-gradient(225deg, #fffdf5 25%, transparent 25%) -0.5cqw 0;
+  background-size: 1cqw 1cqw;
 }
 
 .ticket-titulo {
-  margin: 0.2em 0 0;
+  margin: 0;
   text-align: center;
-  font-size: 1.7em;
-  letter-spacing: 0.25em;
   font-weight: 900;
+  letter-spacing: 0.2em;
+  font-size: 1.25em;
+  border-bottom: 2px dashed #b9a78c;
+  padding-bottom: 0.35em;
 }
-.ticket-sub {
-  margin: 0.2em 0 0.8em;
+
+.ticket-progreso {
+  margin: 0.35em 0 0.5em;
   text-align: center;
   font-size: 0.85em;
-  color: #8a6f60;
-  border-bottom: 2px dashed #c9b6a6;
-  padding-bottom: 0.8em;
+  color: #8a735f;
 }
 
 .ticket-lista {
@@ -183,331 +84,523 @@
   display: flex;
   flex-direction: column;
   gap: 0.2em;
-  max-height: 22cqw;
-  overflow-y: auto;
 }
 
 .ticket-item {
-  display: grid;
-  grid-template-columns: 1.4em 3.6em 1fr 1.2em;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.1em 0.2em;
+  border-radius: 0.3em;
+  transition: background 0.2s;
+}
+
+.ticket-icono {
+  width: 2.4em;
+  height: 1.5em;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ticket-nombre {
+  flex: 1;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.ticket-marca {
+  min-width: 1.2em;
+  text-align: center;
+  font-weight: 900;
+}
+
+/* el próximo ingrediente que falta */
+.ticket-item.siguiente {
+  background: #fff1c2;
+  outline: 1px dashed #d4a017;
+}
+
+/* ingredientes ya puestos bien: tachados con "marcador" rojo */
+.ticket-item.hecho .ticket-nombre {
+  text-decoration: line-through;
+  text-decoration-color: #c0392b;
+  text-decoration-thickness: 3px;
+  opacity: 0.5;
+}
+.ticket-item.hecho .ticket-icono {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.ticket-item.hecho .ticket-marca {
+  color: #2e8b3d;
+}
+
+/* ingrediente equivocado */
+.ticket-item.fallo {
+  background: #ffd9d4;
+  animation: partida-temblor 0.3s;
+}
+.ticket-item.fallo .ticket-marca {
+  color: #c0392b;
+}
+
+.ticket-nota {
+  margin: 0.6em 0 0;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.85em;
+}
+.ticket-nota.error {
+  color: #c0392b;
+}
+.ticket-nota.ok {
+  color: #2e8b3d;
+}
+
+@keyframes partida-temblor {
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* =========================================================
+   BARRA SUPERIOR (tiempo, puntaje, pausa)
+   ========================================================= */
+
+.hud {
+  position: absolute;
+  top: 0.8cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 0.4cqw 1.4cqw;
+  background: rgba(255, 250, 241, 0.95);
+  border: 2px solid #713629;
+  border-radius: 999px;
+  font-size: clamp(11px, 1.1cqw, 20px);
+  z-index: 20;
+}
+
+.hud-dato {
+  display: flex;
   align-items: center;
   gap: 0.4em;
-  padding: 0.2em 0.3em;
-  border-radius: 0.4em;
-  font-size: 1em;
-  transition: background 0.2s ease;
-}
-.ticket-num { font-weight: 800; color: #a08672; }
-.ticket-img { width: 3.6em; height: 2.1em; object-fit: contain; }
-.ticket-nombre { text-transform: capitalize; font-weight: 700; }
-.ticket-check { font-weight: 900; }
-
-.ticket-item.bien { background: #dcfce7; }
-.ticket-item.bien .ticket-check { color: #15803d; }
-.ticket-item.mal { background: #fee2e2; }
-.ticket-item.mal .ticket-check { color: #b91c1c; }
-
-.ticket-total {
-  margin-top: 0.9em;
-  padding-top: 0.8em;
-  border-top: 2px dashed #c9b6a6;
-  text-align: center;
-  font-size: 0.95em;
+  color: #692d20;
   font-weight: 800;
 }
 
-/* ============================================================
-   HAMBURGUESA sobre el plato del fondo
-   ============================================================ */
+.hud-boton {
+  border: 2px solid #54251c;
+  background: #713629;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8em;
+  padding: 0.35em 1em;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.hud-boton:hover { background: #54251c; }
+.hud-boton.claro {
+  background: #fde68a;
+  color: #451a03;
+  border-color: #f59e0b;
+}
+.hud-boton:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.pila-hamburguesa {
+/* =========================================================
+   ZONAS DE SOLTADO
+   Si no te coinciden con el fondo, ajustá left/top/width/height
+   (están en % del escenario).
+   ========================================================= */
+
+.zona-plato,
+.zona-parrilla {
   position: absolute;
-  left: var(--plato-x);
-  bottom: var(--plato-y);
-  translate: -50% 0;
-  transform-origin: bottom center;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  justify-content: flex-end;
-  z-index: 3;
-  transition: transform 0.2s ease;
   pointer-events: none;
+  border-radius: 1.5cqw;
+  border: 0.25cqw dashed transparent;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
 }
 
-.imagen-ingrediente {
-  display: block;
-  position: relative;
-  margin-top: calc(var(--solape-ingredientes) * var(--tam, 1));
-  height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 0.25cqw 0.2cqw rgba(0, 0, 0, 0.25));
-  animation: caer 0.18s ease-out;
+/* Plato + el espacio de arriba donde crece la hamburguesa */
+.zona-plato {
+  left: 37%;
+  top: 36%;
+  width: 26.6%;
+  height: 40%;
 }
 
-@keyframes caer {
-  from { transform: translateY(-1.5cqw); opacity: 0; }
-  to   { transform: translateY(0);       opacity: 1; }
+/* Parrilla (plancha del fondo) */
+.zona-parrilla {
+  left: 11%;
+  top: 38%;
+  width: 28%;
+  height: 16%;
+}
+
+.zona-plato.visible,
+.zona-parrilla.visible {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.zona-plato.activa {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.22);
+}
+
+.zona-parrilla.activa {
+  border-color: #fb923c;
+  background: rgba(251, 146, 60, 0.3);
+}
+
+.zona-parrilla span {
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(11px, 1.2cqw, 20px);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .mensaje-vacio {
-  position: absolute;
-  top: 38%;
-  left: var(--plato-x);
-  transform: translateX(-50%);
   margin: 0;
-  width: max-content;
-  max-width: 40cqw;
-  text-align: center;
-  font-size: max(11px, 1.15cqw);
-  font-weight: 800;
-  color: var(--marron);
-  background: rgba(255, 250, 241, 0.9);
-  padding: 0.5cqw 1.4cqw;
-  border-radius: 999px;
-  z-index: 4;
-}
-
-.mensaje-flotante {
-  position: absolute;
-  top: 7cqw;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 0.8cqw 2cqw;
-  border-radius: 999px;
-  font-size: max(12px, 1.3cqw);
-  font-weight: 800;
+  padding: 0.6cqw 1.2cqw;
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
-  box-shadow: 0 0.5cqw 1cqw rgba(0, 0, 0, 0.35);
-  animation: caer 0.2s ease-out;
-}
-.mensaje-flotante.ok  { background: #15803d; }
-.mensaje-flotante.mal { background: #b91c1c; }
-
-/* ============================================================
-   DOCK: bandeja de acero con las pestañas pegadas arriba
-   ============================================================ */
-
-.dock {
-  position: absolute;
-  left: 2.5cqw;
-  right: 2.5cqw;
-  bottom: 1.2cqw;
-  display: grid;
-  grid-template-columns: 1fr 14cqw;
-  gap: 1.2cqw;
-  align-items: end;
-  z-index: 6;
-  font-size: max(9px, 0.8cqw);
-}
-
-.mostrador { min-width: 0; }
-
-.pestanas {
-  display: flex;
-  gap: 0.35cqw;
-  padding-left: 1cqw;
-  margin-bottom: -3px;
-  position: relative;
-  z-index: 2;
-}
-
-.pestana {
-  padding: 0.55cqw 1.3cqw 0.7cqw;
-  border: 3px solid var(--acero-oscuro);
-  border-bottom: none;
-  border-radius: 0.9cqw 0.9cqw 0 0;
-  background: linear-gradient(#7d868d, #5d666d);
-  color: #f1f4f6;
-  font-size: max(10px, 0.95cqw);
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-.pestana:hover { background: linear-gradient(#939ca3, #6f787f); transform: translateY(-2px); }
-.pestana.activa {
-  background: linear-gradient(#eef1f3, var(--acero-claro));
-  color: var(--marron-oscuro);
-  transform: translateY(0);
-}
-
-.bandeja {
-  position: relative;
-  z-index: 1;
-  background: linear-gradient(#cfd5da, #a7b0b7);
-  border: 3px solid var(--acero-oscuro);
-  border-radius: 0 1.2cqw 1.2cqw 1.2cqw;
-  padding: 0.8cqw;
-  height: 15.5cqw;
-  overflow-y: auto;
-  box-shadow: inset 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.3);
-}
-
-.rejilla-ingredientes {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.8cqw, 1fr));
-  gap: 0.6cqw;
-}
-
-.tarjeta-ingrediente {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.2cqw;
-  min-height: 7cqw;
-  padding: 0.5cqw 0.3cqw;
-  background: #fff;
-  border: 2px solid #aab3ba;
-  border-radius: 0.9cqw;
-  box-shadow: 0 0.25cqw 0 #7f8990;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
-}
-.tarjeta-ingrediente img {
-  width: 5cqw;
-  height: 3.6cqw;
-  object-fit: contain;
-  transition: transform 0.15s ease;
-}
-.tarjeta-ingrediente span {
-  font-size: max(9px, 0.8cqw);
-  font-weight: 800;
+  font-weight: 700;
+  font-size: clamp(11px, 1.1cqw, 18px);
+  border-radius: 999px;
   text-align: center;
-  color: var(--marron-oscuro);
-  text-transform: capitalize;
-  line-height: 1.1;
+  position: absolute;
+  bottom: 0.5cqw;
 }
-.tarjeta-ingrediente:hover:not(:disabled) {
-  border-color: #c58b48;
-  transform: translateY(-2px);
-  box-shadow: 0 0.4cqw 0 #7f8990;
+
+/* =========================================================
+   HAMBURGUESA SOBRE EL PLATO
+   .partida-pila es el punto de apoyo (centro del plato). Si la hamburguesa
+   se ve muy arriba/abajo, cambiá "bottom"; si está corrida, "left".
+   Cada .partida-capa se posiciona sola (ver "perfil" en page.js para
+   ajustar tamaños y cuánto se superponen los ingredientes).
+   ========================================================= */
+
+.partida-pila {
+  position: absolute;
+  left: 50.2%;
+  bottom: 31%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
 }
-.tarjeta-ingrediente:hover:not(:disabled) img { transform: scale(1.1); }
-.tarjeta-ingrediente:active:not(:disabled) {
-  transform: translateY(0.25cqw);
-  box-shadow: 0 0 0 #7f8990;
+
+.partida-capa {
+  position: absolute;
+  display: flex;
+  transform: translateX(-50%); /* centra cada ingrediente sobre el plato */
 }
-.tarjeta-ingrediente:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.partida-imagen-ingrediente {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 0.2cqw 0.25cqw rgba(0, 0, 0, 0.35));
+  animation: partida-caer 0.25s ease-out;
+}
+
+@keyframes partida-caer {
+  from {
+    transform: translateY(-3cqw);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   BOTONES DESHACER / ENTREGAR (sobre la mesada, a la derecha)
+   ========================================================= */
 
 .acciones {
+  position: absolute;
+  right: 3cqw;
+  top: 60%;
+  width: 14cqw;
   display: flex;
   flex-direction: column;
   gap: 0.8cqw;
-  padding: 0.9cqw;
-  height: 15.5cqw;
-  box-sizing: border-box;
-  justify-content: center;
-  background: linear-gradient(#cfd5da, #a7b0b7);
-  border: 3px solid var(--acero-oscuro);
-  border-radius: 1.2cqw;
-  box-shadow: inset 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.3);
+  z-index: 20;
 }
 
-.btn-grande {
-  flex: 1;
-  border-radius: 0.9cqw;
-  font-size: max(11px, 1.15cqw);
-  padding: 0 0.5cqw;
-}
-
-/* ============================================================
-   PAPAS Y BEBIDA: en la escena, en las pestañas y en el ticket
-   ============================================================ */
-
-.extra-escena {
-  position: absolute;
-  bottom: var(--extras-y);
-  translate: -50% 0;
-  height: auto;
-  z-index: 3;
+.accion {
+  padding: 0.8cqw 1cqw;
+  border-radius: 1cqw;
+  border: 3px solid;
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(11px, 1.2cqw, 20px);
   cursor: pointer;
-  filter: drop-shadow(0 0.4cqw 0.3cqw rgba(0, 0, 0, 0.35));
-  animation: caer 0.22s ease-out;
-  transition: filter 0.15s ease;
+  box-shadow: 0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s;
 }
-.extra-escena:hover { filter: drop-shadow(0 0.4cqw 0.3cqw rgba(0, 0, 0, 0.35)) brightness(1.08); }
-.extra-papas  { left: var(--papas-x); }
-.extra-bebida { left: var(--bebida-x); }
+.accion:active { transform: scale(0.96); }
+.accion:disabled { opacity: 0.5; cursor: not-allowed; }
+.accion.deshacer { background: #713629; border-color: #54251c; }
+.accion.deshacer:hover:not(:disabled) { background: #54251c; }
+.accion.entregar { background: #15803d; border-color: #14532d; }
+.accion.entregar:hover:not(:disabled) { background: #166534; }
 
-/* Pestañas de papas y bebida, separadas de las de la hamburguesa */
-.pestana.extra { background: linear-gradient(#b8892f, #8f6a1f); border-color: #5c4313; }
-.pestana.extra:hover { background: linear-gradient(#cc9a38, #a07823); }
-.pestana.extra.activa {
-  background: linear-gradient(#fff3cf, #f3d98b);
-  color: var(--marron-oscuro);
+/* =========================================================
+   BANDEJAS: zonas clickeables sobre las bandejas del fondo
+   ========================================================= */
+
+.bandeja {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 1cqw;
+  cursor: grab;
+  touch-action: none; /* necesario para arrastrar con el dedo */
+  z-index: 15;
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.pestana.extra:first-of-type { margin-left: 0; }
-.pestana.extra:nth-of-type(7) { margin-left: 1cqw; }
 
-/* Selector de tamaños */
-.rejilla-tamanos {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1cqw;
-  height: 100%;
+/* resplandor al pasar el mouse (no mientras llevás un ingrediente) */
+.partida-escenario:not(.con-mano) .bandeja:hover {
+  background: rgba(255, 244, 200, 0.16);
+  box-shadow:
+    0 0 0 0.2cqw rgba(255, 232, 150, 0.95),
+    0 0 1.4cqw rgba(255, 215, 100, 0.75);
 }
 
-.tarjeta-tamano {
+/* cartelito con el nombre */
+.bandeja::after {
+  content: attr(data-nombre);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, -0.3cqw);
+  padding: 0.25cqw 0.9cqw;
+  background: rgba(30, 20, 15, 0.9);
+  color: #fff;
+  font-size: clamp(10px, 0.95cqw, 16px);
+  font-weight: 800;
+  text-transform: capitalize;
+  white-space: nowrap;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.partida-escenario:not(.con-mano) .bandeja:hover::after {
+  opacity: 1;
+}
+
+.bandeja.deshabilitado {
+  cursor: not-allowed;
+}
+
+/* modo ajuste: MOSTRAR_ZONAS = true en page.js */
+.debug .bandeja {
+  outline: 2px dashed #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+.debug .bandeja::after {
+  opacity: 1;
+  bottom: auto;
+  top: 0;
+  transform: translate(-50%, 0);
+  background: rgba(22, 101, 52, 0.9);
+}
+
+/* ingredientes del backend que no tienen bandeja en el fondo */
+.estante-extra {
+  position: absolute;
+  left: 1.5cqw;
+  top: 61%;
+  max-width: 22cqw;
+  padding: 0.6cqw 0.8cqw;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 1cqw;
+  z-index: 15;
+}
+.estante-extra p {
+  margin: 0 0 0.4cqw;
+  color: #fde68a;
+  font-weight: 800;
+  font-size: clamp(10px, 0.9cqw, 15px);
+}
+.estante-extra div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4cqw;
+}
+.extra-item {
+  width: 5cqw;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.4cqw;
-  padding: 0.6cqw;
+  padding: 0.3cqw;
   background: #fff;
-  border: 3px solid #aab3ba;
-  border-radius: 1cqw;
-  box-shadow: 0 0.3cqw 0 #7f8990;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  border: 2px solid #e1c9a9;
+  border-radius: 0.8cqw;
+  cursor: grab;
+  touch-action: none;
 }
-.tarjeta-tamano-img {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.extra-item img {
+  width: 3.4cqw;
+  height: 2.2cqw;
+  object-fit: contain;
+  pointer-events: none;
 }
-.tarjeta-tamano-img img { height: auto; transition: transform 0.15s ease; }
-.tarjeta-tamano-nombre {
-  font-size: max(10px, 1cqw);
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--marron-oscuro);
-}
-.tarjeta-tamano:hover:not(:disabled) {
-  border-color: #c58b48;
-  transform: translateY(-2px);
-  box-shadow: 0 0.5cqw 0 #7f8990;
-}
-.tarjeta-tamano:hover:not(:disabled) img { transform: scale(1.06); }
-.tarjeta-tamano.sel {
-  border-color: #d97706;
-  background: #fff4df;
-  box-shadow: 0 0.3cqw 0 #b45309, 0 0 0 0.25cqw rgba(217, 119, 6, 0.35);
-}
-.tarjeta-tamano:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* Ticket: bloque de acompañamiento */
-.ticket-seccion {
-  margin: 0.9em 0 0.4em;
-  padding-top: 0.7em;
-  border-top: 2px dashed #c9b6a6;
-  text-align: center;
-  font-size: 0.85em;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  color: #8a6f60;
-}
-.ticket-extras { max-height: none; }
-.ticket-num { text-align: center; }
-
-.fin-tiempo {
-  margin: 0;
-  text-align: center;
-  font-size: max(9px, 0.85cqw);
+.extra-item span {
+  font-size: clamp(8px, 0.7cqw, 12px);
   font-weight: 800;
-  color: #b91c1c;
+  color: #54251c;
+  text-align: center;
+}
+.extra-item.deshabilitado { opacity: 0.5; cursor: not-allowed; }
+
+/* =========================================================
+   INGREDIENTE QUE SIGUE AL CURSOR
+   ========================================================= */
+
+.ingrediente-flotante {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: auto;
+  pointer-events: none;
+  z-index: 9999;
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.45));
+  -webkit-user-drag: none;
+}
+
+/* =========================================================
+   AVISOS
+   ========================================================= */
+
+.aviso {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  padding: 0.7cqw 1.6cqw;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(12px, 1.3cqw, 22px);
+  border-radius: 999px;
+  z-index: 30;
+  animation: partida-aparecer 0.2s ease-out;
+}
+
+.cartel-central {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(18px, 3.5cqw, 60px);
+  text-align: center;
+  padding: 2cqw;
+  z-index: 40;
+}
+.cartel-central.rojo { color: #fca5a5; }
+
+@keyframes partida-aparecer {
+  from { opacity: 0; transform: translateX(-50%) translateY(-1cqw); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* =========================================================
+   MILKSHAKES Y FREIDORA (SECCIONES DEL TICKET)
+   ========================================================= */
+
+.ticket-extra {
+  margin-top: 0.4em;
+  padding-top: 0.4em;
+  border-top: 2px dashed #b9a78c;
+}
+
+.ticket-icono.emoji {
+  width: 2.4em;
+  text-align: center;
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+.ticket-item.hecho .ticket-icono.emoji {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+/* =========================================================
+   MÁQUINAS (milkshake y freidora)
+   ---------------------------------------------------------
+   COLORES:
+     MILKSHAKE -> ROSA     rgb(255, 150, 200)
+     FREIDORA  -> AMARILLO rgb(255, 215, 60)
+   Cada máquina tiene su propia clase (.milkshake / .freidora),
+   así se puede cambiar el color de una sin afectar a la otra.
+   ========================================================= */
+
+.bandeja.maquina {
+  cursor: pointer;
+}
+
+/* ---------- MILKSHAKE (rosa) ---------- */
+
+/* al pasar el mouse */
+.partida-escenario:not(.con-mano) .bandeja.milkshake:hover {
+  background: rgba(255, 150, 200, 0.18);
+  box-shadow:
+    0 0 0 0.2cqw rgba(255, 175, 215, 0.95),
+    0 0 1.4cqw rgba(255, 150, 200, 0.75);
+}
+
+/* late mientras falte preparar un milkshake */
+.bandeja.milkshake.pendiente {
+  animation: partida-pulso-milkshake 1.5s ease-in-out infinite;
+}
+
+@keyframes partida-pulso-milkshake {
+  0%, 100% {
+    box-shadow: 0 0 0 0.15cqw rgba(255, 160, 205, 0.25), 0 0 0.6cqw rgba(255, 150, 200, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 0.25cqw rgba(255, 175, 215, 0.95), 0 0 1.8cqw rgba(255, 150, 200, 0.85);
+  }
+}
+
+/* ---------- FREIDORA (amarillo) ---------- */
+
+/* al pasar el mouse */
+.partida-escenario:not(.con-mano) .bandeja.freidora:hover {
+  background: rgba(255, 215, 60, 0.18);
+  box-shadow:
+    0 0 0 0.2cqw rgba(255, 225, 90, 0.95),
+    0 0 1.4cqw rgba(255, 215, 60, 0.75);
+}
+
+/* late mientras falte freír algo del pedido */
+.bandeja.freidora.pendiente {
+  animation: partida-pulso-freidora 1.5s ease-in-out infinite;
+}
+
+@keyframes partida-pulso-freidora {
+  0%, 100% {
+    box-shadow: 0 0 0 0.15cqw rgba(255, 220, 70, 0.25), 0 0 0.6cqw rgba(255, 215, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 0.25cqw rgba(255, 230, 100, 0.95), 0 0 1.8cqw rgba(255, 215, 60, 0.85);
+  }
 }

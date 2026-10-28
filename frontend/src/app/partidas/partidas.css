@@ -226,6 +226,9 @@
   bottom: var(--plato-y);
   translate: -50% 0;
   transform-origin: bottom center;
+
+/*.partida-pila-hamburguesa {
+
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
@@ -235,7 +238,7 @@
   pointer-events: none;
 }
 
-.imagen-ingrediente {
+.partida-imagen-ingrediente {
   display: block;
   position: relative;
   margin-top: calc(var(--solape-ingredientes) * var(--tam, 1));
@@ -421,6 +424,7 @@
   bottom: var(--extras-y);
   translate: -50% 0;
   height: auto;
+
   z-index: 3;
   cursor: pointer;
   filter: drop-shadow(0 0.4cqw 0.3cqw rgba(0, 0, 0, 0.35));
@@ -510,4 +514,583 @@
   font-size: max(9px, 0.85cqw);
   font-weight: 800;
   color: #b91c1c;
+
+}/* =========================================================
+   ESCENARIO
+   Todo se mide en "cqw" (1% del ancho del escenario), así
+   el juego escala igual en cualquier pantalla y las zonas
+   siempre quedan sobre el plato y la parrilla del fondo.
+   ========================================================= */
+/* =========================================================
+   ESCENARIO
+   Todo se mide en "cqw" (1% del ancho del escenario), así
+   el juego escala igual en cualquier pantalla y las zonas
+   siempre quedan sobre el plato y la parrilla del fondo.
+   ========================================================= */
+
+/* Ocupa toda la pantalla. El fondo se estira para llenarla; solo en
+   ventanas muy raras (más anchas que 2.4:1 o más altas que 1.45:1)
+   quedan franjas oscuras para no deformar demasiado la imagen. */
+.partida-juego {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a0f0c;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.partida-escenario {
+  position: relative;
+  container-type: inline-size;
+  width: min(100vw, calc(100vh * 2.4));
+  height: min(100vh, calc(100vw / 1.45));
+  width: min(100vw, calc(100dvh * 2.4));
+  height: min(100dvh, calc(100vw / 1.45));
+  background: url('/cocina.png') center / 100% 100% no-repeat;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: system-ui, sans-serif;
+}
+
+.partida-escenario img {
+  -webkit-user-drag: none;
+}
+
+/* =========================================================
+   TICKET (arriba a la izquierda)
+   ========================================================= */
+
+.ticket {
+  position: absolute;
+  left: 1.6cqw;
+  top: 2.4cqw;
+  width: 16cqw;
+  padding: 1cqw 1cqw 1.4cqw;
+  background: #fffdf5;
+  color: #3b2a20;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(10px, 0.95cqw, 17px);
+  transform: rotate(-1.5deg);
+  box-shadow: 0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+/* borde en zigzag abajo */
+.ticket::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.8cqw;
+  height: 0.8cqw;
+  background:
+    linear-gradient(135deg, #fffdf5 25%, transparent 25%) -0.5cqw 0,
+    linear-gradient(225deg, #fffdf5 25%, transparent 25%) -0.5cqw 0;
+  background-size: 1cqw 1cqw;
+}
+
+.ticket-titulo {
+  margin: 0;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  font-size: 1.25em;
+  border-bottom: 2px dashed #b9a78c;
+  padding-bottom: 0.35em;
+}
+
+.ticket-progreso {
+  margin: 0.35em 0 0.5em;
+  text-align: center;
+  font-size: 0.85em;
+  color: #8a735f;
+}
+
+.ticket-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.ticket-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.1em 0.2em;
+  border-radius: 0.3em;
+  transition: background 0.2s;
+}
+
+.ticket-icono {
+  width: 2.4em;
+  height: 1.5em;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ticket-nombre {
+  flex: 1;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.ticket-marca {
+  min-width: 1.2em;
+  text-align: center;
+  font-weight: 900;
+}
+
+/* el próximo ingrediente que falta */
+.ticket-item.siguiente {
+  background: #fff1c2;
+  outline: 1px dashed #d4a017;
+}
+
+/* ingredientes ya puestos bien: tachados con "marcador" rojo */
+.ticket-item.hecho .ticket-nombre {
+  text-decoration: line-through;
+  text-decoration-color: #c0392b;
+  text-decoration-thickness: 3px;
+  opacity: 0.5;
+}
+.ticket-item.hecho .ticket-icono {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.ticket-item.hecho .ticket-marca {
+  color: #2e8b3d;
+}
+
+/* ingrediente equivocado */
+.ticket-item.fallo {
+  background: #ffd9d4;
+  animation: partida-temblor 0.3s;
+}
+.ticket-item.fallo .ticket-marca {
+  color: #c0392b;
+}
+
+.ticket-nota {
+  margin: 0.6em 0 0;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.85em;
+}
+.ticket-nota.error {
+  color: #c0392b;
+}
+.ticket-nota.ok {
+  color: #2e8b3d;
+}
+
+@keyframes partida-temblor {
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* =========================================================
+   BARRA SUPERIOR (tiempo, puntaje, pausa)
+   ========================================================= */
+
+.hud {
+  position: absolute;
+  top: 0.8cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 0.4cqw 1.4cqw;
+  background: rgba(255, 250, 241, 0.95);
+  border: 2px solid #713629;
+  border-radius: 999px;
+  font-size: clamp(11px, 1.1cqw, 20px);
+  z-index: 20;
+}
+
+.hud-dato {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  color: #692d20;
+  font-weight: 800;
+}
+
+.hud-boton {
+  border: 2px solid #54251c;
+  background: #713629;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8em;
+  padding: 0.35em 1em;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.hud-boton:hover { background: #54251c; }
+.hud-boton.claro {
+  background: #fde68a;
+  color: #451a03;
+  border-color: #f59e0b;
+}
+.hud-boton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* =========================================================
+   ZONAS DE SOLTADO
+   Si no te coinciden con el fondo, ajustá left/top/width/height
+   (están en % del escenario).
+   ========================================================= */
+
+.zona-plato,
+.zona-parrilla {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 1.5cqw;
+  border: 0.25cqw dashed transparent;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+/* Plato + el espacio de arriba donde crece la hamburguesa */
+.zona-plato {
+  left: 37%;
+  top: 36%;
+  width: 26.6%;
+  height: 40%;
+}
+
+/* Parrilla (plancha del fondo) */
+.zona-parrilla {
+  left: 11%;
+  top: 38%;
+  width: 28%;
+  height: 16%;
+}
+
+.zona-plato.visible,
+.zona-parrilla.visible {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.zona-plato.activa {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.22);
+}
+
+.zona-parrilla.activa {
+  border-color: #fb923c;
+  background: rgba(251, 146, 60, 0.3);
+}
+
+.zona-parrilla span {
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(11px, 1.2cqw, 20px);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.mensaje-vacio {
+  margin: 0;
+  padding: 0.6cqw 1.2cqw;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 700;
+  font-size: clamp(11px, 1.1cqw, 18px);
+  border-radius: 999px;
+  text-align: center;
+  position: absolute;
+  bottom: 0.5cqw;
+}
+
+/* =========================================================
+   HAMBURGUESA SOBRE EL PLATO
+   .partida-pila es el punto de apoyo (centro del plato). Si la hamburguesa
+   se ve muy arriba/abajo, cambiá "bottom"; si está corrida, "left".
+   Cada .partida-capa se posiciona sola (ver "perfil" en page.js para
+   ajustar tamaños y cuánto se superponen los ingredientes).
+   ========================================================= */
+
+.partida-pila {
+  position: absolute;
+  left: 50.2%;
+  bottom: 31%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.partida-capa {
+  position: absolute;
+  display: flex;
+  transform: translateX(-50%); /* centra cada ingrediente sobre el plato */
+}
+
+.partida-imagen-ingrediente {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 0.2cqw 0.25cqw rgba(0, 0, 0, 0.35));
+  animation: partida-caer 0.25s ease-out;
+}
+
+@keyframes partida-caer {
+  from {
+    transform: translateY(-3cqw);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   BOTONES DESHACER / ENTREGAR (sobre la mesada, a la derecha)
+   ========================================================= */
+
+.acciones {
+  position: absolute;
+  right: 3cqw;
+  top: 60%;
+  width: 14cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+  z-index: 20;
+}
+
+.accion {
+  padding: 0.8cqw 1cqw;
+  border-radius: 1cqw;
+  border: 3px solid;
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(11px, 1.2cqw, 20px);
+  cursor: pointer;
+  box-shadow: 0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s;
+}
+.accion:active { transform: scale(0.96); }
+.accion:disabled { opacity: 0.5; cursor: not-allowed; }
+.accion.deshacer { background: #713629; border-color: #54251c; }
+.accion.deshacer:hover:not(:disabled) { background: #54251c; }
+.accion.entregar { background: #15803d; border-color: #14532d; }
+.accion.entregar:hover:not(:disabled) { background: #166534; }
+
+/* =========================================================
+   BANDEJAS: zonas clickeables sobre las bandejas del fondo
+   ========================================================= */
+
+.bandeja {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 1cqw;
+  cursor: grab;
+  touch-action: none; /* necesario para arrastrar con el dedo */
+  z-index: 15;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+/* resplandor al pasar el mouse (no mientras llevás un ingrediente) */
+.partida-escenario:not(.con-mano) .bandeja:hover {
+  background: rgba(255, 244, 200, 0.16);
+  box-shadow:
+    0 0 0 0.2cqw rgba(255, 232, 150, 0.95),
+    0 0 1.4cqw rgba(255, 215, 100, 0.75);
+}
+
+/* cartelito con el nombre */
+.bandeja::after {
+  content: attr(data-nombre);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, -0.3cqw);
+  padding: 0.25cqw 0.9cqw;
+  background: rgba(30, 20, 15, 0.9);
+  color: #fff;
+  font-size: clamp(10px, 0.95cqw, 16px);
+  font-weight: 800;
+  text-transform: capitalize;
+  white-space: nowrap;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.partida-escenario:not(.con-mano) .bandeja:hover::after {
+  opacity: 1;
+}
+
+.bandeja.deshabilitado {
+  cursor: not-allowed;
+}
+
+/* modo ajuste: MOSTRAR_ZONAS = true en page.js */
+.debug .bandeja {
+  outline: 2px dashed #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+.debug .bandeja::after {
+  opacity: 1;
+  bottom: auto;
+  top: 0;
+  transform: translate(-50%, 0);
+  background: rgba(22, 101, 52, 0.9);
+}
+
+/* ingredientes del backend que no tienen bandeja en el fondo */
+.estante-extra {
+  position: absolute;
+  left: 1.5cqw;
+  top: 61%;
+  max-width: 22cqw;
+  padding: 0.6cqw 0.8cqw;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 1cqw;
+  z-index: 15;
+}
+.estante-extra p {
+  margin: 0 0 0.4cqw;
+  color: #fde68a;
+  font-weight: 800;
+  font-size: clamp(10px, 0.9cqw, 15px);
+}
+.estante-extra div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4cqw;
+}
+.extra-item {
+  width: 5cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3cqw;
+  background: #fff;
+  border: 2px solid #e1c9a9;
+  border-radius: 0.8cqw;
+  cursor: grab;
+  touch-action: none;
+}
+.extra-item img {
+  width: 3.4cqw;
+  height: 2.2cqw;
+  object-fit: contain;
+  pointer-events: none;
+}
+.extra-item span {
+  font-size: clamp(8px, 0.7cqw, 12px);
+  font-weight: 800;
+  color: #54251c;
+  text-align: center;
+}
+.extra-item.deshabilitado { opacity: 0.5; cursor: not-allowed; }
+
+/* =========================================================
+   INGREDIENTE QUE SIGUE AL CURSOR
+   ========================================================= */
+
+.ingrediente-flotante {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: auto;
+  pointer-events: none;
+  z-index: 9999;
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.45));
+  -webkit-user-drag: none;
+}
+
+/* =========================================================
+   AVISOS
+   ========================================================= */
+
+.aviso {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  padding: 0.7cqw 1.6cqw;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(12px, 1.3cqw, 22px);
+  border-radius: 999px;
+  z-index: 30;
+  animation: partida-aparecer 0.2s ease-out;
+}
+
+.cartel-central {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(18px, 3.5cqw, 60px);
+  text-align: center;
+  padding: 2cqw;
+  z-index: 40;
+}
+.cartel-central.rojo { color: #fca5a5; }
+
+@keyframes partida-aparecer {
+  from { opacity: 0; transform: translateX(-50%) translateY(-1cqw); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* =========================================================
+   MILKSHAKES
+   ========================================================= */
+
+.ticket-extra {
+  margin-top: 0.4em;
+  padding-top: 0.4em;
+  border-top: 2px dashed #b9a78c;
+}
+
+.ticket-icono.emoji {
+  width: 2.4em;
+  text-align: center;
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+.ticket-item.hecho .ticket-icono.emoji {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.bandeja.maquina {
+  cursor: pointer;
+}
+
+/* la máquina late mientras falte preparar un milkshake */
+.bandeja.pendiente {
+  animation: partida-pulso 1.5s ease-in-out infinite;
+}
+
+@keyframes partida-pulso {
+  0%, 100% {
+    box-shadow: 0 0 0 0.15cqw rgba(255, 160, 205, 0.25), 0 0 0.6cqw rgba(255, 150, 200, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 0.25cqw rgba(255, 175, 215, 0.95), 0 0 1.8cqw rgba(255, 150, 200, 0.85);
+  }
+
 }

@@ -14,15 +14,47 @@ const TIEMPO_PARTIDA = 1000000;
 const MODO_PRUEBA_PARRILLA = false;
 const RUTA_PARRILLA = '/parrilla';
 
-// Milkshakes: al tocar la máquina del fondo se va a otra página (todavía no existe).
-// Mientras tanto, true = al tocar la máquina se da el milkshake por hecho (para probar).
+// Milkshakes: al tocar la máquina del fondo se va a otra página.
+// true = al tocar la máquina se da el milkshake por hecho (para probar).
 const MODO_PRUEBA_MILKSHAKE = false;
 const RUTA_MILKSHAKE = '/milkshakes';
 const PROBABILIDAD_MILKSHAKE = 0.6; // 1 = todos los pedidos piden milkshake
 const MAX_MILKSHAKES = 2; // cantidad máxima de milkshakes por pedido
 
+// Freidora: al tocar la freidora del fondo se va a /freidora.
+// true = al tocar la freidora se da lo frito por hecho (para probar).
+const MODO_PRUEBA_FREIDORA = false;
+const RUTA_FREIDORA = '/freidora';
+const PROBABILIDAD_FRITOS = 0.5; // 1 = todos los pedidos piden algo de la freidora
+const MAX_FRITOS = 2; // cantidad máxima de fritos por pedido
+
+// Sabores que puede pedir un cliente. El "id" es el que viaja a la página
+// de milkshakes dentro de la partida guardada (saboresMilkshake).
+const SABORES_MILKSHAKE = [
+  { id: 'vainilla', nombre: 'Vainilla', emoji: '🍦' },
+  { id: 'chocolate', nombre: 'Chocolate', emoji: '🍫' },
+  { id: 'cookies-cream', nombre: 'Cookies & Cream', emoji: '🍪' },
+  { id: 'frutilla', nombre: 'Frutilla', emoji: '🍓' },
+];
+
+const saborPorId = (id) =>
+  SABORES_MILKSHAKE.find((s) => s.id === id) ?? SABORES_MILKSHAKE[0];
+
+// Cosas que puede pedir un cliente de la freidora. El "id" viaja a la página
+// /freidora dentro de la partida guardada (fritosPedidos). Editá la lista a gusto.
+const FRITOS = [
+  { id: 'papas', nombre: 'Papas fritas', emoji: '🍟' },
+];
+
+const fritoPorId = (id) => FRITOS.find((f) => f.id === id) ?? FRITOS[0];
+
 // Zona clickeable de la máquina de milkshakes (en % del escenario)
 const MAQUINA_MILKSHAKE = { left: 68.3, top: 25, width: 10.7, height: 21 };
+
+// Zona clickeable de la freidora (en % del escenario).
+// OJO: son posiciones aproximadas. Poné MOSTRAR_ZONAS en true para ver el
+// recuadro y movelo (left / top / width / height) hasta que quede sobre la freidora.
+const FREIDORA = { left: 57, top: 25, width: 10.7, height: 21 };
 
 // true = dibuja un recuadro verde sobre cada bandeja con su nombre,
 // para ajustar las posiciones de BANDEJAS si no coinciden con el fondo.
@@ -44,6 +76,10 @@ const normalizar = (texto = '') =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[_-]/g, ' ')
     .trim();
+
+// Por si el backend mandara un milkshake dentro de la receta o de los
+// ingredientes: un milkshake nunca debe mezclarse con la hamburguesa.
+const esMilkshake = (ing) => /milkshake|batido/.test(normalizar(ing?.nombre));
 
 // Identifica a un ingrediente de forma segura. Se usa el NOMBRE (es lo que
 // coincide entre /orden-aleatoria y /ingredientes). Antes se comparaba por
@@ -219,7 +255,7 @@ const recortarImagen = (src) =>
     img.src = src;
   });
 
-// Partida guardada al salir hacia la parrilla / máquina de milkshakes
+// Partida guardada al salir hacia la parrilla / milkshakes / freidora
 const leerPartidaGuardada = () => {
   try {
     const texto = sessionStorage.getItem('partida');
@@ -246,9 +282,17 @@ export default function JuegoHamburguesa() {
   const [puntaje, setPuntaje] = useState(350);
   const [pausado, setPausado] = useState(false);
 
-  // Milkshakes pedidos / ya preparados en este pedido
-  const [milkshakesPedidos, setMilkshakesPedidos] = useState(0);
+  // Milkshakes de este pedido: lista de sabores pedidos, ej. ['vainilla', 'frutilla'].
+  // La cantidad pedida sale de la longitud de la lista.
+  const [saboresMilkshake, setSaboresMilkshake] = useState([]);
+  const milkshakesPedidos = saboresMilkshake.length;
   const [milkshakesListos, setMilkshakesListos] = useState(0);
+
+  // Fritos de este pedido (freidora): lista de ids, ej. ['papas', 'nuggets'].
+  // La cantidad pedida sale de la longitud de la lista.
+  const [fritosPedidos, setFritosPedidos] = useState([]);
+  const cantidadFritos = fritosPedidos.length;
+  const [fritosListos, setFritosListos] = useState(0);
 
   // Imágenes recortadas: { '/lechuga.png': { url, w, h } }
   const [recortes, setRecortes] = useState({});
@@ -260,7 +304,7 @@ export default function JuegoHamburguesa() {
   const [zonaActiva, setZonaActiva] = useState(null); // 'plato' | 'parrilla' | null
   const [aviso, setAviso] = useState('');
 
-  // Cuántas capas se recuperaron al volver de la parrilla / milkshakes.
+  // Cuántas capas se recuperaron al volver de la parrilla / milkshakes / freidora.
   // Esas no repiten la animación de caída; solo caen las nuevas.
   const [restauradas, setRestauradas] = useState(0);
 
@@ -295,9 +339,24 @@ export default function JuegoHamburguesa() {
     setZonaActiva(null);
   };
 
+  // Todo lo que hay que recordar al salir hacia otra página
+  const partidaActual = (extra = {}) => ({
+    miHamburguesa,
+    recetaObjetivo,
+    tiempo,
+    puntaje,
+    milkshakesPedidos,
+    saboresMilkshake,
+    milkshakesListos,
+    fritosPedidos,
+    fritosListos,
+    guardadoEn: Date.now(),
+    ...extra,
+  });
+
   // Obtener ingredientes y pedido aleatorio.
-  // Si viene una partida guardada (al volver de la parrilla o de los
-  // milkshakes) se retoma en vez de empezar un pedido nuevo.
+  // Si viene una partida guardada (al volver de la parrilla, de los
+  // milkshakes o de la freidora) se retoma en vez de empezar un pedido nuevo.
   const iniciarJuego = async (guardada = null) => {
     // OJO: algunos botones llaman a esta función con el evento del click
     const partida =
@@ -314,6 +373,7 @@ export default function JuegoHamburguesa() {
       setRestauradas(0);
       setTiempo(TIEMPO_PARTIDA);
       setMilkshakesListos(0);
+      setFritosListos(0);
     }
 
     try {
@@ -356,22 +416,58 @@ export default function JuegoHamburguesa() {
         );
         setTiempo(Math.max(0, (partida.tiempo ?? TIEMPO_PARTIDA) - transcurrido));
         setPuntaje(partida.puntaje ?? 0);
-        setMilkshakesPedidos(partida.milkshakesPedidos ?? 0);
+        setSaboresMilkshake(
+          Array.isArray(partida.saboresMilkshake) ? partida.saboresMilkshake : []
+        );
         setMilkshakesListos(partida.milkshakesListos ?? 0);
+        setFritosPedidos(
+          Array.isArray(partida.fritosPedidos) ? partida.fritosPedidos : []
+        );
+        setFritosListos(partida.fritosListos ?? 0);
         sessionStorage.removeItem('partida');
 
         if (partida.resultadoParrilla === 'quemada') {
           mostrarAviso('🔥 ¡Se quemó la carne! Agarrá otra y volvé a cocinarla');
         } else if (partida.resultadoParrilla === 'cocinada') {
           mostrarAviso('🍖 ¡Carne en su punto! Ya está en tu hamburguesa');
+        } else if (partida.resultadoFreidora === 'quemada') {
+          mostrarAviso('🔥 ¡Se quemó lo de la freidora! Volvé a freírlo');
+        } else if (partida.resultadoFreidora === 'cocinada') {
+          mostrarAviso('🍟 ¡Frito en su punto!');
         }
       } else {
-        setRecetaObjetivo(asegurarCarne(ordenData, ingredientesData));
-        setTodosLosIngredientes(ingredientesData);
-        setMilkshakesPedidos(
+        // Los milkshakes nunca forman parte de la receta de la hamburguesa
+        const recetaLimpia = ordenData.filter((o) => !esMilkshake(o));
+        const ingredientesLimpios = ingredientesData.filter((i) => !esMilkshake(i));
+
+        setRecetaObjetivo(asegurarCarne(recetaLimpia, ingredientesLimpios));
+        setTodosLosIngredientes(ingredientesLimpios);
+
+        // Cada milkshake pide un sabor al azar (puede repetirse)
+        const cantidad =
           Math.random() < PROBABILIDAD_MILKSHAKE
             ? 1 + Math.floor(Math.random() * MAX_MILKSHAKES)
-            : 0
+            : 0;
+        setSaboresMilkshake(
+          Array.from(
+            { length: cantidad },
+            () =>
+              SABORES_MILKSHAKE[
+                Math.floor(Math.random() * SABORES_MILKSHAKE.length)
+              ].id
+          )
+        );
+
+        // Cada frito de la freidora pide algo al azar (puede repetirse)
+        const cantidadFrit =
+          Math.random() < PROBABILIDAD_FRITOS
+            ? 1 + Math.floor(Math.random() * MAX_FRITOS)
+            : 0;
+        setFritosPedidos(
+          Array.from(
+            { length: cantidadFrit },
+            () => FRITOS[Math.floor(Math.random() * FRITOS.length)].id
+          )
         );
       }
     } catch (error) {
@@ -497,16 +593,7 @@ export default function JuegoHamburguesa() {
     // Guardamos la partida para retomarla al volver de la parrilla
     sessionStorage.setItem(
       'partida',
-      JSON.stringify({
-        miHamburguesa,
-        recetaObjetivo,
-        tiempo,
-        puntaje,
-        milkshakesPedidos,
-        milkshakesListos,
-        guardadoEn: Date.now(),
-        ingredienteACocinar: ingrediente,
-      })
+      JSON.stringify(partidaActual({ ingredienteACocinar: ingrediente }))
     );
     router.push(RUTA_PARRILLA);
   };
@@ -526,25 +613,45 @@ export default function JuegoHamburguesa() {
     }
 
     if (MODO_PRUEBA_MILKSHAKE) {
+      const sabor = saborPorId(saboresMilkshake[milkshakesListos]);
       setMilkshakesListos((n) => n + 1);
-      mostrarAviso('🥤 Milkshake listo (modo prueba)');
+      mostrarAviso(`🥤 Milkshake de ${sabor.nombre} listo (modo prueba)`);
       return;
     }
 
-    // Guardamos la partida para retomarla al volver de la máquina
-    sessionStorage.setItem(
-      'partida',
-      JSON.stringify({
-        miHamburguesa,
-        recetaObjetivo,
-        tiempo,
-        puntaje,
-        milkshakesPedidos,
-        milkshakesListos,
-        guardadoEn: Date.now(),
-      })
-    );
+    // Guardamos la partida para retomarla al volver de la máquina.
+    // La página de milkshakes lee el sabor que toca preparar con:
+    // saboresMilkshake[milkshakesListos]
+    sessionStorage.setItem('partida', JSON.stringify(partidaActual()));
     router.push(RUTA_MILKSHAKE);
+  };
+
+  // Tocar la freidora
+  const tocarFreidora = () => {
+    // Si hay un ingrediente en la mano, este click solo lo suelta
+    if (!activoRef.current || manoRef.current) return;
+
+    if (cantidadFritos === 0) {
+      mostrarAviso('Este pedido no lleva nada de la freidora');
+      return;
+    }
+    if (fritosListos >= cantidadFritos) {
+      mostrarAviso('Ya freíste todo lo del pedido 🍟');
+      return;
+    }
+
+    if (MODO_PRUEBA_FREIDORA) {
+      const frito = fritoPorId(fritosPedidos[fritosListos]);
+      setFritosListos((n) => n + 1);
+      mostrarAviso(`${frito.emoji} ${frito.nombre} listas (modo prueba)`);
+      return;
+    }
+
+    // Guardamos la partida para retomarla al volver de la freidora.
+    // La página /freidora lee qué toca freír con:
+    // fritosPedidos[fritosListos]
+    sessionStorage.setItem('partida', JSON.stringify(partidaActual()));
+    router.push(RUTA_FREIDORA);
   };
 
   // Pantalla completa
@@ -697,7 +804,11 @@ export default function JuegoHamburguesa() {
         alert('¡Falta preparar el milkshake! Tocá la máquina de milkshakes.');
         return;
       }
-      const puntos = 100 + milkshakesPedidos * 50;
+      if (fritosListos < cantidadFritos) {
+        alert('¡Falta freír lo del pedido! Tocá la freidora.');
+        return;
+      }
+      const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
       setPuntaje((anterior) => anterior + puntos);
       alert(`¡Pedido correcto! Ganaste ${puntos} puntos.`);
       iniciarJuego();
@@ -729,7 +840,9 @@ export default function JuegoHamburguesa() {
     recetaObjetivo.length > 0 &&
     correctos === recetaObjetivo.length;
   const faltanMilkshakes = milkshakesListos < milkshakesPedidos;
-  const pedidoCompleto = hamburguesaCompleta && !faltanMilkshakes;
+  const faltanFritos = fritosListos < cantidadFritos;
+  const pedidoCompleto =
+    hamburguesaCompleta && !faltanMilkshakes && !faltanFritos;
 
   const sostieneParrilla = mano && esCarne(mano);
   const sostienePlato = mano && !esCarne(mano);
@@ -844,29 +957,64 @@ export default function JuegoHamburguesa() {
             })}
           </ul>
 
+          {/* Los milkshakes van en su propia sección, siempre debajo de los ingredientes */}
           {milkshakesPedidos > 0 && (
-            <ul className="ticket-lista ticket-extra">
-              {Array.from({ length: milkshakesPedidos }).map((_, i) => {
-                const hecho = i < milkshakesListos;
-                return (
-                  <li
-                    key={`milkshake-${i}`}
-                    className={`ticket-item ${hecho ? 'hecho' : ''} ${
-                      i === milkshakesListos ? 'siguiente' : ''
-                    }`}
-                  >
-                    <span className="ticket-icono emoji">🥤</span>
-                    <span className="ticket-nombre">Milkshake</span>
-                    <span className="ticket-marca">{hecho ? '✓' : ''}</span>
-                  </li>
-                );
-              })}
-            </ul>
+            <section className="ticket-bebidas">
+              <h3 className="ticket-subtitulo">BEBIDAS</h3>
+              <ul className="ticket-lista ticket-extra">
+                {saboresMilkshake.map((idSabor, i) => {
+                  const sabor = saborPorId(idSabor);
+                  const hecho = i < milkshakesListos;
+                  return (
+                    <li
+                      key={`milkshake-${i}`}
+                      className={`ticket-item ${hecho ? 'hecho' : ''} ${
+                        i === milkshakesListos ? 'siguiente' : ''
+                      }`}
+                    >
+                      <span className="ticket-icono emoji">{sabor.emoji}</span>
+                      <span className="ticket-nombre">
+                        Milkshake de {sabor.nombre}
+                      </span>
+                      <span className="ticket-marca">{hecho ? '✓' : ''}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {/* Lo de la freidora va en su propia sección, debajo de las bebidas */}
+          {cantidadFritos > 0 && (
+            <section className="ticket-bebidas">
+              <h3 className="ticket-subtitulo">FREIDORA</h3>
+              <ul className="ticket-lista ticket-extra">
+                {fritosPedidos.map((idFrito, i) => {
+                  const frito = fritoPorId(idFrito);
+                  const hecho = i < fritosListos;
+                  return (
+                    <li
+                      key={`frito-${i}`}
+                      className={`ticket-item ${hecho ? 'hecho' : ''} ${
+                        i === fritosListos ? 'siguiente' : ''
+                      }`}
+                    >
+                      <span className="ticket-icono emoji">{frito.emoji}</span>
+                      <span className="ticket-nombre">{frito.nombre}</span>
+                      <span className="ticket-marca">{hecho ? '✓' : ''}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
 
           {hayError && <p className="ticket-nota error">¡Ese no va! Usá DESHACER</p>}
           {!hayError && hamburguesaCompleta && faltanMilkshakes && (
             <p className="ticket-nota">Falta el milkshake 🥤</p>
+          )}
+          {!hayError && hamburguesaCompleta && faltanFritos && (
+            <p className="ticket-nota">Falta la freidora 🍟</p>
           )}
           {pedidoCompleto && <p className="ticket-nota ok">¡Listo! Entregalo 👉</p>}
         </aside>
@@ -972,6 +1120,23 @@ export default function JuegoHamburguesa() {
             top: `${MAQUINA_MILKSHAKE.top}%`,
             width: `${MAQUINA_MILKSHAKE.width}%`,
             height: `${MAQUINA_MILKSHAKE.height}%`,
+          }}
+        />
+
+        {/* Freidora (del fondo) */}
+        <button
+          type="button"
+          data-nombre="Freidora"
+          title="Freidora"
+          onPointerDown={tocarFreidora}
+          className={`bandeja maquina ${
+            faltanFritos ? 'pendiente' : ''
+          } ${!activo ? 'deshabilitado' : ''}`}
+          style={{
+            left: `${FREIDORA.left}%`,
+            top: `${FREIDORA.top}%`,
+            width: `${FREIDORA.width}%`,
+            height: `${FREIDORA.height}%`,
           }}
         />
 

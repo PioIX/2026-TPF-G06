@@ -1,33 +1,3 @@
-/*.partida-pila-hamburguesa {
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.partida-imagen-ingrediente {
-  display: block;
-  object-fit: contain;
-  margin-top: -85px;
-  position: relative;
-  width: 140px;
-  height: auto;
-}/* =========================================================
-   ESCENARIO
-   Todo se mide en "cqw" (1% del ancho del escenario), así
-   el juego escala igual en cualquier pantalla y las zonas
-   siempre quedan sobre el plato y la parrilla del fondo.
-   ========================================================= */
-/* =========================================================
-   ESCENARIO
-   Todo se mide en "cqw" (1% del ancho del escenario), así
-   el juego escala igual en cualquier pantalla y las zonas
-   siempre quedan sobre el plato y la parrilla del fondo.
-   ========================================================= */
-
-/* Ocupa toda la pantalla. El fondo se estira para llenarla; solo en
-   ventanas muy raras (más anchas que 2.4:1 o más altas que 1.45:1)
-   quedan franjas oscuras para no deformar demasiado la imagen. */
 .partida-juego {
   position: fixed;
   inset: 0;
@@ -553,7 +523,7 @@
 }
 
 /* =========================================================
-   MILKSHAKES
+   MILKSHAKES Y FREIDORA (SECCIONES DEL TICKET)
    ========================================================= */
 
 .ticket-extra {
@@ -573,20 +543,64 @@
   filter: grayscale(1);
 }
 
+/* =========================================================
+   MÁQUINAS (milkshake y freidora)
+   ---------------------------------------------------------
+   COLORES:
+     MILKSHAKE -> ROSA     rgb(255, 150, 200)
+     FREIDORA  -> AMARILLO rgb(255, 215, 60)
+   Cada máquina tiene su propia clase (.milkshake / .freidora),
+   así se puede cambiar el color de una sin afectar a la otra.
+   ========================================================= */
+
 .bandeja.maquina {
   cursor: pointer;
 }
 
-/* la máquina late mientras falte preparar un milkshake */
-.bandeja.pendiente {
-  animation: partida-pulso 1.5s ease-in-out infinite;
+/* ---------- MILKSHAKE (rosa) ---------- */
+
+/* al pasar el mouse */
+.partida-escenario:not(.con-mano) .bandeja.milkshake:hover {
+  background: rgba(255, 150, 200, 0.18);
+  box-shadow:
+    0 0 0 0.2cqw rgba(255, 175, 215, 0.95),
+    0 0 1.4cqw rgba(255, 150, 200, 0.75);
 }
 
-@keyframes partida-pulso {
+/* late mientras falte preparar un milkshake */
+.bandeja.milkshake.pendiente {
+  animation: partida-pulso-milkshake 1.5s ease-in-out infinite;
+}
+
+@keyframes partida-pulso-milkshake {
   0%, 100% {
     box-shadow: 0 0 0 0.15cqw rgba(255, 160, 205, 0.25), 0 0 0.6cqw rgba(255, 150, 200, 0.3);
   }
   50% {
     box-shadow: 0 0 0 0.25cqw rgba(255, 175, 215, 0.95), 0 0 1.8cqw rgba(255, 150, 200, 0.85);
+  }
+}
+
+/* ---------- FREIDORA (amarillo) ---------- */
+
+/* al pasar el mouse */
+.partida-escenario:not(.con-mano) .bandeja.freidora:hover {
+  background: rgba(255, 215, 60, 0.18);
+  box-shadow:
+    0 0 0 0.2cqw rgba(255, 225, 90, 0.95),
+    0 0 1.4cqw rgba(255, 215, 60, 0.75);
+}
+
+/* late mientras falte freír algo del pedido */
+.bandeja.freidora.pendiente {
+  animation: partida-pulso-freidora 1.5s ease-in-out infinite;
+}
+
+@keyframes partida-pulso-freidora {
+  0%, 100% {
+    box-shadow: 0 0 0 0.15cqw rgba(255, 220, 70, 0.25), 0 0 0.6cqw rgba(255, 215, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 0.25cqw rgba(255, 230, 100, 0.95), 0 0 1.8cqw rgba(255, 215, 60, 0.85);
   }
 }

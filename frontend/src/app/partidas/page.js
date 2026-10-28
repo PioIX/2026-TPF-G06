@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import './partidas.css';
 
 const API_URL = 'http://localhost:4000/api';
 
-// Tiempo de cada pedido (lo dejé como lo tenías; ponelo en 60 para la versión final)
+// Tiempo de cada pedido en segundos (ponelo en 60 para la versión final)
 const TIEMPO_PARTIDA = 1000000;
 
 // false = al soltar una carne en la parrilla se va a la página /parrilla.
@@ -272,12 +273,12 @@ export default function JuegoHamburguesa() {
   const router = useRouter();
 
   const [todosLosIngredientes, setTodosLosIngredientes] = useState([]);
-  const [pedido, setPedido] = useState({ hamburguesa: [], papas: null, bebida: null });
+  const [recetaObjetivo, setRecetaObjetivo] = useState([]);
   const [miHamburguesa, setMiHamburguesa] = useState([]);
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [tiempo, setTiempo] = useState(TIEMPO_INICIAL);
+  const [tiempo, setTiempo] = useState(TIEMPO_PARTIDA);
   const [puntaje, setPuntaje] = useState(350);
   const [pausado, setPausado] = useState(false);
 
@@ -388,7 +389,7 @@ export default function JuegoHamburguesa() {
       const ingredientesData = await resIngredientes.json();
       const ordenData = partida ? partida.recetaObjetivo : await resOrden.json();
 
-      if (!pedidoData || !Array.isArray(pedidoData.hamburguesa) || !Array.isArray(ingredientesData)) {
+      if (!Array.isArray(ordenData) || !Array.isArray(ingredientesData)) {
         throw new Error('La respuesta del servidor no es válida.');
       }
 
@@ -479,6 +480,7 @@ export default function JuegoHamburguesa() {
     }
   };
 
+  // Cargar el primer pedido
   useEffect(() => {
     iniciarJuego(leerPartidaGuardada());
     return () => clearTimeout(avisoTimerRef.current);
@@ -537,7 +539,7 @@ export default function JuegoHamburguesa() {
     const { sinBandeja } = asignarBandejas(todosLosIngredientes);
     if (sinBandeja.length > 0) {
       console.warn(
-        'Ingredientes sin bandeja en el fondo (aparecen en el estante extra):',
+        'Ingredientes sin bandeja en el fondo:',
         sinBandeja.map((i) => i.nombre)
       );
     }
@@ -545,7 +547,9 @@ export default function JuegoHamburguesa() {
 
   // Cronómetro
   useEffect(() => {
-    if (cargando || pausado || tiempo <= 0 || error) return;
+    if (cargando || pausado || tiempo <= 0 || error) {
+      return;
+    }
 
     const intervalo = setInterval(() => {
       setTiempo((anterior) => Math.max(0, anterior - 1));
@@ -776,36 +780,24 @@ export default function JuegoHamburguesa() {
 
   // Eliminar el último ingrediente agregado
   const deshacer = () => {
-    if (juegoBloqueado) return;
     setMiHamburguesa((anterior) => anterior.slice(0, -1));
     setRestauradas((r) => Math.min(r, Math.max(0, miHamburguesa.length - 1)));
   };
 
-  // Elegir un tamaño; tocar el mismo tamaño otra vez lo quita
-  const elegirPapas = (tamano) => {
-    if (juegoBloqueado) return;
-    setPapasElegidas((actual) => (actual === tamano ? null : tamano));
-  };
-  const elegirBebida = (tamano) => {
-    if (juegoBloqueado) return;
-    setBebidaElegida((actual) => (actual === tamano ? null : tamano));
-  };
-
+  // Verificar el pedido
   const verificar = () => {
-    if (juegoBloqueado) return;
+    if (tiempo <= 0 || pausado || cargando || error) {
+      return;
+    }
 
     if (miHamburguesa.length !== recetaObjetivo.length) {
-      mostrarMensaje('¡La cantidad de ingredientes no coincide!', 'mal');
+      alert('¡La cantidad de ingredientes no coincide!');
       return;
     }
 
     const esCorrecta = miHamburguesa.every(
       (ingrediente, indice) => clave(ingrediente) === clave(recetaObjetivo[indice])
     );
-    if (!hamburguesaOk) {
-      mostrarMensaje('La hamburguesa no coincide. ¡Probá de nuevo!', 'mal');
-      return;
-    }
 
     if (esCorrecta) {
       if (milkshakesListos < milkshakesPedidos) {
@@ -823,18 +815,12 @@ export default function JuegoHamburguesa() {
     } else {
       alert('El pedido no coincide. ¡Probá de nuevo!');
     }
-
-    // Más puntos por pedidos más completos
-    const extras = (papasPedidas ? 1 : 0) + (bebidaPedida ? 1 : 0);
-    const ganados = 100 + extras * 40;
-    setPuntaje((anterior) => anterior + ganados);
-    mostrarMensaje(`¡Pedido correcto! +${ganados} puntos`, 'ok');
-    setTimeout(iniciarJuego, 1200);
   };
 
   const formatearTiempo = (segundos) => {
     const minutos = Math.floor(segundos / 60);
     const resto = segundos % 60;
+
     return `${String(minutos).padStart(2, '0')}:${String(resto).padStart(2, '0')}`;
   };
 
@@ -887,7 +873,7 @@ export default function JuegoHamburguesa() {
   });
 
   /* ---------- BANDEJAS ---------- */
-  const { asignadas, sinBandeja } = asignarBandejas(todosLosIngredientes);
+  const { asignadas } = asignarBandejas(todosLosIngredientes);
 
   /* ---------- PANTALLAS DE CARGA / ERROR ---------- */
   if (error) {
@@ -1120,13 +1106,13 @@ export default function JuegoHamburguesa() {
           })
         )}
 
-        {/* Máquina de milkshakes (del fondo) */}
+        {/* Máquina de milkshakes (del fondo) - color ROSA */}
         <button
           type="button"
           data-nombre="Milkshakes"
           title="Milkshakes"
           onPointerDown={tocarMaquinaMilkshake}
-          className={`bandeja maquina ${
+          className={`bandeja maquina milkshake ${
             faltanMilkshakes ? 'pendiente' : ''
           } ${!activo ? 'deshabilitado' : ''}`}
           style={{
@@ -1137,13 +1123,13 @@ export default function JuegoHamburguesa() {
           }}
         />
 
-        {/* Freidora (del fondo) */}
+        {/* Freidora (del fondo) - color AMARILLO */}
         <button
           type="button"
           data-nombre="Freidora"
           title="Freidora"
           onPointerDown={tocarFreidora}
-          className={`bandeja maquina ${
+          className={`bandeja maquina freidora ${
             faltanFritos ? 'pendiente' : ''
           } ${!activo ? 'deshabilitado' : ''}`}
           style={{

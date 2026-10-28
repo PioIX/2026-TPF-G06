@@ -1,18 +1,18 @@
-/*.pila-hamburguesa {
+/*.partida-pila-hamburguesa {
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
   justify-content: flex-end;
 }
 
-.imagen-ingrediente {
+.partida-imagen-ingrediente {
   display: block;
   object-fit: contain;
   margin-top: -85px;
   position: relative;
   width: 140px;
   height: auto;
-}*//* =========================================================
+}/* =========================================================
    ESCENARIO
    Todo se mide en "cqw" (1% del ancho del escenario), así
    el juego escala igual en cualquier pantalla y las zonas
@@ -28,7 +28,7 @@
 /* Ocupa toda la pantalla. El fondo se estira para llenarla; solo en
    ventanas muy raras (más anchas que 2.4:1 o más altas que 1.45:1)
    quedan franjas oscuras para no deformar demasiado la imagen. */
-.juego {
+.partida-juego {
   position: fixed;
   inset: 0;
   display: flex;
@@ -39,7 +39,7 @@
   z-index: 50;
 }
 
-.escenario {
+.partida-escenario {
   position: relative;
   container-type: inline-size;
   width: min(100vw, calc(100vh * 2.4));
@@ -53,7 +53,7 @@
   font-family: system-ui, sans-serif;
 }
 
-.escenario img {
+.partida-escenario img {
   -webkit-user-drag: none;
 }
 
@@ -168,7 +168,7 @@
 /* ingrediente equivocado */
 .ticket-item.fallo {
   background: #ffd9d4;
-  animation: temblor 0.3s;
+  animation: partida-temblor 0.3s;
 }
 .ticket-item.fallo .ticket-marca {
   color: #c0392b;
@@ -187,7 +187,7 @@
   color: #2e8b3d;
 }
 
-@keyframes temblor {
+@keyframes partida-temblor {
   25% { transform: translateX(-3px); }
   75% { transform: translateX(3px); }
 }
@@ -311,37 +311,37 @@
 
 /* =========================================================
    HAMBURGUESA SOBRE EL PLATO
-   .pila es el punto de apoyo (centro del plato). Si la hamburguesa
+   .partida-pila es el punto de apoyo (centro del plato). Si la hamburguesa
    se ve muy arriba/abajo, cambiá "bottom"; si está corrida, "left".
-   Cada .capa se posiciona sola (ver "perfil" en page.js para
+   Cada .partida-capa se posiciona sola (ver "perfil" en page.js para
    ajustar tamaños y cuánto se superponen los ingredientes).
    ========================================================= */
 
-.pila {
+.partida-pila {
   position: absolute;
   left: 50.2%;
-  bottom: 31.5%;
+  bottom: 31%;
   width: 0;
   height: 0;
   pointer-events: none;
   z-index: 6;
 }
 
-.capa {
+.partida-capa {
   position: absolute;
   display: flex;
   transform: translateX(-50%); /* centra cada ingrediente sobre el plato */
 }
 
-.imagen-ingrediente {
+.partida-imagen-ingrediente {
   width: 100%;
   height: auto;
   display: block;
   filter: drop-shadow(0 0.2cqw 0.25cqw rgba(0, 0, 0, 0.35));
-  animation: caer 0.25s ease-out;
+  animation: partida-caer 0.25s ease-out;
 }
 
-@keyframes caer {
+@keyframes partida-caer {
   from {
     transform: translateY(-3cqw);
     opacity: 0;
@@ -402,7 +402,7 @@
 }
 
 /* resplandor al pasar el mouse (no mientras llevás un ingrediente) */
-.escenario:not(.con-mano) .bandeja:hover {
+.partida-escenario:not(.con-mano) .bandeja:hover {
   background: rgba(255, 244, 200, 0.16);
   box-shadow:
     0 0 0 0.2cqw rgba(255, 232, 150, 0.95),
@@ -428,7 +428,7 @@
   pointer-events: none;
   transition: opacity 0.15s;
 }
-.escenario:not(.con-mano) .bandeja:hover::after {
+.partida-escenario:not(.con-mano) .bandeja:hover::after {
   opacity: 1;
 }
 
@@ -528,7 +528,7 @@
   font-size: clamp(12px, 1.3cqw, 22px);
   border-radius: 999px;
   z-index: 30;
-  animation: aparecer 0.2s ease-out;
+  animation: partida-aparecer 0.2s ease-out;
 }
 
 .cartel-central {
@@ -547,7 +547,7 @@
 }
 .cartel-central.rojo { color: #fca5a5; }
 
-@keyframes aparecer {
+@keyframes partida-aparecer {
   from { opacity: 0; transform: translateX(-50%) translateY(-1cqw); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
@@ -579,10 +579,10 @@
 
 /* la máquina late mientras falte preparar un milkshake */
 .bandeja.pendiente {
-  animation: pulso 1.5s ease-in-out infinite;
+  animation: partida-pulso 1.5s ease-in-out infinite;
 }
 
-@keyframes pulso {
+@keyframes partida-pulso {
   0%, 100% {
     box-shadow: 0 0 0 0.15cqw rgba(255, 160, 205, 0.25), 0 0 0.6cqw rgba(255, 150, 200, 0.3);
   }

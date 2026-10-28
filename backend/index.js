@@ -196,7 +196,43 @@ app.get('/api/orden-aleatoria', async (req, res) => {
   }
 });
 
+// 3. Pedido completo: hamburguesa + papas (opcional) + bebida (opcional)
+const TAMANOS = ['chica', 'mediana', 'grande'];
+const BEBIDAS = ['cola']; // agregá más cuando tengas más imágenes
+const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
+app.get('/api/pedido-aleatorio', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+
+    const panInf = ingredientes.find(i => i.seccion === 'abajo');
+    const panSup = ingredientes.find(i => i.seccion === 'arriba');
+    const rellenosPosibles = ingredientes.filter(
+      i => i.seccion !== 'abajo' && i.seccion !== 'arriba'
+    );
+
+    if (!panInf || !panSup) {
+      return res.status(400).json({ error: 'Faltan los panes en la tabla Ingredientes' });
+    }
+
+    const cantidadRelleno = Math.floor(Math.random() * 3) + 2;
+    const relleno = [];
+    for (let i = 0; i < cantidadRelleno; i++) {
+      relleno.push(elegir(rellenosPosibles));
+    }
+
+    res.json({
+      hamburguesa: [panInf, ...relleno, panSup],
+      papas: Math.random() < 0.6 ? elegir(TAMANOS) : null,
+      bebida: Math.random() < 0.6
+        ? { tipo: elegir(BEBIDAS), tamano: elegir(TAMANOS) }
+        : null,
+    });
+  } catch (error) {
+    console.error('❌ Error al generar pedido:', error);
+    res.status(500).json({ error: 'Error interno al generar pedido' });
+  }
+});
 
 
 
@@ -302,7 +338,6 @@ app.get("/sala/partidas", async function (req, res) {
         p.nombre_partida,
         p.id_usuario,
         p.hora_final,
-        p.ranking,
         u.nombre AS creador_nombre
       FROM Partidas p
       LEFT JOIN Usuarios u ON p.id_usuario = u.id_usuario
@@ -318,7 +353,7 @@ app.get("/sala/partidas", async function (req, res) {
 // 2. Crear una nueva partida
 app.post("/sala/crear-partida", async function (req, res) {
   try {
-    const { id_usuario_creador, nombre_partida, ranking } = req.body;
+    const { id_usuario_creador, nombre_partida } = req.body;
 
     if (!id_usuario_creador) {
       return res.status(400).json({ 
@@ -338,10 +373,10 @@ app.post("/sala/crear-partida", async function (req, res) {
       .toISOString()
       .slice(0, 19)
       .replace("T", " ");
-    const valRanking = ranking || 0;  
+
     const query = `
-      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final, ranking) 
-      VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}', ${valRanking})
+      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final) 
+      VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}')
     `;
 
     const resultado = await realizarQuery(query);
@@ -359,6 +394,28 @@ app.post("/sala/crear-partida", async function (req, res) {
     });
   }
 });
+
+// Ranking de UNA partida: solo los jugadores que mandaron su puntaje
+  async function obtenerRanking(id_partida) {
+    return await realizarQuery(
+      `SELECT u.id_usuario, u.nombre, p.puntaje
+      FROM PuntajesPartida p
+      JOIN Usuarios u ON u.id_usuario = p.id_usuario
+      WHERE p.id_partida = ?
+      ORDER BY p.puntaje DESC`,
+      [id_partida]
+    );
+  }
+
+  app.get("/api/ranking/:id_partida", async (req, res) => {
+    try {
+      const ranking = await obtenerRanking(req.params.id_partida);
+      res.json({ ok: true, ranking });
+    } catch (error) {
+      console.error("❌ Error al obtener ranking:", error.message);
+      res.status(500).json({ ok: false, message: "Error al obtener el ranking" });
+    }
+  });
 
 const jugadoresEnPartida = [
   {
@@ -405,6 +462,7 @@ io.on("connection", (socket) => {
     }
   });
 
+
   socket.on("salir_sala", ({ id_partida, id_usuario }) => {
     socket.leave(`partida_${id_partida}`);
 
@@ -423,4 +481,29 @@ io.on("connection", (socket) => {
       }
     }
   });
+
+  socket.on("enviar_puntaje", async ({ id_partida, id_usuario, puntaje }, callback) => {
+    try {
+      await realizarQuery(
+        `INSERT INTO PuntajesPartida (id_partida, id_usuario, puntaje)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje)`,
+        [id_partida, id_usuario, puntaje]
+      );
+
+      const ranking = await obtenerRanking(id_partida);
+
+      io.to(`partida_${id_partida}`).emit("ranking_actualizado", {
+        id_partida,
+        ranking,
+        completo: ranking.length >= 2,
+      });
+
+      callback?.({ ok: true, ranking });
+    } catch (error) {
+      console.error("❌ Error al guardar puntaje:", error.message);
+      callback?.({ ok: false, msg: "Error al guardar el puntaje" });
+    }
+  });
+
 });

@@ -44,7 +44,15 @@ export default function Inicio() {
                         </button>
 
                         <div className="popup-contenido">
-                            {/* Escribí tus instrucciones acá */}
+                            <p>¡Bienvenido a Food Fast Rush!</p>
+                            <p>¿Estás listo para convertirte en chef?</p>
+                            <ul>
+                                <li>Mirá el pedido y prestá atención a los ingredientes que necesita cada cliente</li>
+                                <li>Seleccioná los ingredientes y colocá cada uno en el orden correcto para armar la hamburguesa.</li>
+                                <li>Completá el pedido con todos los ingredientes necesarios.</li>
+                                <li>Revisá que no falte nada antes de entregar la hamburguesa.</li>
+                                <li>¡Entregá la mayor cantidad de pedidos antes que tu rival y conseguí la mayor cantidad de puntos posible! ¡El que consigue más gana!</li>
+                            </ul>
                         </div>
                     </div>
                 </div>

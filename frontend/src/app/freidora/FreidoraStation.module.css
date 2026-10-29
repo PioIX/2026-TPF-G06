@@ -1,4 +1,12 @@
 /* El escenario mantiene la proporción de la imagen (1671 x 941) */
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1671 / 941;
+  overflow: hidden;
+  container-type: inline-size; /* permite usar cqw para el texto del ticket */
+  user-select: none;
+}
 
 /* Papas crudas de la mesada */
 .mesada {
@@ -23,7 +31,7 @@
   background: transparent;
 }
 
-/* Papas que viajan (mesada -> canasta, canasta -> bandeja) */
+/* Papas que viajan (mesada -> canasta, canasta -> cartón) */
 .vuelo {
   position: absolute;
   z-index: 20;
@@ -137,26 +145,116 @@
   50%      { box-shadow: 0 0 20px 6px rgba(255, 230, 140, 0.75); }
 }
 
-/* Papas terminadas sobre el papel de la bandeja */
-.porcion {
+/* ============ Cartones de papas (reemplazan a la bandeja) ============ */
+.cartonBtn {
   position: absolute;
-  z-index: 9;
+  z-index: 6;
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
-  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.35));
-  animation: aparecer 0.35s ease-out both;
+  filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.45));
+  transition: transform 0.2s, filter 0.2s, opacity 0.3s;
   -webkit-tap-highlight-color: transparent;
 }
-.porcion img {
+.cartonBtn img {
   object-fit: contain;
 }
-.porcion:hover,
-.porcion:focus-visible {
-  outline: 3px solid rgba(255, 245, 200, 0.9);
-  outline-offset: 4px;
-  border-radius: 12px;
+.cartonBtn:disabled {
+  cursor: default;
+}
+.cartonBtn:not(:disabled):hover,
+.cartonBtn:focus-visible {
+  transform: translateY(-6px);
+  outline: none;
+  filter: drop-shadow(0 0 10px rgba(255, 235, 150, 0.95)) drop-shadow(0 10px 8px rgba(0, 0, 0, 0.45));
+}
+.cartonSel {
+  transform: translateY(-8px);
+  filter: drop-shadow(0 0 12px rgba(255, 235, 150, 1)) drop-shadow(0 10px 8px rgba(0, 0, 0, 0.45));
+}
+.cartonLlamado {
+  animation: saltito 1.1s ease-in-out infinite;
+}
+@keyframes saltito {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.cartonApagado {
+  opacity: 0;
+  pointer-events: none;
+}
+.cartonLleno {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 10px rgba(0, 0, 0, 0.45));
+  animation: aparecer 0.35s ease-out both;
+}
+.cartonLleno img {
+  object-fit: contain;
+}
+
+/* Nombre del tamaño debajo de cada cartón */
+.etiqueta {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #b51d1d;
+  border-radius: 999px;
+  background: #fff6dc;
+  color: #9c1414;
+  font: 700 clamp(9px, 1.15cqw, 18px) "Trebuchet MS", system-ui, sans-serif;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.etiquetaSel {
+  background: #b51d1d;
+  color: #fff6dc;
+}
+
+/* Ticket del pedido */
+.ticket {
+  position: absolute;
+  z-index: 9;
+  box-sizing: border-box;
+  padding: 0.9em 1em;
+  font-size: 1.25cqw;
+  background: #fffdf2;
+  color: #3a2418;
+  border: 2px dashed #b51d1d;
+  border-radius: 6px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+  font-family: "Courier New", ui-monospace, monospace;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.45em;
+}
+.ticketTitulo {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 1.1em;
+  color: #9c1414;
+  border-bottom: 2px dashed #b51d1d;
+  padding-bottom: 0.35em;
+}
+.ticketLinea {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.05em;
+  font-weight: 700;
+}
+.ticketTamano {
+  text-align: center;
+  font-size: 1.6em;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #b51d1d;
 }
 
 /* Indicación al jugador */
@@ -178,6 +276,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .canasta { transition-duration: 0.01s; }
-  .burbujas, .asa { animation: none; }
+  .canasta, .cartonBtn { transition-duration: 0.01s; }
+  .burbujas, .asa, .cartonLlamado { animation: none; }
 }

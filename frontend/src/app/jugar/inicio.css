@@ -104,9 +104,142 @@ cursor: pointer;
 }
 
 .popup-contenido {
-color: #542b23;
-font-size: 14px;
-line-height: 1.6;
+  position: relative;
+  box-sizing: border-box;
+  padding: 64px 28px 24px 64px;       /* arriba: franja del block; izquierda: margen rojo */
+  color: #542b23;
+  font-family: "Courier New", Courier, ui-monospace, monospace;
+  font-size: 15px;
+  line-height: 28px;                  /* tiene que coincidir con el renglón del papel */
+  background-color: #fffbe8;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 27px,
+    rgba(84, 120, 160, 0.28) 27px 28px
+  );
+  background-position: 0 36px;
+  border-radius: 4px 4px 10px 10px;
+  box-shadow:
+    0 2px 0 #e8dcb8,
+    0 14px 30px rgba(40, 10, 5, 0.4);
+  transform: rotate(-0.6deg);
+  animation: comanda-entrada 0.3s cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+
+/* Margen rojo de la izquierda */
+.popup-contenido::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 44px;
+  width: 2px;
+  background: rgba(200, 40, 40, 0.55);
+}
+
+/* Franja superior del block, con agujeritos */
+.popup-contenido::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  border-radius: 4px 4px 0 0;
+  background:
+    radial-gradient(circle at 50% 50%, #3a1a14 0 5px, transparent 6px) 0 0 / 28px 30px repeat-x,
+    #b51d1d;
+}
+
+@keyframes comanda-entrada {
+  from { opacity: 0; transform: translateY(-24px) rotate(-3deg); }
+  to   { opacity: 1; transform: rotate(-0.6deg); }
+}
+
+/* Título, como sello de "COMANDA" */
+.popup-contenido h2,
+.popup-contenido h3 {
+  margin: 0 0 28px;
+  font-size: 1.4em;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #b51d1d;
+}
+
+/* Etiquetas: como el renglón escrito a mano */
+.popup-contenido label {
+  display: block;
+  font-size: 0.8em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* Campos: solo una línea, como completar a lapicera */
+.popup-contenido input,
+.popup-contenido select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 28px;
+  margin: 0 0 28px;
+  padding: 0 4px;
+  color: #1f3a6b;                     /* tinta azul */
+  font: inherit;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid #542b23;
+  border-radius: 0;
+}
+
+.popup-contenido input::placeholder {
+  color: rgba(84, 43, 35, 0.35);
+  font-weight: 400;
+}
+
+.popup-contenido input:focus,
+.popup-contenido select:focus {
+  outline: none;
+  background: rgba(255, 210, 74, 0.35); /* resaltador */
+  border-bottom-color: #b51d1d;
+}
+
+/* Botón: sello de goma */
+.popup-contenido button {
+  margin: 8px 12px 0 0;
+  padding: 2px 18px;
+  color: #b51d1d;
+  font: 700 0.95em "Courier New", Courier, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 3px double #b51d1d;
+  border-radius: 6px;
+  transform: rotate(-2deg);
+  cursor: pointer;
+  transition: transform 0.12s, background 0.12s, color 0.12s;
+}
+
+.popup-contenido button:hover {
+  color: #fffbe8;
+  background: #b51d1d;
+  transform: rotate(-2deg) scale(1.05);
+}
+
+.popup-contenido button:active {
+  transform: rotate(1deg) scale(0.96);
+}
+
+.popup-contenido button:focus-visible {
+  outline: 3px solid #ffd24a;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popup-contenido { animation: none; }
 }
 
 @media (max-width: 480px) {

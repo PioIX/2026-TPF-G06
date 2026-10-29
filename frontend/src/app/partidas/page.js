@@ -30,11 +30,12 @@ const MAX_FRITOS = 2; // cantidad máxima de fritos por pedido
 
 // Sabores que puede pedir un cliente. El "id" es el que viaja a la página
 // de milkshakes dentro de la partida guardada (saboresMilkshake).
+// "imagen" es el milkshake terminado que aparece en la bandeja (están en /public).
 const SABORES_MILKSHAKE = [
-  { id: 'vainilla', nombre: 'Vainilla', emoji: '🍦' },
-  { id: 'chocolate', nombre: 'Chocolate', emoji: '🍫' },
-  { id: 'cookies-cream', nombre: 'Cookies & Cream', emoji: '🍪' },
-  { id: 'frutilla', nombre: 'Frutilla', emoji: '🍓' },
+  { id: 'vainilla', nombre: 'Vainilla', emoji: '🍦', imagen: '/vainilla.png' },
+  { id: 'chocolate', nombre: 'Chocolate', emoji: '🍫', imagen: '/chocolate.png' },
+  { id: 'cookies-cream', nombre: 'Cookies & Cream', emoji: '🍪', imagen: '/cookies&cream.png' },
+  { id: 'frutilla', nombre: 'Frutilla', emoji: '🍓', imagen: '/frutilla.png' },
 ];
 
 const saborPorId = (id) =>
@@ -50,6 +51,25 @@ const fritoPorId = (id) => FRITOS.find((f) => f.id === id) ?? FRITOS[0];
 
 // Zona clickeable de la máquina de milkshakes (en % del escenario)
 const MAQUINA_MILKSHAKE = { left: 68.3, top: 25, width: 10.7, height: 21 };
+
+// Bandeja donde aparecen los milkshakes ya preparados (a la derecha del plato).
+// Poné MOSTRAR_ZONAS en true para ver un recuadro rosa con el lugar donde
+// quedan, y movelo con estos números hasta que apoyen sobre la bandeja:
+//   x          = centro de los milkshakes, en % del ANCHO  (más alto = más a la derecha)
+//   base       = dónde apoya la base del vaso, en % del ALTO medido desde abajo
+//                (más alto = más arriba; el plato está en el mismo nivel que la hamburguesa)
+//   ancho      = ancho de cada milkshake (en cqw, 1 = 1% del ancho de la escena)
+//   separacion         = distancia HORIZONTAL entre milkshakes (en cqw; 0 = uno justo detrás del otro)
+//   separacionVertical = distancia VERTICAL entre milkshakes (en cqw): el primero queda
+//                        más atrás (arriba) y el último más adelante (abajo), tapándolo un poco
+const BANDEJA_MILKSHAKE = {
+  x: 61.2,
+  base: 29.5,
+  ancho: 7,
+  separacion: 0,
+  separacionVertical: 3.6,
+};
+const PROPORCION_MILKSHAKE = 1199 / 600; // alto / ancho del PNG del milkshake
 
 // Zona clickeable de la freidora (en % del escenario).
 // OJO: son posiciones aproximadas. Poné MOSTRAR_ZONAS en true para ver el
@@ -288,6 +308,10 @@ export default function JuegoHamburguesa() {
   const milkshakesPedidos = saboresMilkshake.length;
   const [milkshakesListos, setMilkshakesListos] = useState(0);
 
+  // Cuántos milkshakes ya estaban en la bandeja antes de ir a la máquina.
+  // Esos no repiten la animación; solo aparece el que acabás de preparar.
+  const [milkshakesRestaurados, setMilkshakesRestaurados] = useState(0);
+
   // Fritos de este pedido (freidora): lista de ids, ej. ['papas', 'nuggets'].
   // La cantidad pedida sale de la longitud de la lista.
   const [fritosPedidos, setFritosPedidos] = useState([]);
@@ -373,6 +397,7 @@ export default function JuegoHamburguesa() {
       setRestauradas(0);
       setTiempo(TIEMPO_PARTIDA);
       setMilkshakesListos(0);
+      setMilkshakesRestaurados(0);
       setFritosListos(0);
     }
 
@@ -420,6 +445,10 @@ export default function JuegoHamburguesa() {
           Array.isArray(partida.saboresMilkshake) ? partida.saboresMilkshake : []
         );
         setMilkshakesListos(partida.milkshakesListos ?? 0);
+        // "milkshakesAntes" lo guarda la cocina al salir hacia la máquina
+        setMilkshakesRestaurados(
+          partida.milkshakesAntes ?? partida.milkshakesListos ?? 0
+        );
         setFritosPedidos(
           Array.isArray(partida.fritosPedidos) ? partida.fritosPedidos : []
         );
@@ -622,7 +651,10 @@ export default function JuegoHamburguesa() {
     // Guardamos la partida para retomarla al volver de la máquina.
     // La página de milkshakes lee el sabor que toca preparar con:
     // saboresMilkshake[milkshakesListos]
-    sessionStorage.setItem('partida', JSON.stringify(partidaActual()));
+    sessionStorage.setItem(
+      'partida',
+      JSON.stringify(partidaActual({ milkshakesAntes: milkshakesListos }))
+    );
     router.push(RUTA_MILKSHAKE);
   };
 
@@ -843,6 +875,12 @@ export default function JuegoHamburguesa() {
   const faltanFritos = fritosListos < cantidadFritos;
   const pedidoCompleto =
     hamburguesaCompleta && !faltanMilkshakes && !faltanFritos;
+
+  // Milkshakes ya preparados: se preparan en el orden del pedido, así que son
+  // los primeros "milkshakesListos" sabores de la lista
+  const milkshakesServidos = saboresMilkshake
+    .slice(0, milkshakesListos)
+    .map(saborPorId);
 
   const sostieneParrilla = mano && esCarne(mano);
   const sostienePlato = mano && !esCarne(mano);
@@ -1093,6 +1131,62 @@ export default function JuegoHamburguesa() {
                 style={indice < restauradas ? { animation: 'none' } : undefined}
               />
             </div>
+          ))}
+        </div>
+
+        {/* ---------- MILKSHAKES PREPARADOS (bandeja a la derecha del plato) ---------- */}
+        <div
+          className="partida-bandeja-milkshakes"
+          style={{
+            left: `${BANDEJA_MILKSHAKE.x}%`,
+            bottom: `${BANDEJA_MILKSHAKE.base}%`,
+          }}
+        >
+          {MOSTRAR_ZONAS && (
+            <span
+              className="partida-bandeja-milkshakes-guia"
+              style={{
+                width: `${
+                  (MAX_MILKSHAKES - 1) * BANDEJA_MILKSHAKE.separacion +
+                  BANDEJA_MILKSHAKE.ancho + 1
+                }cqw`,
+                height: `${
+                  BANDEJA_MILKSHAKE.ancho * PROPORCION_MILKSHAKE +
+                  (MAX_MILKSHAKES - 1) * BANDEJA_MILKSHAKE.separacionVertical
+                }cqw`,
+                bottom: `${
+                  -((MAX_MILKSHAKES - 1) * BANDEJA_MILKSHAKE.separacionVertical) / 2
+                }cqw`,
+              }}
+            >
+              🥤 milkshakes
+            </span>
+          )}
+
+          {milkshakesServidos.map((sabor, i) => (
+            <img
+              key={`milkshake-servido-${i}`}
+              src={sabor.imagen}
+              alt={`Milkshake de ${sabor.nombre}`}
+              title={`Milkshake de ${sabor.nombre}`}
+              draggable={false}
+              className="partida-milkshake-servido"
+              style={{
+                // posiciones fijas según la cantidad pedida: no se corren al sumar otro
+                left: `${
+                  (i - (Math.max(milkshakesPedidos, 1) - 1) / 2) *
+                  BANDEJA_MILKSHAKE.separacion
+                }cqw`,
+                // el primero queda atrás (arriba) y el último adelante (abajo)
+                bottom: `${
+                  ((Math.max(milkshakesPedidos, 1) - 1) / 2 - i) *
+                  BANDEJA_MILKSHAKE.separacionVertical
+                }cqw`,
+                zIndex: i + 1, // el de adelante tapa al de atrás
+                width: `${BANDEJA_MILKSHAKE.ancho}cqw`,
+                ...(i < milkshakesRestaurados ? { animation: 'none' } : {}),
+              }}
+            />
           ))}
         </div>
 

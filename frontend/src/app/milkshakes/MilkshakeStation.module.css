@@ -1,5 +1,5 @@
 /* El escenario mantiene la proporción de la imagen (1674 x 940) */
-/*.stage {
+.stage {
   position: relative;
   width: min(100vw, calc(100vh * 1674 / 940));
   aspect-ratio: 1674 / 940;
@@ -188,6 +188,12 @@
 .ticketSiguiente {
   background: #ffe9a8;
   font-weight: 700;
+}
+
+/* Milkshake que se está sirviendo y todavía no se entregó */
+.ticketEnCurso {
+  background: #e9f3ff;
+  font-style: italic;
 }
 
 .ticketHecho {

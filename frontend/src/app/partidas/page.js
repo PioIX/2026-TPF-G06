@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import './partidas.css';
+import { io } from 'socket.io-client';
 
 const API_URL = 'http://localhost:4000/api';
+const SOCKET_URL = 'http://localhost:4000';
 
 // Tiempo de cada pedido en segundos (ponelo en 60 para la versión final)
 const TIEMPO_PARTIDA = 1000000;
@@ -265,6 +267,21 @@ const leerPartidaGuardada = () => {
   }
 };
 
+
+// Ids de la sala y del jugador, guardados al entrar a la partida.
+// ⚠️ Si en tu app los guardás con otro nombre o de otra forma, cambialo acá.
+const leerIds = () => {
+  try {
+    return {
+      id_partida: Number(localStorage.getItem('id_partida')),
+      id_usuario: Number(localStorage.getItem('id_usuario')),
+    };
+  } catch (e) {
+    return { id_partida: 0, id_usuario: 0 };
+  }
+};
+
+
 /* =========================================================
    COMPONENTE
    ========================================================= */
@@ -319,6 +336,7 @@ export default function JuegoHamburguesa() {
   const modoClickRef = useRef(false);
   const soltarRef = useRef(() => {});
   const avisoTimerRef = useRef(null);
+  const terminadaRef = useRef(false); // evita mandar el puntaje dos veces
 
   const activo = !(pausado || tiempo <= 0 || cargando || error);
   const activoRef = useRef(activo);
@@ -339,6 +357,35 @@ export default function JuegoHamburguesa() {
     setZonaActiva(null);
   };
 
+  /* ---------- FIN DE LA PARTIDA: guardar puntaje e ir al ranking ---------- */
+  const finalizarPartida = () => {
+    if (terminadaRef.current) return;
+
+    const { id_partida, id_usuario } = leerIds();
+    if (!id_partida || !id_usuario) {
+      console.error('Falta id_partida o id_usuario en localStorage. Se encontró:', {
+        id_partida,
+        id_usuario,
+      });
+      mostrarAviso('No se pudo guardar el puntaje: falta la sala o el usuario');
+      return;
+    }
+
+    terminadaRef.current = true;
+    const socket = io(SOCKET_URL);
+
+    socket.emit('enviar_puntaje', { id_partida, id_usuario, puntaje }, (resp) => {
+      socket.disconnect();
+      if (resp?.ok) {
+        sessionStorage.removeItem('partida');
+        router.push(`/ranking/${id_partida}`);
+      } else {
+        terminadaRef.current = false;
+        mostrarAviso('No se pudo guardar el puntaje. Probá de nuevo.');
+      }
+    });
+  };
+  
   // Todo lo que hay que recordar al salir hacia otra página
   const partidaActual = (extra = {}) => ({
     miHamburguesa,
@@ -369,6 +416,7 @@ export default function JuegoHamburguesa() {
 
     if (!partida) {
       sessionStorage.removeItem('partida');
+      terminadaRef.current = false;   // 👈 línea nueva
       setMiHamburguesa([]);
       setRestauradas(0);
       setTiempo(TIEMPO_PARTIDA);
@@ -557,6 +605,12 @@ export default function JuegoHamburguesa() {
 
     return () => clearInterval(intervalo);
   }, [cargando, pausado, tiempo, error]);
+
+  // Se acabó el tiempo: se guarda el puntaje y se va al ranking de la sala
+  useEffect(() => {
+    if (tiempo === 0 && !cargando && !error) finalizarPartida();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiempo, cargando, error]);
 
   // Si se pausa o se acaba el tiempo con un ingrediente en la mano, se suelta
   useEffect(() => {
@@ -1162,8 +1216,8 @@ export default function JuegoHamburguesa() {
         {aviso && <div className="aviso">{aviso}</div>}
         {pausado && <div className="cartel-central">⏸ PAUSA</div>}
         {tiempo === 0 && (
-          <div className="cartel-central rojo">
-            ¡Se acabó el tiempo! Reiniciá para jugar otra vez.
+          <div className="cartel-central rojo"> 
+            ¡Se acabó el tiempo! Guardando tu puntaje... 
           </div>
         )}
       </div>

@@ -54,22 +54,60 @@ function guardarProgreso(listos, completo) {
   } catch (e) {}
 }
 
-function Vaso({ sabor, fase, left, top, innerRef }) {
-  const id = useId().replace(/:/g, '');
+/* Cada vaso maneja su propia animación, así pueden convivir varios a la vez.
+   Fases: viajando -> llenando -> listo */
+function Vaso({ id, sabor, slot, fase, onFase }) {
+  const reactId = useId().replace(/:/g, '');
+  const ref = useRef(null);
   const s = SABORES[sabor];
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const origen = VASOS[slot];
+    const destino = SABORES[sabor];
+    const timers = [];
+    let cancelado = false;
+
+    // Se levanta, se desliza hasta el dispensador elegido y baja
+    const anim = ref.current.animate(
+      [
+        { left: `${origen.left}%`, top: `${origen.top}%`, offset: 0 },
+        { left: `${origen.left}%`, top: `${origen.top - 9}%`, offset: 0.2 },
+        { left: `${destino.x}%`, top: `${Y_MAQUINA - 9}%`, offset: 0.8 },
+        { left: `${destino.x}%`, top: `${Y_MAQUINA}%`, offset: 1 },
+      ],
+      { duration: 900, easing: 'ease-in-out', fill: 'forwards' }
+    );
+
+    anim.finished
+      .then(() => {
+        if (cancelado) return;
+        onFase(id, 'llenando');
+        timers.push(setTimeout(() => onFase(id, 'listo'), 2100));
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelado = true;
+      anim.cancel();
+      timers.forEach(clearTimeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const clase = [styles.vaso, fase !== 'viajando' && styles.lleno, fase === 'listo' && styles.oculto]
     .filter(Boolean)
     .join(' ');
 
   return (
-    <div ref={innerRef} className={clase} style={{ left: `${left}%`, top: `${top}%` }}>
+    <div ref={ref} className={clase} style={{ left: `${VASOS[slot].left}%`, top: `${VASOS[slot].top}%` }}>
       <svg viewBox="0 0 125 295" aria-hidden="true">
         <defs>
-          <clipPath id={id}>
+          <clipPath id={reactId}>
             <path d="M10 8 L115 8 C115 90 98 148 70 188 L55 188 C27 148 10 90 10 8 Z" />
           </clipPath>
         </defs>
-        <g clipPath={`url(#${id})`}>
+        <g clipPath={`url(#${reactId})`}>
           <g className={styles.liquido}>
             <rect x="0" y="40" width="125" height="160" fill={s.color} />
             {s.puntos && PUNTOS.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="3" fill={s.puntos} />)}
@@ -89,78 +127,55 @@ function Vaso({ sabor, fase, left, top, innerRef }) {
  * Flujo: tocás un vaso -> tocás el sabor en la máquina -> el vaso viaja, se llena
  * y se transforma en el milkshake terminado.
  *
+ * Se pueden servir varios vasos al mismo tiempo (uno por dispensador y uno por
+ * vaso de vidrio). Cada uno avanza por su cuenta y se entrega tocándolo.
+ *
  * El ticket de la esquina muestra los sabores del pedido (los lee de la partida
  * guardada) y va tachando los que ya entregaste. Se piden en orden: si tocás un
  * sabor que no es el que toca, aparece un popup avisando que está mal, NO se
- * llena el vaso y se suelta la selección: hay que volver a tocar el vaso y
- * llevarlo al sabor correcto. Cuando se entrega el último, se guarda el
- * progreso y se vuelve a la cocina principal (/partidas).
+ * llena el vaso y se suelta la selección. Cuando se entrega el último, se guarda
+ * el progreso y se vuelve a la cocina principal (/partidas).
  *
  * Props:
- *  - onListo(sabor):    cuando el milkshake terminó de servirse
- *  - onEntregar(sabor): cuando el jugador toca el milkshake terminado (se retira de la máquina)
+ *  - onListo(sabor):    cuando un milkshake terminó de servirse
+ *  - onEntregar(sabor): cuando el jugador toca un milkshake terminado (se retira de la máquina)
  */
 export default function MilkshakeStation({ onListo, onEntregar }) {
   const router = useRouter();
   const [seleccionado, setSeleccionado] = useState(null); // índice del vaso elegido
-  const [activo, setActivo] = useState(null);             // { slot, sabor }
-  const [fase, setFase] = useState('viajando');           // viajando -> llenando -> listo
+  const [trabajos, setTrabajos] = useState([]);           // [{ id, slot, sabor, fase }]
   const [pedido, setPedido] = useState({ sabores: [], listos: 0 });
   const [error, setError] = useState(null);               // { elegido, esperado } mientras se muestra el popup
-  const vasoRef = useRef(null);
+  const siguienteId = useRef(0);
+  const trabajosRef = useRef([]);
+  trabajosRef.current = trabajos;
 
   // sessionStorage solo existe en el navegador, por eso se lee después de montar
   useEffect(() => {
     setPedido(leerPedido());
   }, []);
 
-  useEffect(() => {
-    if (!activo || !vasoRef.current) return;
-    const origen = VASOS[activo.slot];
-    const destino = SABORES[activo.sabor];
-    const timers = [];
-    let cancelado = false;
+  const slotOcupado = (i) => trabajos.some((t) => t.slot === i);
+  const saborOcupado = (clave) => trabajos.some((t) => t.sabor === clave);
 
-    // Se levanta, se desliza hasta el dispensador elegido y baja
-    const anim = vasoRef.current.animate(
-      [
-        { left: `${origen.left}%`, top: `${origen.top}%`, offset: 0 },
-        { left: `${origen.left}%`, top: `${origen.top - 9}%`, offset: 0.2 },
-        { left: `${destino.x}%`, top: `${Y_MAQUINA - 9}%`, offset: 0.8 },
-        { left: `${destino.x}%`, top: `${Y_MAQUINA}%`, offset: 1 },
-      ],
-      { duration: 900, easing: 'ease-in-out', fill: 'forwards' }
-    );
-
-    anim.finished
-      .then(() => {
-        if (cancelado) return;
-        setFase('llenando');
-        timers.push(setTimeout(() => {
-          setFase('listo');
-          onListo?.(activo.sabor);
-        }, 2100));
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelado = true;
-      anim.cancel();
-      timers.forEach(clearTimeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activo]);
+  function cambiarFase(id, fase) {
+    setTrabajos((ts) => ts.map((t) => (t.id === id ? { ...t, fase } : t)));
+    if (fase === 'listo') {
+      const t = trabajosRef.current.find((x) => x.id === id);
+      if (t) onListo?.(t.sabor);
+    }
+  }
 
   function tocarVaso(i) {
-    if (activo || error) return;
+    if (error || slotOcupado(i)) return;
     setSeleccionado((actual) => (actual === i ? null : i)); // tocar de nuevo lo suelta
   }
 
   function tocarSabor(clave) {
-    if (activo || error || seleccionado === null) return;
+    if (error || seleccionado === null || saborOcupado(clave)) return;
 
-    // El pedido se prepara en orden: el siguiente es el que está sin tachar
-    const esperado = pedido.sabores[pedido.listos];
+    // El pedido se prepara en orden: el siguiente es el que no está entregado ni en curso
+    const esperado = pedido.sabores[pedido.listos + trabajos.length];
 
     if (esperado && clave !== esperado) {
       // Sabor equivocado: popup, no se rellena y se suelta el vaso
@@ -169,8 +184,10 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
       return;
     }
 
-    setFase('viajando');
-    setActivo({ slot: seleccionado, sabor: clave });
+    setTrabajos((ts) => [
+      ...ts,
+      { id: siguienteId.current++, slot: seleccionado, sabor: clave, fase: 'viajando' },
+    ]);
     setSeleccionado(null);
   }
 
@@ -178,8 +195,11 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     setError(null);
   }
 
-  function retirar() {
-    onEntregar?.(activo.sabor);
+  function retirar(id) {
+    const job = trabajos.find((t) => t.id === id);
+    if (!job) return;
+
+    onEntregar?.(job.sabor);
 
     const total = pedido.sabores.length;
     const nuevosListos = Math.min(total, pedido.listos + 1);
@@ -190,17 +210,22 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
 
     // El ticket tacha el milkshake que se acaba de entregar
     setPedido((p) => ({ ...p, listos: nuevosListos }));
-    setActivo(null);
+    setTrabajos((ts) => ts.filter((t) => t.id !== id));
 
     // Último milkshake del ticket: vuelve a la cocina principal
     if (completo) router.push('/partidas');
   }
 
-  const mensaje = activo
-    ? fase === 'listo' ? '¡Listo! Tocá el milkshake para entregarlo' : `Sirviendo ${SABORES[activo.sabor].nombre}...`
-    : seleccionado !== null ? 'Ahora elegí un sabor' : 'Tocá un vaso de vidrio';
+  const sirviendo = trabajos.filter((t) => t.fase !== 'listo');
+  const hayListos = trabajos.some((t) => t.fase === 'listo');
 
-  const final = activo && fase === 'listo' ? SABORES[activo.sabor] : null;
+  const mensaje =
+    seleccionado !== null ? 'Ahora elegí un sabor'
+    : hayListos ? '¡Listo! Tocá el milkshake para entregarlo'
+    : sirviendo.length ? `Sirviendo ${sirviendo.map((t) => SABORES[t.sabor].nombre).join(' y ')}...`
+    : 'Tocá un vaso de vidrio';
+
+  const terminados = trabajos.filter((t) => t.fase === 'listo');
 
   return (
     <div className={styles.stage}>
@@ -214,19 +239,21 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
             {pedido.sabores.map((clave, i) => {
               const s = SABORES[clave];
               const hecho = i < pedido.listos;
-              const siguiente = i === pedido.listos;
+              const enCurso = i >= pedido.listos && i < pedido.listos + trabajos.length;
+              const siguiente = i === pedido.listos + trabajos.length;
               return (
                 <li
                   key={i}
                   className={[
                     styles.ticketItem,
                     hecho && styles.ticketHecho,
+                    enCurso && styles.ticketEnCurso,
                     siguiente && styles.ticketSiguiente,
                   ].filter(Boolean).join(' ')}
                 >
                   <span className={styles.ticketEmoji} aria-hidden="true">{s.emoji}</span>
                   <span className={styles.ticketNombre}>Milkshake de {s.nombre}</span>
-                  <span className={styles.ticketMarca}>{hecho ? '✓' : ''}</span>
+                  <span className={styles.ticketMarca}>{hecho ? '✓' : enCurso ? '…' : ''}</span>
                 </li>
               );
             })}
@@ -241,53 +268,54 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
           type="button"
           className={`${styles.slot} ${seleccionado === i ? styles.elegido : ''}`}
           style={{ left: `${v.left}%` }}
-          disabled={!!activo || !!error}
+          disabled={!!error || slotOcupado(i)}
           aria-label={`Tomar vaso ${i + 1}`}
           aria-pressed={seleccionado === i}
           onClick={() => tocarVaso(i)}
         />
       ))}
 
-      {/* Dispensadores (se activan cuando hay un vaso elegido) */}
-      {Object.entries(SABORES).map(([clave, s]) => (
-        <button
-          key={clave}
-          type="button"
-          className={`${styles.sabor} ${seleccionado !== null ? styles.activo : ''}`}
-          style={{ left: `${s.boton[0]}%`, width: `${s.boton[1]}%` }}
-          disabled={seleccionado === null || !!activo || !!error}
-          aria-label={`Servir ${s.nombre}`}
-          onClick={() => tocarSabor(clave)}
-        />
+      {/* Dispensadores (se activan cuando hay un vaso elegido y el dispensador está libre) */}
+      {Object.entries(SABORES).map(([clave, s]) => {
+        const libre = seleccionado !== null && !saborOcupado(clave);
+        return (
+          <button
+            key={clave}
+            type="button"
+            className={`${styles.sabor} ${libre ? styles.activo : ''}`}
+            style={{ left: `${s.boton[0]}%`, width: `${s.boton[1]}%` }}
+            disabled={!libre || !!error}
+            aria-label={`Servir ${s.nombre}`}
+            onClick={() => tocarSabor(clave)}
+          />
+        );
+      })}
+
+      {/* Vasos viajando y llenándose */}
+      {trabajos.map((t) => (
+        <Vaso key={t.id} id={t.id} sabor={t.sabor} slot={t.slot} fase={t.fase} onFase={cambiarFase} />
       ))}
 
-      {/* Vaso viajando y llenándose */}
-      {activo && (
-        <Vaso
-          innerRef={vasoRef}
-          sabor={activo.sabor}
-          fase={fase}
-          left={VASOS[activo.slot].left}
-          top={VASOS[activo.slot].top}
-        />
-      )}
-
-      {/* Milkshake terminado */}
-      {final && (
-        <button
-          type="button"
-          className={styles.final}
-          aria-label={`Entregar milkshake de ${final.nombre}`}
-          onClick={retirar}
-          style={{
-            left: `${final.x + ANCHO_VASO / 2 - ANCHO_FINAL / 2}%`,
-            top: `${Y_MAQUINA + ALTO_VASO - ALTO_FINAL * BASE_FINAL}%`,
-            width: `${ANCHO_FINAL}%`,
-          }}
-        >
-          <Image src={final.final} alt={`Milkshake de ${final.nombre}`} width={600} height={1199} draggable={false} />
-        </button>
-      )}
+      {/* Milkshakes terminados */}
+      {terminados.map((t) => {
+        const f = SABORES[t.sabor];
+        return (
+          <button
+            key={t.id}
+            type="button"
+            className={styles.final}
+            aria-label={`Entregar milkshake de ${f.nombre}`}
+            onClick={() => retirar(t.id)}
+            style={{
+              left: `${f.x + ANCHO_VASO / 2 - ANCHO_FINAL / 2}%`,
+              top: `${Y_MAQUINA + ALTO_VASO - ALTO_FINAL * BASE_FINAL}%`,
+              width: `${ANCHO_FINAL}%`,
+            }}
+          >
+            <Image src={f.final} alt={`Milkshake de ${f.nombre}`} width={600} height={1199} draggable={false} />
+          </button>
+        );
+      })}
 
       <div className={styles.mensaje} role="status">{mensaje}</div>
 

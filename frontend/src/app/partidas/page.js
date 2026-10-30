@@ -9,7 +9,7 @@ const API_URL = 'http://localhost:4000/api';
 const SOCKET_URL = 'http://localhost:4000';
 
 // Tiempo de cada pedido en segundos (ponelo en 60 para la versión final)
-const TIEMPO_PARTIDA = 1000000;
+const TIEMPO_PARTIDA = 10;
 
 // false = al soltar una carne en la parrilla se va a la página /parrilla.
 // true  = (solo para pruebas) la carne se agrega directo a la hamburguesa.
@@ -272,9 +272,16 @@ const leerPartidaGuardada = () => {
 // ⚠️ Si en tu app los guardás con otro nombre o de otra forma, cambialo acá.
 const leerIds = () => {
   try {
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+    // El id de la sala viaja en la URL (?id=5). Se guarda al entrar (ver paso 2)
+    // porque al volver de la parrilla / milkshakes / freidora la URL pierde el ?id
+    const idUrl = new URLSearchParams(window.location.search).get('id');
+    const idGuardado = sessionStorage.getItem('id_partida');
+
     return {
-      id_partida: Number(localStorage.getItem('id_partida')),
-      id_usuario: Number(localStorage.getItem('id_usuario')),
+      id_partida: Number(idUrl || idGuardado),
+      id_usuario: Number(usuario.id_usuario || usuario.id),
     };
   } catch (e) {
     return { id_partida: 0, id_usuario: 0 };
@@ -530,7 +537,10 @@ export default function JuegoHamburguesa() {
 
   // Cargar el primer pedido
   useEffect(() => {
-    iniciarJuego(leerPartidaGuardada());
+    // Guardar el id de la sala (viene en la URL: /partidas?id=5)
+    const idUrl = new URLSearchParams(window.location.search).get('id');
+    if (idUrl) sessionStorage.setItem('id_partida', idUrl);
+      iniciarJuego(leerPartidaGuardada());
     return () => clearTimeout(avisoTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

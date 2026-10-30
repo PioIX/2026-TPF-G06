@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+
 import styles from './MilkshakeStation.module.css';
 
 /* ============ CONFIGURACIÓN ============
@@ -19,6 +20,12 @@ const SABORES = {
 
 // El juego guarda los sabores con estos ids; acá se traducen a las claves de SABORES
 const ALIAS_JUEGO = { 'cookies-cream': 'cookies' };
+
+  vainilla:  { nombre: 'Vainilla',        color: '#f6e7c1', x: 49.5, boton: [49.6, 7.2], final: '/vainilla.png' },
+  chocolate: { nombre: 'Chocolate',       color: '#5a3320', x: 59.3, boton: [59.1, 7.2], final: '/chocolate.png' },
+  frutilla:  { nombre: 'Frutilla',        color: '#f4a7b9', x: 69.3, boton: [69.3, 7.2], final: '/frutilla.png' },
+  cookies:   { nombre: 'Cookies & Cream', color: '#d9d2cb', x: 79.8, boton: [79.4, 8.1], final: '/cookies&cream.png', puntos: '#3a2a22' },
+};
 
 const Y_MAQUINA = 47.0;                 // top del vaso vacío en la máquina
 const ANCHO_VASO = 7.5;                 // ancho del vaso vacío
@@ -53,6 +60,7 @@ function guardarProgreso(listos, completo) {
     sessionStorage.setItem('partida', JSON.stringify(partida));
   } catch (e) {}
 }
+
 
 function Vaso({ sabor, fase, left, top, innerRef }) {
   const id = useId().replace(/:/g, '');
@@ -96,6 +104,7 @@ function Vaso({ sabor, fase, left, top, innerRef }) {
  * llevarlo al sabor correcto. Cuando se entrega el último, se guarda el
  * progreso y se vuelve a la cocina principal (/partidas).
  *
+
  * Props:
  *  - onListo(sabor):    cuando el milkshake terminó de servirse
  *  - onEntregar(sabor): cuando el jugador toca el milkshake terminado (se retira de la máquina)
@@ -113,6 +122,12 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
   useEffect(() => {
     setPedido(leerPedido());
   }, []);
+
+
+  const [seleccionado, setSeleccionado] = useState(null); // índice del vaso elegido
+  const [activo, setActivo] = useState(null);             // { slot, sabor }
+  const [fase, setFase] = useState('viajando');           // viajando -> llenando -> listo
+  const vasoRef = useRef(null);
 
   useEffect(() => {
     if (!activo || !vasoRef.current) return;
@@ -153,10 +168,13 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
 
   function tocarVaso(i) {
     if (activo || error) return;
-    setSeleccionado((actual) => (actual === i ? null : i)); // tocar de nuevo lo suelta
+
+    if (activo) return;
+setSeleccionado((actual) => (actual === i ? null : i)); // tocar de nuevo lo suelta
   }
 
   function tocarSabor(clave) {
+ rank
     if (activo || error || seleccionado === null) return;
 
     // El pedido se prepara en orden: el siguiente es el que está sin tachar
@@ -169,6 +187,8 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
       return;
     }
 
+
+    if (activo || seleccionado === null) return;
     setFase('viajando');
     setActivo({ slot: seleccionado, sabor: clave });
     setSeleccionado(null);
@@ -194,6 +214,10 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
 
     // Último milkshake del ticket: vuelve a la cocina principal
     if (completo) router.push('/partidas');
+
+  function retirar() {
+    onEntregar?.(activo.sabor);
+    setActivo(null);
   }
 
   const mensaje = activo
@@ -234,6 +258,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
         </aside>
       )}
 
+
       {/* Vasos de vidrio */}
       {VASOS.map((v, i) => (
         <button
@@ -242,6 +267,8 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
           className={`${styles.slot} ${seleccionado === i ? styles.elegido : ''}`}
           style={{ left: `${v.left}%` }}
           disabled={!!activo || !!error}
+
+          disabled={!!activo}
           aria-label={`Tomar vaso ${i + 1}`}
           aria-pressed={seleccionado === i}
           onClick={() => tocarVaso(i)}
@@ -256,6 +283,8 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
           className={`${styles.sabor} ${seleccionado !== null ? styles.activo : ''}`}
           style={{ left: `${s.boton[0]}%`, width: `${s.boton[1]}%` }}
           disabled={seleccionado === null || !!activo || !!error}
+
+          disabled={seleccionado === null || !!activo}
           aria-label={`Servir ${s.nombre}`}
           onClick={() => tocarSabor(clave)}
         />
@@ -316,6 +345,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
           </div>
         </div>
       )}
+
     </div>
   );
 }

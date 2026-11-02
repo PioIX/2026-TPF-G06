@@ -50,6 +50,13 @@ const FRITOS = [
 
 const fritoPorId = (id) => FRITOS.find((f) => f.id === id) ?? FRITOS[0];
 
+// NUEVO: tamaños de las papas (los mismos ids que usa /freidora)
+const TAMANOS_FRITOS = ['pequeno', 'mediano', 'grande'];
+const NOMBRE_TAMANO = { pequeno: 'Pequeño', mediano: 'Mediano', grande: 'Grande' };
+const tamanoAlAzar = () =>
+  TAMANOS_FRITOS[Math.floor(Math.random() * TAMANOS_FRITOS.length)];
+const tamanoValido = (t) => (TAMANOS_FRITOS.includes(t) ? t : tamanoAlAzar());
+
 // Zona clickeable de la máquina de milkshakes (en % del escenario)
 const MAQUINA_MILKSHAKE = { left: 68.3, top: 25, width: 10.7, height: 21 };
 
@@ -71,6 +78,25 @@ const BANDEJA_MILKSHAKE = {
   separacionVertical: 3.6,
 };
 const PROPORCION_MILKSHAKE = 1199 / 600; // alto / ancho del PNG del milkshake
+
+// NUEVO: bandeja donde aparecen las papas ya entregadas en la freidora.
+// Se ajusta igual que la de los milkshakes (MOSTRAR_ZONAS = true muestra un recuadro amarillo):
+//   x          = centro del grupo de paquetes, en % del ANCHO
+//   base       = dónde apoya la base del cartón, en % del ALTO desde abajo
+//   separacion = distancia horizontal entre paquetes (en cqw)
+//   anchos     = ancho de cada paquete según su tamaño (en cqw).
+//                Mantienen la proporción 125 : 156 : 188 de la freidora.
+const IMG_PAPAS_LLENAS = '/papas.png';
+//   separacionVertical = cuánto se escalonan en profundidad: la primera queda un poco
+//                        más atrás (arriba) y la última más adelante (abajo)
+const BANDEJA_FRITAS = {
+  x: 39.6,               // lado IZQUIERDO de la bandeja (el plato está en ~50%)
+  base: 29,
+  separacion: 3.2,       // las papas se superponen un poco para que entren a la izquierda del plato
+  separacionVertical: 1.8,
+  anchos: { pequeno: 6.2, mediano: 8.25, grande: 9.3 }, // proporción 125 : 156 : 188
+};
+const PROPORCION_PAPAS = 1.238 / 1.063; // alto / ancho de papas.png (cartón lleno)
 
 // Zona clickeable de la freidora (en % del escenario).
 // OJO: son posiciones aproximadas. Poné MOSTRAR_ZONAS en true para ver el
@@ -319,6 +345,14 @@ export default function JuegoHamburguesa() {
   const cantidadFritos = fritosPedidos.length;
   const [fritosListos, setFritosListos] = useState(0);
 
+  // NUEVO: tamaño de cada frito pedido (mismo orden que fritosPedidos),
+  // ej. ['mediano', 'grande']. /freidora lo lee como "tamanosFritos".
+  const [tamanosFritos, setTamanosFritos] = useState([]);
+
+  // NUEVO: cuántos paquetes ya estaban en la bandeja antes de ir a la freidora
+  // (esos no repiten la animación)
+  const [fritosRestaurados, setFritosRestaurados] = useState(0);
+
   // Imágenes recortadas: { '/lechuga.png': { url, w, h } }
   const [recortes, setRecortes] = useState({});
   const [imagenesListas, setImagenesListas] = useState(false);
@@ -389,6 +423,7 @@ export default function JuegoHamburguesa() {
     saboresMilkshake,
     milkshakesListos,
     fritosPedidos,
+    tamanosFritos, // NUEVO: /freidora lo usa para saber qué tamaño pide cada papa
     fritosListos,
     guardadoEn: Date.now(),
     ...extra,
@@ -416,6 +451,7 @@ export default function JuegoHamburguesa() {
       setMilkshakesListos(0);
       setMilkshakesRestaurados(0);
       setFritosListos(0);
+      setFritosRestaurados(0); // NUEVO
     }
 
     try {
@@ -466,10 +502,22 @@ export default function JuegoHamburguesa() {
         setMilkshakesRestaurados(
           partida.milkshakesAntes ?? partida.milkshakesListos ?? 0
         );
-        setFritosPedidos(
-          Array.isArray(partida.fritosPedidos) ? partida.fritosPedidos : []
+
+        const fritos = Array.isArray(partida.fritosPedidos)
+          ? partida.fritosPedidos
+          : [];
+        setFritosPedidos(fritos);
+        // NUEVO: los tamaños viajan con la partida (uno por cada frito pedido)
+        setTamanosFritos(
+          fritos.map((_, i) =>
+            tamanoValido(
+              Array.isArray(partida.tamanosFritos) ? partida.tamanosFritos[i] : null
+            )
+          )
         );
         setFritosListos(partida.fritosListos ?? 0);
+        // NUEVO: "fritosAntes" lo guarda la cocina al salir hacia la freidora
+        setFritosRestaurados(partida.fritosAntes ?? partida.fritosListos ?? 0);
         sessionStorage.removeItem('partida');
 
         if (partida.resultadoParrilla === 'quemada') {
@@ -515,6 +563,8 @@ export default function JuegoHamburguesa() {
             () => FRITOS[Math.floor(Math.random() * FRITOS.length)].id
           )
         );
+        // NUEVO: cada frito pide además un tamaño al azar
+        setTamanosFritos(Array.from({ length: cantidadFrit }, tamanoAlAzar));
       }
     } catch (error) {
       console.error('Error al conectar con el backend:', error);
@@ -697,9 +747,13 @@ export default function JuegoHamburguesa() {
     }
 
     // Guardamos la partida para retomarla al volver de la freidora.
-    // La página /freidora lee qué toca freír con:
-    // fritosPedidos[fritosListos]
-    sessionStorage.setItem('partida', JSON.stringify(partidaActual()));
+    // La página /freidora lee qué toca freír con fritosPedidos / tamanosFritos
+    // (a partir de fritosListos). NUEVO: "fritosAntes" evita repetir la
+    // animación de los paquetes que ya estaban en la bandeja.
+    sessionStorage.setItem(
+      'partida',
+      JSON.stringify(partidaActual({ fritosAntes: fritosListos }))
+    );
     router.push(RUTA_FREIDORA);
   };
 
@@ -920,6 +974,13 @@ export default function JuegoHamburguesa() {
     .slice(0, milkshakesListos)
     .map(saborPorId);
 
+  // NUEVO: papas ya entregadas en la freidora. Se entregan en el orden del pedido,
+  // así que son los primeros "fritosListos" del pedido, cada una con su tamaño.
+  const fritosServidos = fritosPedidos.slice(0, fritosListos).map((idFrito, i) => ({
+    frito: fritoPorId(idFrito),
+    tamano: tamanoValido(tamanosFritos[i]),
+  }));
+
   const sostieneParrilla = mano && esCarne(mano);
   const sostienePlato = mano && !esCarne(mano);
 
@@ -1076,7 +1137,10 @@ export default function JuegoHamburguesa() {
                       }`}
                     >
                       <span className="ticket-icono emoji">{frito.emoji}</span>
-                      <span className="ticket-nombre">{frito.nombre}</span>
+                      {/* NUEVO: se muestra el tamaño pedido */}
+                      <span className="ticket-nombre">
+                        {frito.nombre} ({NOMBRE_TAMANO[tamanoValido(tamanosFritos[i])]})
+                      </span>
                       <span className="ticket-marca">{hecho ? '✓' : ''}</span>
                     </li>
                   );
@@ -1223,6 +1287,63 @@ export default function JuegoHamburguesa() {
                 zIndex: i + 1, // el de adelante tapa al de atrás
                 width: `${BANDEJA_MILKSHAKE.ancho}cqw`,
                 ...(i < milkshakesRestaurados ? { animation: 'none' } : {}),
+              }}
+            />
+          ))}
+        </div>
+
+        {/* ---------- NUEVO: PAPAS ENTREGADAS (bandeja a la derecha de los milkshakes) ---------- */}
+        <div
+          className="partida-bandeja-fritas"
+          style={{
+            left: `${BANDEJA_FRITAS.x}%`,
+            bottom: `${BANDEJA_FRITAS.base}%`,
+          }}
+        >
+          {MOSTRAR_ZONAS && (
+            <span
+              className="partida-bandeja-fritas-guia"
+              style={{
+                width: `${
+                  (MAX_FRITOS - 1) * BANDEJA_FRITAS.separacion +
+                  BANDEJA_FRITAS.anchos.grande + 1
+                }cqw`,
+                height: `${
+                  BANDEJA_FRITAS.anchos.grande * PROPORCION_PAPAS +
+                  (MAX_FRITOS - 1) * BANDEJA_FRITAS.separacionVertical
+                }cqw`,
+                bottom: `${
+                  -((MAX_FRITOS - 1) * BANDEJA_FRITAS.separacionVertical) / 2
+                }cqw`,
+              }}
+            >
+              🍟 papas
+            </span>
+          )}
+
+          {fritosServidos.map(({ frito, tamano }, i) => (
+            <img
+              key={`frito-servido-${i}`}
+              src={IMG_PAPAS_LLENAS}
+              alt={`${frito.nombre} (${NOMBRE_TAMANO[tamano]})`}
+              title={`${frito.nombre} (${NOMBRE_TAMANO[tamano]})`}
+              draggable={false}
+              className="partida-frito-servido"
+              style={{
+                // posiciones fijas según la cantidad pedida: no se corren al sumar otro
+                left: `${
+                  (i - (Math.max(cantidadFritos, 1) - 1) / 2) *
+                  BANDEJA_FRITAS.separacion
+                }cqw`,
+                // la primera queda atrás (arriba) y la última adelante (abajo)
+                bottom: `${
+                  ((Math.max(cantidadFritos, 1) - 1) / 2 - i) *
+                  BANDEJA_FRITAS.separacionVertical
+                }cqw`,
+                // el ancho depende del tamaño pedido (pequeño / mediano / grande)
+                width: `${BANDEJA_FRITAS.anchos[tamano]}cqw`,
+                zIndex: i + 1,
+                ...(i < fritosRestaurados ? { animation: 'none' } : {}),
               }}
             />
           ))}

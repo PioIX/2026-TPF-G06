@@ -373,6 +373,51 @@
 }
 
 /* =========================================================
+   PAPAS ENTREGADAS (bandeja a la derecha de los milkshakes)
+   .partida-bandeja-fritas es el punto de apoyo: su "left" y "bottom"
+   salen de BANDEJA_FRITAS en page.js.
+   ========================================================= */
+
+.partida-bandeja-fritas {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.partida-frito-servido {
+  position: absolute;
+  bottom: 0;
+  height: auto;
+  display: block;
+  /* centra el cartón y apoya la base justo sobre la bandeja */
+  translate: -50% 0;
+  filter: drop-shadow(0 0.35cqw 0.3cqw rgba(0, 0, 0, 0.4));
+  animation: partida-milkshake-aparece 0.45s ease-out both;
+}
+
+/* guía visual: solo se ve con MOSTRAR_ZONAS = true */
+.partida-bandeja-fritas-guia {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  translate: -50% 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.4cqw;
+  box-sizing: border-box;
+  border: 0.2cqw dashed rgb(255, 215, 60);
+  background: rgba(255, 215, 60, 0.2);
+  border-radius: 0.8cqw;
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(9px, 0.9cqw, 15px);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* =========================================================
    BOTONES DESHACER / ENTREGAR (sobre la mesada, a la derecha)
    ========================================================= */
 

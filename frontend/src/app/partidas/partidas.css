@@ -654,3 +654,63 @@
     box-shadow: 0 0 0 0.25cqw rgba(255, 230, 100, 0.95), 0 0 1.8cqw rgba(255, 215, 60, 0.85);
   }
 }
+
+/* =========================================================
+   POPUP DE MENSAJES (reemplaza a los alert)
+   ========================================================= */
+
+.dialogo-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialogo-content {
+  width: min(90vw, 420px);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.dialogo-caja {
+  background: #fffdf5;
+  color: #3b2a20;
+  border: 4px solid #713629;
+  border-radius: 18px;
+  padding: 22px 24px;
+  text-align: center;
+  font-family: system-ui, sans-serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: partida-popup 0.2s ease-out;
+}
+.dialogo-caja.ok { border-color: #14532d; }
+.dialogo-caja.error { border-color: #b91c1c; }
+
+.dialogo-titulo {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+.dialogo-caja.ok .dialogo-titulo { color: #15803d; }
+.dialogo-caja.error .dialogo-titulo { color: #b91c1c; }
+
+.dialogo-mensaje {
+  margin: 0 0 18px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dialogo-boton {
+  border: 3px solid #54251c;
+  background: #713629;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 8px 28px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.dialogo-boton:hover { background: #54251c; }
+
+@keyframes partida-popup {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}

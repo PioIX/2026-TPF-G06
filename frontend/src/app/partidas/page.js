@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import './partidas.css';
+import Popup from 'reactjs-popup';
 
 const API_URL = 'http://localhost:4000/api';
 
@@ -328,6 +329,20 @@ export default function JuegoHamburguesa() {
   const [zonaActiva, setZonaActiva] = useState(null); // 'plato' | 'parrilla' | null
   const [aviso, setAviso] = useState('');
 
+  // Popup de mensajes (reemplaza a los alert)
+  // { titulo, mensaje, tipo: 'ok' | 'error' | 'aviso', alCerrar }
+  const [dialogo, setDialogo] = useState(null);
+
+  const mostrarDialogo = (titulo, mensaje, tipo = 'aviso', alCerrar = null) =>
+    setDialogo({ titulo, mensaje, tipo, alCerrar });
+
+  const cerrarDialogo = () => {
+    if (!dialogo) return;
+    const { alCerrar } = dialogo;
+    setDialogo(null);
+    if (alCerrar) alCerrar();
+  };
+
   // Cuántas capas se recuperaron al volver de la parrilla / milkshakes / freidora.
   // Esas no repiten la animación de caída; solo caen las nuevas.
   const [restauradas, setRestauradas] = useState(0);
@@ -344,7 +359,8 @@ export default function JuegoHamburguesa() {
   const soltarRef = useRef(() => {});
   const avisoTimerRef = useRef(null);
 
-  const activo = !(pausado || tiempo <= 0 || cargando || error);
+  // Mientras el popup está abierto el juego queda frenado
+  const activo = !(pausado || tiempo <= 0 || cargando || error || dialogo);
   const activoRef = useRef(activo);
   activoRef.current = activo;
 
@@ -389,6 +405,7 @@ export default function JuegoHamburguesa() {
     setCargando(true);
     setError('');
     setPausado(false);
+    setDialogo(null);
     cancelarMano();
 
     if (!partida) {
@@ -574,9 +591,9 @@ export default function JuegoHamburguesa() {
     }
   }, [todosLosIngredientes]);
 
-  // Cronómetro
+  // Cronómetro (se frena mientras hay un popup abierto)
   useEffect(() => {
-    if (cargando || pausado || tiempo <= 0 || error) {
+    if (cargando || pausado || tiempo <= 0 || error || dialogo) {
       return;
     }
 
@@ -585,7 +602,7 @@ export default function JuegoHamburguesa() {
     }, 1000);
 
     return () => clearInterval(intervalo);
-  }, [cargando, pausado, tiempo, error]);
+  }, [cargando, pausado, tiempo, error, dialogo]);
 
   // Si se pausa o se acaba el tiempo con un ingrediente en la mano, se suelta
   useEffect(() => {
@@ -818,12 +835,16 @@ export default function JuegoHamburguesa() {
 
   // Verificar el pedido
   const verificar = () => {
-    if (tiempo <= 0 || pausado || cargando || error) {
+    if (tiempo <= 0 || pausado || cargando || error || dialogo) {
       return;
     }
 
     if (miHamburguesa.length !== recetaObjetivo.length) {
-      alert('¡La cantidad de ingredientes no coincide!');
+      mostrarDialogo(
+        'Pedido incompleto',
+        '¡La cantidad de ingredientes no coincide!',
+        'error'
+      );
       return;
     }
 
@@ -833,19 +854,36 @@ export default function JuegoHamburguesa() {
 
     if (esCorrecta) {
       if (milkshakesListos < milkshakesPedidos) {
-        alert('¡Falta preparar el milkshake! Tocá la máquina de milkshakes.');
+        mostrarDialogo(
+          'Falta algo',
+          '¡Falta preparar el milkshake! Tocá la máquina de milkshakes.',
+          'aviso'
+        );
         return;
       }
       if (fritosListos < cantidadFritos) {
-        alert('¡Falta freír lo del pedido! Tocá la freidora.');
+        mostrarDialogo(
+          'Falta algo',
+          '¡Falta freír lo del pedido! Tocá la freidora.',
+          'aviso'
+        );
         return;
       }
       const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
       setPuntaje((anterior) => anterior + puntos);
-      alert(`¡Pedido correcto! Ganaste ${puntos} puntos.`);
-      iniciarJuego();
+      // Al cerrar el popup arranca el pedido nuevo
+      mostrarDialogo(
+        '¡Pedido correcto!',
+        `Ganaste ${puntos} puntos.`,
+        'ok',
+        () => iniciarJuego()
+      );
     } else {
-      alert('El pedido no coincide. ¡Probá de nuevo!');
+      mostrarDialogo(
+        'No coincide',
+        'El pedido no coincide. ¡Probá de nuevo!',
+        'error'
+      );
     }
   };
 
@@ -1276,6 +1314,29 @@ export default function JuegoHamburguesa() {
           }}
         />
       )}
+
+      {/* ---------- POPUP DE MENSAJES (reemplaza a los alert) ---------- */}
+      <Popup
+        open={!!dialogo}
+        modal
+        closeOnDocumentClick
+        onClose={cerrarDialogo}
+        className="dialogo"
+      >
+        {dialogo && (
+          <div className={`dialogo-caja ${dialogo.tipo}`}>
+            <h3 className="dialogo-titulo">{dialogo.titulo}</h3>
+            <p className="dialogo-mensaje">{dialogo.mensaje}</p>
+            <button
+              type="button"
+              className="dialogo-boton"
+              onClick={cerrarDialogo}
+            >
+              Aceptar
+            </button>
+          </div>
+        )}
+      </Popup>
     </main>
   );
 }

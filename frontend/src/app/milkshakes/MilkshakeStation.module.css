@@ -1,14 +1,4 @@
 /* El escenario mantiene la proporción de la imagen (1674 x 940) */
-.stage {
-  position: relative;
-  width: min(100vw, calc(100vh * 1674 / 940));
-  aspect-ratio: 1674 / 940;
-  margin: 0 auto;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-}
-
 /* Zona tocable sobre cada vaso de vidrio de la imagen */
 .slot {
   position: absolute;

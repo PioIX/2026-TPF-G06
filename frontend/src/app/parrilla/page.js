@@ -11,7 +11,7 @@ import './parrilla.css';
 const RUTA_COCINA = '/partidas';
 
 // Segundos que tarda en cocinarse CADA lado
-const COCCION = { paty: 8, pollo: 10, veggie: 6 };
+const COCCION = { paty: 6, pollo: 6, veggie: 4 };
 
 // Segundos de margen, una vez cocido el lado, para darle la vuelta
 // (o sacarla) antes de que se queme. Mientras tanto se va oscureciendo.

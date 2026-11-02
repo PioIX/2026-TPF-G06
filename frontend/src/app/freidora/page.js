@@ -17,7 +17,6 @@ const IMG_CARTON_VACIO = '/cartonPapas.png';
 const IMG_CARTON_LLENO = '/papas.png';
 
 const VOLVER_A = '/partidas';
-const ESPERA_FINAL_MS = 2500;   // cuánto se queda viendo el cartón armado antes de volver
 
 // Las pilas mantienen siempre su proporción (alto = ancho x proporción)
 const PROPORCION = 0.698;               // alto / ancho de papasRicas.png (recortada)
@@ -38,6 +37,7 @@ const CARTONES = {
 };
 const NOMBRES = { pequeno: 'Pequeño', mediano: 'Mediano', grande: 'Grande' };
 const TAMANOS = ['pequeno', 'mediano', 'grande'];
+const tamanoAlAzar = () => TAMANOS[Math.floor(Math.random() * TAMANOS.length)];
 
 const cartonVacioCaja = (t) => {
   const { w, base } = CARTONES[t];
@@ -57,8 +57,8 @@ const bocaCarton = (t) => {
   return pila(x + w / 2, y + h * 0.45, w * 0.8, PROPORCION_FRITA);
 };
 
-// Ticket (arriba, sobre la mesada de la derecha)
-const TICKET = [1205, 12, 300, 165];
+// Ticket (arriba, sobre la mesada de la derecha). Más alto para que entren varios pedidos.
+const TICKET = [1205, 12, 300, 185];
 
 // region = recorte de la canasta (incluye el mango) para poder "levantarla"
 // interior = zona donde van las papas dentro de la canasta
@@ -109,6 +109,16 @@ function interiorLevantado([x, y, w, h]) {
   const nw = w * SUBE_ESCALA;
   const nh = h * SUBE_ESCALA;
   return [cx - nw / 2, cy + SUBE_DY - nh / 2, nw, nh];
+}
+
+// Lee la partida que guardó /partidas al salir hacia la freidora
+function leerPartida() {
+  try {
+    const texto = sessionStorage.getItem('partida');
+    return texto ? JSON.parse(texto) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 let contador = 0;
@@ -172,17 +182,24 @@ function Vuelo({ tipo, desde, hasta, onLlego, onFin }) {
 }
 
 /**
- * Flujo: tocás las papas de la mesada -> viajan a la freidora y se fríen unos segundos
+ * Flujo (se repite una vez por cada pedido de papas del ticket):
+ * tocás las papas de la mesada -> viajan a la freidora y se fríen unos segundos
  * -> la canasta sube -> elegís el tamaño del cartón (según el ticket) -> tocás la canasta
- * y las papas viajan al cartón -> se ve el cartón armado unos segundos -> vuelve a /partidas.
+ * y las papas viajan al cartón -> tocás el paquete de papas para entregarlo.
+ * Cuando entregaste todos los pedidos del ticket vuelve a /partidas.
  *
- * Props:
- *  - pedido:        { tamano: 'pequeno' | 'mediano' | 'grande', numero?: number }  (lo que pide el ticket)
+ * Los pedidos salen de la partida guardada por /partidas (fritosPedidos, tamanosFritos
+ * y fritosListos). Al volver, el componente deja actualizado fritosListos y
+ * resultadoFreidora = 'cocinada' en esa partida.
+ *
+ * Props (todas opcionales; solo se usan si no hay partida guardada):
+ *  - pedidos:       ['pequeno' | 'mediano' | 'grande', ...]  (un tamaño por pedido)
+ *  - pedido:        { tamano, numero? }  (un solo pedido, formato anterior)
  *  - onListo():     las papas llegaron al cartón
- *  - onEntregar({ tamano, pedido, correcto }): justo antes de volver a /partidas
+ *  - onEntregar({ tamano, pedido, correcto, entregados, total }): cada vez que se entrega un paquete
  *  - volverA:       ruta de regreso (por defecto '/partidas')
  */
-export default function FreidoraStation({ pedido, onListo, onEntregar, volverA = VOLVER_A }) {
+export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo, onEntregar, volverA = VOLVER_A }) {
   const router = useRouter();
 
   // estado de cada canasta: vacio | cargando | friendo | listo
@@ -190,27 +207,57 @@ export default function FreidoraStation({ pedido, onListo, onEntregar, volverA =
   const [vuelos, setVuelos] = useState([]);
   const [tamano, setTamano] = useState(null);       // tamaño elegido por el jugador
   const [fase, setFase] = useState('cocina');       // cocina | llenando | lleno
-  const [aviso, setAviso] = useState(false);
-  const [pedidoTam, setPedidoTam] = useState(pedido?.tamano ?? null);
+  const [aviso, setAviso] = useState('');
+  const [pedidos, setPedidos] = useState([]);       // [{ tamano, hecho }]
   const timers = useRef([]);
+  const yaTermino = useRef(false);
+  const entregados = useRef(0);
 
-  // Si no llega un pedido por props, se sortea uno (en el cliente, para no romper la hidratación)
+  // Los pedidos se arman en el cliente (usa sessionStorage y azar), para no romper la hidratación
   useEffect(() => {
-    if (pedido?.tamano) {
-      setPedidoTam(pedido.tamano);
-    } else {
-      setPedidoTam((prev) => prev ?? TAMANOS[Math.floor(Math.random() * TAMANOS.length)]);
+    let lista = null;
+
+    const partida = leerPartida();
+    if (partida && Array.isArray(partida.fritosPedidos)) {
+      const hechos = partida.fritosListos ?? 0;
+      const quedan = Math.max(0, partida.fritosPedidos.length - hechos);
+      const tamanos = Array.isArray(partida.tamanosFritos) ? partida.tamanosFritos.slice(hechos) : [];
+      lista = Array.from({ length: quedan }, (_, i) =>
+        TAMANOS.includes(tamanos[i]) ? tamanos[i] : tamanoAlAzar()
+      );
     }
-  }, [pedido?.tamano]);
+
+    if (!lista || lista.length === 0) {
+      if (Array.isArray(pedidosProp) && pedidosProp.length > 0) lista = pedidosProp;
+      else if (pedido?.tamano) lista = [pedido.tamano];
+      else lista = [tamanoAlAzar()];
+    }
+
+    setPedidos(lista.map((t) => ({ tamano: t, hecho: false })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const cambiar = (i, estado) => setCanastas((prev) => prev.map((e, k) => (k === i ? estado : e)));
   const quitarVuelo = (id) => setVuelos((prev) => prev.filter((v) => v.id !== id));
 
+  const mostrarAviso = (texto) => {
+    setAviso(texto);
+    timers.current.push(setTimeout(() => setAviso(''), 1800));
+  };
+
+  // Cuántos pedidos faltan entregar y cuántos ya están en camino (friendo, listos o en un cartón)
+  const pendientes = pedidos.filter((p) => !p.hecho).length;
+  const enProceso = canastas.filter((e) => e !== 'vacio').length + (fase !== 'cocina' ? 1 : 0);
+
+  const hayLibre = canastas.includes('vacio');
+  const hayListo = canastas.includes('listo');
+  const puedeFreir = hayLibre && fase === 'cocina' && enProceso < pendientes;
+
   function tocarPapas() {
     const i = canastas.indexOf('vacio');
-    if (i < 0 || fase !== 'cocina') return;
+    if (i < 0 || !puedeFreir) return;
     cambiar(i, 'cargando');
     const id = ++contador;
     setVuelos((prev) => [
@@ -233,12 +280,20 @@ export default function FreidoraStation({ pedido, onListo, onEntregar, volverA =
     ]);
   }
 
+  // Elegir el tamaño del cartón: tiene que ser uno que el ticket todavía pide
+  function elegirTamano(t) {
+    if (!pedidos.some((p) => !p.hecho && p.tamano === t)) {
+      mostrarAviso('El ticket no pide ese tamaño');
+      return;
+    }
+    setTamano(t);
+  }
+
   function tocarCanasta(i) {
     if (canastas[i] !== 'listo' || fase !== 'cocina') return;
     if (!tamano) {
       // todavía no eligió el tamaño del cartón
-      setAviso(true);
-      timers.current.push(setTimeout(() => setAviso(false), 1800));
+      mostrarAviso('Primero elegí el tamaño del cartón');
       return;
     }
     const id = ++contador;
@@ -254,38 +309,67 @@ export default function FreidoraStation({ pedido, onListo, onEntregar, volverA =
           return pila(x + w / 2, y + h / 2, w * 1.1, PROPORCION_FRITA);
         })(),
         hasta: bocaCarton(tamano),
-        // las papas aterrizan: aparece el cartón lleno y empieza la cuenta para volver
+        // las papas aterrizan: aparece el cartón lleno y hay que tocarlo para entregarlo
         llego: () => {
           setFase('lleno');
           onListo?.();
-          timers.current.push(setTimeout(terminar, ESPERA_FINAL_MS));
         },
         fin: () => quitarVuelo(id),
       },
     ]);
   }
 
-  // `tamano` queda fijo una vez que se llena el cartón, por eso se lee desde el ref
-  const tamanoRef = useRef(null);
-  tamanoRef.current = tamano;
+  // Tocar el paquete de papas: se entrega ese pedido
+  function entregar() {
+    if (fase !== 'lleno' || yaTermino.current) return;
 
-  function terminar() {
-    const elegido = tamanoRef.current;
-    onEntregar?.({ tamano: elegido, pedido: pedidoTam, correcto: elegido === pedidoTam });
-    router.push(volverA);
+    let idx = pedidos.findIndex((p) => !p.hecho && p.tamano === tamano);
+    if (idx < 0) idx = pedidos.findIndex((p) => !p.hecho);
+
+    const nuevos = pedidos.map((p, k) => (k === idx ? { ...p, hecho: true } : p));
+    entregados.current += 1;
+    onEntregar?.({
+      tamano,
+      pedido: pedidos[idx]?.tamano ?? tamano,
+      correcto: pedidos[idx]?.tamano === tamano,
+      entregados: entregados.current,
+      total: pedidos.length,
+    });
+    setPedidos(nuevos);
+
+    if (nuevos.every((p) => p.hecho)) {
+      // era el último pedido: se guarda el avance y se vuelve a /partidas
+      yaTermino.current = true;
+      const partida = leerPartida();
+      if (partida) {
+        const total = Array.isArray(partida.fritosPedidos) ? partida.fritosPedidos.length : Infinity;
+        partida.fritosListos = Math.min(total, (partida.fritosListos ?? 0) + entregados.current);
+        partida.resultadoFreidora = 'cocinada';
+        try {
+          sessionStorage.setItem('partida', JSON.stringify(partida));
+        } catch (e) {
+          /* si no se puede guardar, igual se vuelve */
+        }
+      }
+      router.push(volverA);
+    } else {
+      // todavía faltan pedidos: se despeja el cartón para armar el siguiente
+      setTamano(null);
+      setFase('cocina');
+    }
   }
 
-  const hayLibre = canastas.includes('vacio');
-  const hayListo = canastas.includes('listo');
-
   const mensaje =
-    fase === 'lleno' ? '¡Pedido armado!'
+    fase === 'lleno'
+      ? pendientes > 1
+        ? `¡Papas listas! Tocá el paquete para entregarlo (te faltan ${pendientes - 1} más)`
+        : '¡Papas listas! Tocá el paquete de papas para entregarlo'
     : fase === 'llenando' ? ''
-    : aviso ? 'Primero elegí el tamaño del cartón'
+    : aviso ? aviso
     : hayListo && !tamano ? 'Elegí el tamaño del cartón según el ticket'
     : hayListo ? 'Tocá la canasta para llenar el cartón'
     : canastas.includes('friendo') ? 'Friendo...'
-    : hayLibre ? 'Tocá las papas de la mesada'
+    : puedeFreir ? 'Tocá las papas de la mesada'
     : '';
 
   return (
@@ -295,16 +379,24 @@ export default function FreidoraStation({ pedido, onListo, onEntregar, volverA =
     >
       <Image src={FONDO} alt="Freidora con dos canastas" fill sizes="100vw" priority draggable={false} />
 
-      {/* Ticket del pedido: siempre visible */}
-      {pedidoTam && (
-        <div className={styles.ticket} style={caja(TICKET)} aria-label={`Pedido: papas fritas ${NOMBRES[pedidoTam]}`}>
+      {/* Ticket del pedido: siempre visible, con todos los pedidos de papas */}
+      {pedidos.length > 0 && (
+        <div className={styles.ticket} style={caja(TICKET)} aria-label="Pedido de papas fritas">
           <div className={styles.ticketTitulo}>
             PEDIDO{pedido?.numero ? ` #${pedido.numero}` : ''}
           </div>
-          <div className={styles.ticketLinea}>
-            <span>Papas fritas</span>
-          </div>
-          <div className={styles.ticketTamano}>{NOMBRES[pedidoTam]}</div>
+          <ul className={styles.ticketLista}>
+            {pedidos.map((p, i) => (
+              <li
+                key={i}
+                className={`${styles.ticketFila} ${p.hecho ? styles.ticketHecho : ''}`}
+              >
+                <span>Papas fritas</span>
+                <strong>{NOMBRES[p.tamano]}</strong>
+                <span className={styles.ticketMarca}>{p.hecho ? '✓' : ''}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -313,7 +405,7 @@ export default function FreidoraStation({ pedido, onListo, onEntregar, volverA =
         type="button"
         className={styles.mesada}
         style={caja(MESADA_PAPAS)}
-        disabled={!hayLibre || fase !== 'cocina'}
+        disabled={!puedeFreir}
         aria-label="Freír papas"
         onClick={tocarPapas}
       />
@@ -381,15 +473,21 @@ export default function FreidoraStation({ pedido, onListo, onEntregar, volverA =
                 disabled={!hayListo || fase !== 'cocina'}
                 aria-label={`Cartón ${NOMBRES[t]}`}
                 aria-pressed={elegido}
-                onClick={() => setTamano(t)}
+                onClick={() => elegirTamano(t)}
               >
                 <Image src={IMG_CARTON_VACIO} alt="" fill sizes="15vw" draggable={false} />
               </button>
             )}
             {lleno && (
-              <div className={styles.cartonLleno} style={caja(cartonLlenoCaja(t))}>
+              <button
+                type="button"
+                className={styles.cartonLleno}
+                style={caja(cartonLlenoCaja(t))}
+                aria-label="Entregar las papas fritas"
+                onClick={entregar}
+              >
                 <Image src={IMG_CARTON_LLENO} alt="Papas fritas en su cartón" fill sizes="15vw" draggable={false} />
-              </div>
+              </button>
             )}
             <div
               className={`${styles.etiqueta} ${elegido ? styles.etiquetaSel : ''} ${apagado ? styles.cartonApagado : ''}`}

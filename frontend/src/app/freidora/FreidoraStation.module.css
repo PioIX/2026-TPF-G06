@@ -184,12 +184,25 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* Paquete de papas ya armado: se toca para entregarlo */
 .cartonLleno {
   position: absolute;
   z-index: 8;
-  pointer-events: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
   filter: drop-shadow(0 12px 10px rgba(0, 0, 0, 0.45));
-  animation: aparecer 0.35s ease-out both;
+  animation:
+    aparecer 0.35s ease-out both,
+    saltito 1.1s ease-in-out 0.35s infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+.cartonLleno:hover,
+.cartonLleno:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 12px rgba(255, 235, 150, 1)) drop-shadow(0 12px 10px rgba(0, 0, 0, 0.45));
 }
 .cartonLleno img {
   object-fit: contain;
@@ -215,7 +228,7 @@
   color: #fff6dc;
 }
 
-/* Ticket del pedido */
+/* Ticket del pedido (puede tener varios pedidos de papas) */
 .ticket {
   position: absolute;
   z-index: 9;
@@ -243,18 +256,42 @@
   border-bottom: 2px dashed #b51d1d;
   padding-bottom: 0.35em;
 }
-.ticketLinea {
+.ticketLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.35em;
+}
+.ticketFila {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
   font-size: 1.05em;
   font-weight: 700;
 }
-.ticketTamano {
-  text-align: center;
-  font-size: 1.6em;
+.ticketFila strong {
+  flex: 1;
+  text-align: right;
+  font-size: 1.15em;
   font-weight: 800;
   text-transform: uppercase;
   color: #b51d1d;
+}
+.ticketMarca {
+  min-width: 1.1em;
+  text-align: center;
+  font-weight: 900;
+  color: #2e8b3d;
+}
+/* pedido ya entregado: tachado */
+.ticketHecho span:first-child,
+.ticketHecho strong {
+  text-decoration: line-through;
+  text-decoration-color: #c0392b;
+  text-decoration-thickness: 3px;
+  opacity: 0.5;
 }
 
 /* Indicación al jugador */
@@ -277,5 +314,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .canasta, .cartonBtn { transition-duration: 0.01s; }
-  .burbujas, .asa, .cartonLlamado { animation: none; }
+  .burbujas, .asa, .cartonLlamado, .cartonLleno { animation: none; }
 }

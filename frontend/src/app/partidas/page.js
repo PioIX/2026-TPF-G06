@@ -163,7 +163,7 @@ const BANDEJAS = [
   { id: 'mostaza', claves: ['mostaza'], left: 47.9, width: 8.7, ...FILA2 },
   { id: 'ketchup', claves: ['ketchup', 'keptchup', 'kechup', 'catsup'], left: 57.2, width: 8.7, ...FILA2 },
   { id: 'mayonesa', claves: ['mayo'], left: 66.5, width: 9, ...FILA2 },
-  { id: 'papas', claves: ['papa', 'fritas'], left: 76.1, width: 23.2, ...FILA2 },
+  
 ];
 
 const coincide = (nombre, claves) =>
@@ -300,7 +300,7 @@ export default function JuegoHamburguesa() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [tiempo, setTiempo] = useState(TIEMPO_PARTIDA);
-  const [puntaje, setPuntaje] = useState(350);
+  const [puntaje, setPuntaje] = useState(0);
   const [pausado, setPausado] = useState(false);
 
   // Milkshakes de este pedido: lista de sabores pedidos, ej. ['vainilla', 'frutilla'].

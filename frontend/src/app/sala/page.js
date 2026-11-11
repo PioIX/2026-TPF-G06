@@ -54,6 +54,9 @@ export default function SalaPage() {
     }
     socket.on("iniciar_partida", (data) => {
       console.log("recibii algo");
+      // Guardamos el id de la partida para que la página de ranking lo encuentre
+      sessionStorage.setItem("id_partida", String(data.id_partida));
+      localStorage.setItem("id_partida", String(data.id_partida));
       // Redirige a ambos usuarios cuando la sala se completa
       router.push(`/partidas?id=${data.id_partida}`);
     });

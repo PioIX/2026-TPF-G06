@@ -7,8 +7,11 @@ import Popup from 'reactjs-popup';
 
 const API_URL = 'http://localhost:4000/api';
 
-// Tiempo de cada pedido en segundos (ponelo en 60 para la versión final)
-const TIEMPO_PARTIDA = 1000000;
+// Tiempo de cada pedido en segundos
+const TIEMPO_PARTIDA = 60;
+
+// Página a la que se va cuando termina la partida
+const RUTA_RANKING = '/ranking';
 
 // false = al soltar una carne en la parrilla se va a la página /parrilla.
 // true  = (solo para pruebas) la carne se agrega directo a la hamburguesa.
@@ -50,7 +53,7 @@ const FRITOS = [
 
 const fritoPorId = (id) => FRITOS.find((f) => f.id === id) ?? FRITOS[0];
 
-// NUEVO: tamaños de las papas (los mismos ids que usa /freidora)
+// Tamaños de las papas (los mismos ids que usa /freidora)
 const TAMANOS_FRITOS = ['pequeno', 'mediano', 'grande'];
 const NOMBRE_TAMANO = { pequeno: 'Pequeño', mediano: 'Mediano', grande: 'Grande' };
 const tamanoAlAzar = () =>
@@ -79,7 +82,7 @@ const BANDEJA_MILKSHAKE = {
 };
 const PROPORCION_MILKSHAKE = 1199 / 600; // alto / ancho del PNG del milkshake
 
-// NUEVO: bandeja donde aparecen las papas ya entregadas en la freidora.
+// Bandeja donde aparecen las papas ya entregadas en la freidora.
 // Se ajusta igual que la de los milkshakes (MOSTRAR_ZONAS = true muestra un recuadro amarillo):
 //   x          = centro del grupo de paquetes, en % del ANCHO
 //   base       = dónde apoya la base del cartón, en % del ALTO desde abajo
@@ -345,11 +348,11 @@ export default function JuegoHamburguesa() {
   const cantidadFritos = fritosPedidos.length;
   const [fritosListos, setFritosListos] = useState(0);
 
-  // NUEVO: tamaño de cada frito pedido (mismo orden que fritosPedidos),
+  // Tamaño de cada frito pedido (mismo orden que fritosPedidos),
   // ej. ['mediano', 'grande']. /freidora lo lee como "tamanosFritos".
   const [tamanosFritos, setTamanosFritos] = useState([]);
 
-  // NUEVO: cuántos paquetes ya estaban en la bandeja antes de ir a la freidora
+  // Cuántos paquetes ya estaban en la bandeja antes de ir a la freidora
   // (esos no repiten la animación)
   const [fritosRestaurados, setFritosRestaurados] = useState(0);
 
@@ -393,6 +396,10 @@ export default function JuegoHamburguesa() {
   const soltarRef = useRef(() => {});
   const avisoTimerRef = useRef(null);
 
+  // Para que la partida termine UNA sola vez
+  const finalizadaRef = useRef(false);
+  const tiempoAgotadoRef = useRef(false);
+
   // Mientras el popup está abierto el juego queda frenado
   const activo = !(pausado || tiempo <= 0 || cargando || error || dialogo);
   const activoRef = useRef(activo);
@@ -413,6 +420,18 @@ export default function JuegoHamburguesa() {
     setZonaActiva(null);
   };
 
+  // Termina la partida: guarda el puntaje final y lleva a la página de ranking
+  const terminarPartida = (puntajeFinal) => {
+    if (finalizadaRef.current) return;
+    finalizadaRef.current = true;
+    sessionStorage.removeItem('partida');
+    sessionStorage.setItem(
+      'resultadoPartida',
+      JSON.stringify({ puntaje: puntajeFinal })
+    );
+    router.push(RUTA_RANKING);
+  };
+
   // Todo lo que hay que recordar al salir hacia otra página
   const partidaActual = (extra = {}) => ({
     miHamburguesa,
@@ -423,7 +442,7 @@ export default function JuegoHamburguesa() {
     saboresMilkshake,
     milkshakesListos,
     fritosPedidos,
-    tamanosFritos, // NUEVO: /freidora lo usa para saber qué tamaño pide cada papa
+    tamanosFritos, // /freidora lo usa para saber qué tamaño pide cada papa
     fritosListos,
     guardadoEn: Date.now(),
     ...extra,
@@ -451,7 +470,10 @@ export default function JuegoHamburguesa() {
       setMilkshakesListos(0);
       setMilkshakesRestaurados(0);
       setFritosListos(0);
-      setFritosRestaurados(0); // NUEVO
+      setFritosRestaurados(0);
+      // Reinicio manual: se vuelve a poder terminar la partida
+      finalizadaRef.current = false;
+      tiempoAgotadoRef.current = false;
     }
 
     try {
@@ -507,7 +529,7 @@ export default function JuegoHamburguesa() {
           ? partida.fritosPedidos
           : [];
         setFritosPedidos(fritos);
-        // NUEVO: los tamaños viajan con la partida (uno por cada frito pedido)
+        // Los tamaños viajan con la partida (uno por cada frito pedido)
         setTamanosFritos(
           fritos.map((_, i) =>
             tamanoValido(
@@ -516,7 +538,7 @@ export default function JuegoHamburguesa() {
           )
         );
         setFritosListos(partida.fritosListos ?? 0);
-        // NUEVO: "fritosAntes" lo guarda la cocina al salir hacia la freidora
+        // "fritosAntes" lo guarda la cocina al salir hacia la freidora
         setFritosRestaurados(partida.fritosAntes ?? partida.fritosListos ?? 0);
         sessionStorage.removeItem('partida');
 
@@ -563,7 +585,7 @@ export default function JuegoHamburguesa() {
             () => FRITOS[Math.floor(Math.random() * FRITOS.length)].id
           )
         );
-        // NUEVO: cada frito pide además un tamaño al azar
+        // Cada frito pide además un tamaño al azar
         setTamanosFritos(Array.from({ length: cantidadFrit }, tamanoAlAzar));
       }
     } catch (error) {
@@ -653,6 +675,20 @@ export default function JuegoHamburguesa() {
 
     return () => clearInterval(intervalo);
   }, [cargando, pausado, tiempo, error, dialogo]);
+
+  // Se acabó el tiempo: avisa y al cerrar el popup va al ranking
+  useEffect(() => {
+    if (cargando || error || tiempo > 0) return;
+    if (tiempoAgotadoRef.current) return;
+    tiempoAgotadoRef.current = true;
+    mostrarDialogo(
+      '¡Se acabó el tiempo!',
+      `Tu puntaje final: ${puntaje}`,
+      'error',
+      () => terminarPartida(puntaje)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiempo, cargando, error]);
 
   // Si se pausa o se acaba el tiempo con un ingrediente en la mano, se suelta
   useEffect(() => {
@@ -748,7 +784,7 @@ export default function JuegoHamburguesa() {
 
     // Guardamos la partida para retomarla al volver de la freidora.
     // La página /freidora lee qué toca freír con fritosPedidos / tamanosFritos
-    // (a partir de fritosListos). NUEVO: "fritosAntes" evita repetir la
+    // (a partir de fritosListos). "fritosAntes" evita repetir la
     // animación de los paquetes que ya estaban en la bandeja.
     sessionStorage.setItem(
       'partida',
@@ -924,13 +960,14 @@ export default function JuegoHamburguesa() {
         return;
       }
       const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
-      setPuntaje((anterior) => anterior + puntos);
-      // Al cerrar el popup arranca el pedido nuevo
+      const puntajeFinal = puntaje + puntos;
+      setPuntaje(puntajeFinal);
+      // Al cerrar el popup la partida termina y va al ranking
       mostrarDialogo(
         '¡Pedido correcto!',
         `Ganaste ${puntos} puntos.`,
         'ok',
-        () => iniciarJuego()
+        () => terminarPartida(puntajeFinal)
       );
     } else {
       mostrarDialogo(
@@ -974,7 +1011,7 @@ export default function JuegoHamburguesa() {
     .slice(0, milkshakesListos)
     .map(saborPorId);
 
-  // NUEVO: papas ya entregadas en la freidora. Se entregan en el orden del pedido,
+  // Papas ya entregadas en la freidora. Se entregan en el orden del pedido,
   // así que son los primeros "fritosListos" del pedido, cada una con su tamaño.
   const fritosServidos = fritosPedidos.slice(0, fritosListos).map((idFrito, i) => ({
     frito: fritoPorId(idFrito),
@@ -1137,7 +1174,7 @@ export default function JuegoHamburguesa() {
                       }`}
                     >
                       <span className="ticket-icono emoji">{frito.emoji}</span>
-                      {/* NUEVO: se muestra el tamaño pedido */}
+                      {/* Se muestra el tamaño pedido */}
                       <span className="ticket-nombre">
                         {frito.nombre} ({NOMBRE_TAMANO[tamanoValido(tamanosFritos[i])]})
                       </span>
@@ -1292,7 +1329,7 @@ export default function JuegoHamburguesa() {
           ))}
         </div>
 
-        {/* ---------- NUEVO: PAPAS ENTREGADAS (bandeja a la derecha de los milkshakes) ---------- */}
+        {/* ---------- PAPAS ENTREGADAS (bandeja a la derecha de los milkshakes) ---------- */}
         <div
           className="partida-bandeja-fritas"
           style={{
@@ -1415,9 +1452,7 @@ export default function JuegoHamburguesa() {
         {aviso && <div className="aviso">{aviso}</div>}
         {pausado && <div className="cartel-central">⏸ PAUSA</div>}
         {tiempo === 0 && (
-          <div className="cartel-central rojo">
-            ¡Se acabó el tiempo! Reiniciá para jugar otra vez.
-          </div>
+          <div className="cartel-central rojo">¡Se acabó el tiempo!</div>
         )}
       </div>
 

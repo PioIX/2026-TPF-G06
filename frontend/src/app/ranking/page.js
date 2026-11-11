@@ -1,84 +1,227 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+// Va en: app/ranking/page.js
 
-const API = "http://localhost:4000";
-const medals = ["🥇", "🥈"];
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { io } from 'socket.io-client';
 
-export default function RankingPage() {
-  const { roomId } = useParams();
-  const router = useRouter();
-  const [ranking, setRanking] = useState(null);
-  const [error, setError] = useState(null);
+const SOCKET_URL = 'http://localhost:4000';
+const API_URL = 'http://localhost:4000/api';
 
-  useEffect(() => {
-    let activo = true;
-    let intervalo;
+// Cada cuántos ms se vuelve a pedir el ranking mientras falta algún jugador
+const INTERVALO_REFRESCO = 3000;
 
-    const cargar = async () => {
-      try {
-        const r = await fetch(`${API}/api/ranking/${roomId}`);
-        if (!r.ok) throw new Error();
-        const data = await r.json();
-        if (!activo) return;
-
-        setRanking(
-          data.ranking.map((p, i) => ({
-            position: i + 1,
-            name: p.nombre,
-            score: p.puntaje,
-          }))
-        );
-
-        // Cuando ya están los dos jugadores, dejamos de consultar
-        if (data.ranking.length >= 2) clearInterval(intervalo);
-      } catch {
-        if (activo) setError("No se encontró el ranking de esta sala.");
+// Busca un número guardado (id_partida / id_usuario) en sessionStorage o localStorage.
+// AJUSTÁ las claves si en tu proyecto guardás esos datos con otros nombres.
+const leerId = (...claves) => {
+  for (const almacen of [sessionStorage, localStorage]) {
+    for (const k of claves) {
+      const valor = almacen.getItem(k);
+      if (valor !== null && valor !== '' && !Number.isNaN(Number(valor))) {
+        return Number(valor);
       }
-    };
+    }
+    // También prueba con un objeto "usuario" guardado como JSON
+    try {
+      const obj = JSON.parse(almacen.getItem('usuario') || 'null');
+      if (obj) {
+        for (const k of claves) {
+          if (obj[k] !== undefined) return Number(obj[k]);
+        }
+      }
+    } catch (e) {
+      /* se ignora */
+    }
+  }
+  return null;
+};
 
-    cargar();
-    intervalo = setInterval(cargar, 2000);
+export default function Ranking() {
+  const router = useRouter();
+
+  const [ranking, setRanking] = useState([]);
+  const [completo, setCompleto] = useState(false);
+  const [miPuntaje, setMiPuntaje] = useState(null);
+  const [idUsuario, setIdUsuario] = useState(null);
+  const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(true);
+
+  const enviadoRef = useRef(false);
+  const idPartidaRef = useRef(null);
+
+  const pedirRanking = async (id_partida) => {
+    try {
+      const res = await fetch(`${API_URL}/ranking/${id_partida}`);
+      const data = await res.json();
+      if (data.ok) {
+        setRanking(data.ranking);
+        setCompleto(data.ranking.length >= 2);
+      }
+    } catch (e) {
+      console.error('Error al pedir el ranking:', e);
+    }
+  };
+
+  // Al entrar: envía el puntaje (una sola vez) y carga el ranking
+  useEffect(() => {
+    const id_partida = leerId('id_partida', 'idPartida', 'partidaActual');
+    const id_usuario = leerId('id_usuario', 'idUsuario');
+    idPartidaRef.current = id_partida;
+    setIdUsuario(id_usuario);
+
+    let resultado = null;
+    try {
+      resultado = JSON.parse(sessionStorage.getItem('resultadoPartida') || 'null');
+    } catch (e) {
+      resultado = null;
+    }
+
+    if (!id_partida || !id_usuario) {
+      setError(
+        'No se encontró la partida o el usuario. Revisá cómo guardás id_partida e id_usuario.'
+      );
+      setCargando(false);
+      return;
+    }
+
+    // Si no hay resultado (por ejemplo, se refrescó la página) solo se muestra el ranking
+    if (!resultado || enviadoRef.current) {
+      pedirRanking(id_partida).finally(() => setCargando(false));
+      return;
+    }
+
+    enviadoRef.current = true;
+    setMiPuntaje(resultado.puntaje);
+
+    const socket = io(SOCKET_URL, { withCredentials: true });
+
+    socket.on('connect', () => {
+      socket.emit(
+        'enviar_puntaje',
+        { id_partida, id_usuario, puntaje: resultado.puntaje },
+        (resp) => {
+          if (resp?.ok) {
+            sessionStorage.removeItem('resultadoPartida');
+            setRanking(resp.ranking);
+            setCompleto(resp.ranking.length >= 2);
+          } else {
+            setError(resp?.msg || 'No se pudo guardar tu puntaje.');
+          }
+          setCargando(false);
+          socket.disconnect();
+        }
+      );
+    });
+
+    socket.on('connect_error', () => {
+      setError('No se pudo conectar con el servidor.');
+      setCargando(false);
+    });
 
     return () => {
-      activo = false;
-      clearInterval(intervalo);
+      socket.disconnect();
     };
-  }, [roomId]);
+  }, []);
 
-  if (error) return <p style={{ padding: 24 }}>{error}</p>;
-  if (!ranking) return <p style={{ padding: 24 }}>Cargando ranking...</p>;
+  // Mientras falte el otro jugador, se vuelve a pedir el ranking cada tanto
+  useEffect(() => {
+    if (cargando || error || completo || !idPartidaRef.current) return;
+    const intervalo = setInterval(
+      () => pedirRanking(idPartidaRef.current),
+      INTERVALO_REFRESCO
+    );
+    return () => clearInterval(intervalo);
+  }, [cargando, error, completo]);
+
+  const medalla = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
 
   return (
-    <main style={{ maxWidth: 480, margin: "40px auto", padding: 16 }}>
-      <h1>🍔 Ranking de la sala</h1>
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        padding: '24px',
+        background: '#fffbeb',
+        fontFamily: 'sans-serif',
+      }}
+    >
+      <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#78350f' }}>
+        🏆 Ranking
+      </h1>
 
-      {ranking.length < 2 && <p>Esperando que termine el otro jugador…</p>}
+      {miPuntaje !== null && (
+        <p style={{ color: '#78350f' }}>
+          Tu puntaje: <strong>{miPuntaje}</strong>
+        </p>
+      )}
 
-      <ol style={{ listStyle: "none", padding: 0 }}>
-        {ranking.map((p) => (
-          <li
-            key={p.position}
+      {cargando && <p>Cargando ranking...</p>}
+
+      {error && <p style={{ color: '#b91c1c', textAlign: 'center' }}>{error}</p>}
+
+      {!cargando && !error && (
+        <>
+          <ol
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: 16,
-              marginBottom: 12,
-              borderRadius: 12,
-              border: "1px solid #ddd",
-              fontSize: 20,
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              width: 'min(420px, 100%)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
             }}
           >
-            <span>
-              {ranking.length >= 2 ? medals[p.position - 1] : ""} {p.name}
-            </span>
-            <strong>{p.score} pts</strong>
-          </li>
-        ))}
-      </ol>
+            {ranking.map((fila, i) => (
+              <li
+                key={fila.id_usuario}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: fila.id_usuario === idUsuario ? '#fde68a' : 'white',
+                  border: '2px solid #f59e0b',
+                  fontWeight: fila.id_usuario === idUsuario ? 800 : 500,
+                }}
+              >
+                <span>
+                  {medalla(i)} {fila.nombre}
+                  {fila.id_usuario === idUsuario ? ' (vos)' : ''}
+                </span>
+                <span>{fila.puntaje} pts</span>
+              </li>
+            ))}
+          </ol>
 
-      <button onClick={() => router.push("/")}>Volver al inicio</button>
+          {!completo && (
+            <p style={{ color: '#92400e' }}>
+              Esperando el puntaje del otro jugador...
+            </p>
+          )}
+        </>
+      )}
+
+      <button
+        onClick={() => router.push('/')}
+        style={{
+          marginTop: '8px',
+          padding: '12px 24px',
+          borderRadius: '12px',
+          background: '#92400e',
+          color: 'white',
+          fontWeight: 700,
+          border: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        Volver al inicio
+      </button>
     </main>
   );
 }

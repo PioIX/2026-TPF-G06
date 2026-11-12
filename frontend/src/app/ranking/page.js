@@ -1,19 +1,20 @@
 'use client';
 
 // Va en: app/ranking/page.js
+// Uso:
+//   /ranking                    -> al terminar una partida (envía tu puntaje y muestra el ranking)
+//   /ranking?id_partida=5       -> solo mira el ranking guardado de esa sala (no hace falta que nadie esté online)
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
+import './ranking.css';
 
 const SOCKET_URL = 'http://localhost:4000';
 const API_URL = 'http://localhost:4000/api';
 
-// Cada cuántos ms se vuelve a pedir el ranking mientras falta algún jugador
 const INTERVALO_REFRESCO = 3000;
 
-// Busca un número guardado (id_partida / id_usuario) en sessionStorage o localStorage.
-// AJUSTÁ las claves si en tu proyecto guardás esos datos con otros nombres.
 const leerId = (...claves) => {
   for (const almacen of [sessionStorage, localStorage]) {
     for (const k of claves) {
@@ -22,7 +23,7 @@ const leerId = (...claves) => {
         return Number(valor);
       }
     }
-    // También prueba con un objeto "usuario" guardado como JSON
+
     try {
       const obj = JSON.parse(almacen.getItem('usuario') || 'null');
       if (obj) {
@@ -46,14 +47,13 @@ export default function Ranking() {
   const [idUsuario, setIdUsuario] = useState(null);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(true);
-
-  const enviadoRef = useRef(false);
   const idPartidaRef = useRef(null);
 
   const pedirRanking = async (id_partida) => {
     try {
       const res = await fetch(`${API_URL}/ranking/${id_partida}`);
       const data = await res.json();
+
       if (data.ok) {
         setRanking(data.ranking);
         setCompleto(data.ranking.length >= 2);
@@ -63,35 +63,51 @@ export default function Ranking() {
     }
   };
 
-  // Al entrar: envía el puntaje (una sola vez) y carga el ranking
   useEffect(() => {
-    const id_partida = leerId('id_partida', 'idPartida', 'partidaActual');
+    // Si viene ?id_partida=X en la URL, solo se mira el ranking de esa sala
+    const params = new URLSearchParams(window.location.search);
+    const idQuery = Number(params.get('id_partida'));
+
+    const id_partida =
+      idQuery || leerId('id_partida', 'idPartida', 'partidaActual');
     const id_usuario = leerId('id_usuario', 'idUsuario');
+
     idPartidaRef.current = id_partida;
     setIdUsuario(id_usuario);
 
     let resultado = null;
+
     try {
-      resultado = JSON.parse(sessionStorage.getItem('resultadoPartida') || 'null');
+      resultado = JSON.parse(
+        sessionStorage.getItem('resultadoPartida') || 'null'
+      );
     } catch (e) {
       resultado = null;
     }
 
-    if (!id_partida || !id_usuario) {
+    if (!id_partida) {
+      setError('No se encontró la sala.');
+      setCargando(false);
+      return;
+    }
+
+    // Solo se envía el puntaje si venimos de jugar (hay resultado y no se pidió otra sala)
+    const debeEnviar = Boolean(resultado) && !idQuery;
+
+    if (debeEnviar && !id_usuario) {
       setError(
-        'No se encontró la partida o el usuario. Revisá cómo guardás id_partida e id_usuario.'
+        'No se encontró el usuario. Revisá cómo guardás id_usuario.'
       );
       setCargando(false);
       return;
     }
 
-    // Si no hay resultado (por ejemplo, se refrescó la página) solo se muestra el ranking
-    if (!resultado || enviadoRef.current) {
+    // Modo solo lectura: se muestra lo que ya está guardado en la base de datos
+    if (!debeEnviar) {
       pedirRanking(id_partida).finally(() => setCargando(false));
       return;
     }
 
-    enviadoRef.current = true;
     setMiPuntaje(resultado.puntaje);
 
     const socket = io(SOCKET_URL, { withCredentials: true });
@@ -108,6 +124,7 @@ export default function Ranking() {
           } else {
             setError(resp?.msg || 'No se pudo guardar tu puntaje.');
           }
+
           setCargando(false);
           socket.disconnect();
         }
@@ -124,104 +141,118 @@ export default function Ranking() {
     };
   }, []);
 
-  // Mientras falte el otro jugador, se vuelve a pedir el ranking cada tanto
+  // Solo se sigue consultando si acabo de jugar y todavía falta el otro jugador
   useEffect(() => {
-    if (cargando || error || completo || !idPartidaRef.current) return;
+    if (
+      cargando ||
+      error ||
+      completo ||
+      miPuntaje === null ||
+      !idPartidaRef.current
+    )
+      return;
+
     const intervalo = setInterval(
       () => pedirRanking(idPartidaRef.current),
       INTERVALO_REFRESCO
     );
-    return () => clearInterval(intervalo);
-  }, [cargando, error, completo]);
 
-  const medalla = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
+    return () => clearInterval(intervalo);
+  }, [cargando, error, completo, miPuntaje]);
+
+  const medalla = (i) =>
+    i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '16px',
-        padding: '24px',
-        background: '#fffbeb',
-        fontFamily: 'sans-serif',
-      }}
-    >
-      <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#78350f' }}>
+    <main className="ranking-page">
+
+      <h1 className="ranking-titulo">
         🏆 Ranking
       </h1>
 
       {miPuntaje !== null && (
-        <p style={{ color: '#78350f' }}>
+        <p className="ranking-mi-puntaje">
           Tu puntaje: <strong>{miPuntaje}</strong>
         </p>
       )}
 
-      {cargando && <p>Cargando ranking...</p>}
+      {cargando && (
+        <p className="ranking-cargando">
+          Cargando ranking...
+        </p>
+      )}
 
-      {error && <p style={{ color: '#b91c1c', textAlign: 'center' }}>{error}</p>}
+      {error && (
+        <p className="ranking-error">
+          {error}
+        </p>
+      )}
 
       {!cargando && !error && (
         <>
-          <ol
-            style={{
-              listStyle: 'none',
-              padding: 0,
-              margin: 0,
-              width: 'min(420px, 100%)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-          >
+          <ol className="ranking-lista">
             {ranking.map((fila, i) => (
               <li
                 key={fila.id_usuario}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  background: fila.id_usuario === idUsuario ? '#fde68a' : 'white',
-                  border: '2px solid #f59e0b',
-                  fontWeight: fila.id_usuario === idUsuario ? 800 : 500,
-                }}
+                className={`ranking-jugador ${
+                  fila.id_usuario === idUsuario ? 'jugador-actual' : ''
+                }`}
               >
-                <span>
+                <span className="ranking-nombre">
                   {medalla(i)} {fila.nombre}
                   {fila.id_usuario === idUsuario ? ' (vos)' : ''}
                 </span>
-                <span>{fila.puntaje} pts</span>
+
+                <span className="ranking-puntaje">
+                  {fila.puntaje} pts
+                </span>
               </li>
             ))}
           </ol>
 
-          {!completo && (
-            <p style={{ color: '#92400e' }}>
+          {ranking.length === 0 && miPuntaje === null && (
+            <p className="ranking-esperando">
+              Todavía nadie jugó esta sala.
+            </p>
+          )}
+
+          {!completo && miPuntaje !== null && (
+            <p className="ranking-esperando">
               Esperando el puntaje del otro jugador...
             </p>
           )}
         </>
       )}
 
-      <button
-        onClick={() => router.push('/')}
-        style={{
-          marginTop: '8px',
-          padding: '12px 24px',
-          borderRadius: '12px',
-          background: '#92400e',
-          color: 'white',
-          fontWeight: 700,
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        Volver al inicio
-      </button>
+      <div className="ranking-botones">
+        <button
+          className="ranking-boton ranking-boton-secundario"
+          onClick={() => router.push('/sala')}
+        >
+          Volver a la sala
+        </button>
+
+        <button
+          className="ranking-boton ranking-boton-secundario"
+          onClick={() =>
+            router.push(
+              idPartidaRef.current
+                ? `/partidas?id=${idPartidaRef.current}`
+                : '/partidas'
+            )
+          }
+        >
+          Volver a partidas
+        </button>
+
+        <button
+          className="ranking-boton"
+          onClick={() => router.push('/')}
+        >
+          Volver al inicio
+        </button>
+      </div>
+
     </main>
   );
 }

@@ -1401,14 +1401,6 @@ export default function JuegoHamburguesa() {
               🍟 fritos
             </span>
           )}
-                bottom: `${
-                  ((Math.max(cantidadFritos, 1) - 1) / 2 - i) *
-                  BANDEJA_FRITAS.separacionVertical
-                }cqw`,
-                // el ancho depende del tamaño pedido (pequeño / mediano / grande)
-                width: `${BANDEJA_FRITAS.anchos[tamano]}cqw`,
-                zIndex: i + 1,
-                ...(i < fritosRestaurados ? { animation: 'none' } : {}),
           {fritosServidos.map(({ frito, tamano }, i) => {
             const total = Math.max(cantidadFritos, 1);
             return (

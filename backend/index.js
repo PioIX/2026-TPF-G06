@@ -234,97 +234,232 @@ app.get('/api/pedido-aleatorio', async (req, res) => {
   }
 });
 
+// =========================================================
+// NUEVO: DATOS DE LA PÁGINA DE PARTIDAS (milkshakes, freidora, config y extras del pedido)
+// Todo esto antes eran variables / arrays dentro del front.
+// Los sabores y los fritos salen de la tabla Ingredientes:
+//   seccion = 'milkshake' -> sabores de milkshake (tipo = imagen del milkshake terminado)
+//   seccion = 'papas'     -> cosas de la freidora (tipo = imagen del cartón lleno)
+// =========================================================
 
+// Configuración del juego (antes eran constantes del front)
+const CONFIG_JUEGO = {
+  tiempoPartida: 90,      // segundos por pedido (ponelo en 60 para la versión final)
+  probabilidadMilkshake: 0.6,  // 1 = todos los pedidos piden milkshake
+  maxMilkshakes: 2,            // cantidad máxima de milkshakes por pedido
+  probabilidadFritos: 0.5,     // 1 = todos los pedidos piden algo de la freidora
+  maxFritos: 2,                // cantidad máxima de fritos por pedido
+  tiempoFrituraMs: 5000,       // cuánto tardan en freírse las papas (página /freidora)
+  // Página /parrilla (segundos)
+  parrilla: {
+    coccion: { paty: 6, pollo: 6, veggie: 4 }, // lo que tarda en cocinarse CADA lado
+    gracia: 3.5,           // margen, una vez cocido el lado, antes de que se queme
+    duracionVolteo: 0.8,   // duración de la animación de dar vuelta
+    esperaCocinada: 1.8,   // tiempo mostrando "¡en su punto!" antes de volver
+    esperaQuemada: 2.6,    // tiempo mostrando "¡se quemó!" antes de volver
+  },
+  // Los ids son los que usa la página /freidora
+  tamanosFritos: [
+    { id: 'pequeno', nombre: 'Pequeño' },
+    { id: 'mediano', nombre: 'Mediano' },
+    { id: 'grande', nombre: 'Grande' },
+  ],
+};
 
-// CREACION DE SALAS - NO BORRAR
+const normalizarJuego = (texto = '') =>
+  String(texto)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[_-]/g, ' ')
+    .trim();
 
-// LISTADO DE CHATS INDIVIDUALES:
-/*app.get("/sala/:id_usuario", async function (req, res) {
+const capitalizarJuego = (texto = '') =>
+  texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+
+const slugJuego = (texto = '') => normalizarJuego(texto).replace(/\s+/g, '-');
+
+// Las imágenes están en /public del front: se les agrega la barra inicial si falta
+const rutaImagenJuego = (tipo) => {
+  if (!tipo) return '';
+  const t = String(tipo);
+  return /^(\/|https?:|data:)/.test(t) ? t : `/${t}`;
+};
+
+// Solo decoración para el ticket (la tabla no tiene columna de emoji)
+const EMOJI_SABORES = {
+  vainilla: '🍦',
+  chocolate: '🍫',
+  'cookies-cream': '🍪',
+  frutilla: '🍓',
+};
+const NOMBRES_SABORES = { 'cookies-cream': 'Cookies & Cream' };
+
+const esMilkshakeJuego = (ing) =>
+  normalizarJuego(ing?.seccion) === 'milkshake' ||
+  /milkshake|batido/.test(normalizarJuego(ing?.nombre));
+
+const esFritoJuego = (ing) =>
+  normalizarJuego(ing?.seccion) === 'papas' ||
+  /(^|\s)papas?(\s|$)/.test(normalizarJuego(ing?.nombre));
+
+// Ids estables: son los mismos que reciben las páginas /milkshakes y /freidora
+const idSaborJuego = (ing) => {
+  const n = normalizarJuego(ing?.nombre).replace(/milkshake|batido/g, '').trim();
+  if (n.includes('vainilla')) return 'vainilla';
+  if (n.includes('choco')) return 'chocolate';
+  if (n.includes('cookie') || n.includes('galleta') || n.includes('oreo')) return 'cookies-cream';
+  if (n.includes('frutilla') || n.includes('fresa')) return 'frutilla';
+  return slugJuego(n) || String(ing?.id_ingrediente ?? '');
+};
+
+const idFritoJuego = (ing) =>
+  /papa/.test(normalizarJuego(ing?.nombre))
+    ? 'papas'
+    : slugJuego(ing?.nombre) || String(ing?.id_ingrediente ?? '');
+
+const armarSabores = (ingredientes) =>
+  ingredientes.filter(esMilkshakeJuego).map((ing) => {
+    const id = idSaborJuego(ing);
+    const base = normalizarJuego(ing.nombre).replace(/milkshake|batido/g, '').trim();
+    return {
+      id,
+      nombre: NOMBRES_SABORES[id] ?? capitalizarJuego(base || normalizarJuego(ing.nombre)),
+      emoji: EMOJI_SABORES[id] ?? '🥤',
+      imagen: rutaImagenJuego(ing.tipo),
+    };
+  });
+
+const armarFritos = (ingredientes) =>
+  ingredientes.filter(esFritoJuego).map((ing) => ({
+    id: idFritoJuego(ing),
+    nombre: capitalizarJuego(normalizarJuego(ing.nombre)),
+    emoji: '🍟',
+    imagen: rutaImagenJuego(ing.tipo),
+  }));
+
+// 4. Configuración del juego
+app.get('/api/config-juego', (req, res) => {
+  res.json(CONFIG_JUEGO);
+});
+
+// 5. Sabores de milkshake disponibles (desde la tabla Ingredientes)
+app.get('/api/milkshakes', async (req, res) => {
   try {
-    const { id_usuario } = req.params;
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+    res.json(armarSabores(ingredientes));
+  } catch (error) {
+    console.error('❌ Error al obtener milkshakes:', error);
+    res.status(500).json({ error: 'Error al obtener los milkshakes de MySQL' });
+  }
+});
 
-    const chats = await realizarQuery(
-      `
-      SELECT 
-        c.id_chat,
-        u_otro.nombre AS nombre_contacto
-      FROM UsuariosEnChat uec
-      JOIN Chats c 
-        ON uec.id_chat = c.id_chat
-      LEFT JOIN Usuarios u_otro
-        ON u_otro.id_usuario = (
-          SELECT uec_sub.id_usuario 
-          FROM UsuariosEnChat uec_sub
-          WHERE uec_sub.id_chat = c.id_chat 
-            AND uec_sub.id_usuario != ${id_usuario}
-          LIMIT 1
-        )
-      WHERE uec.id_usuario = ${id_usuario}
-      `
-    );
+// 6. Cosas de la freidora disponibles (desde la tabla Ingredientes)
+app.get('/api/fritos', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+    res.json(armarFritos(ingredientes));
+  } catch (error) {
+    console.error('❌ Error al obtener fritos:', error);
+    res.status(500).json({ error: 'Error al obtener los fritos de MySQL' });
+  }
+});
 
-    res.send({
-      ok: true,
-      chats,
+// 7. Milkshakes y fritos ALEATORIOS para un pedido nuevo
+//    (sabores pedidos, fritos pedidos y el tamaño de cada frito, en el mismo orden)
+app.get('/api/extras-pedido', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+    const sabores = armarSabores(ingredientes);
+    const fritos = armarFritos(ingredientes);
+
+    const cantidadMilkshakes =
+      sabores.length > 0 && Math.random() < CONFIG_JUEGO.probabilidadMilkshake
+        ? 1 + Math.floor(Math.random() * CONFIG_JUEGO.maxMilkshakes)
+        : 0;
+
+    const cantidadFritos =
+      fritos.length > 0 && Math.random() < CONFIG_JUEGO.probabilidadFritos
+        ? 1 + Math.floor(Math.random() * CONFIG_JUEGO.maxFritos)
+        : 0;
+
+    res.json({
+      saboresMilkshake: Array.from({ length: cantidadMilkshakes }, () => elegir(sabores).id),
+      fritosPedidos: Array.from({ length: cantidadFritos }, () => elegir(fritos).id),
+      tamanosFritos: Array.from(
+        { length: cantidadFritos },
+        () => elegir(CONFIG_JUEGO.tamanosFritos).id
+      ),
     });
   } catch (error) {
-    res.status(500).send({
-      message: "Error al listar chats",
-      error: error.message,
-    });
+    console.error('❌ Error al generar extras del pedido:', error);
+    res.status(500).json({ error: 'Error interno al generar los extras del pedido' });
   }
 });
 
 
-// CREACION DE CHAT INDIVIDUAL:
-app.post("/sala/individual", async function (req, res) {
+// 8. Posiciones de las bandejas del fondo (tabla Bandejas, en % del escenario).
+//    Las de ingredientes traen id_ingrediente; las máquinas traen "codigo"
+//    ('maquina-milkshake', 'freidora'). Ver bandejas.sql
+app.get('/api/bandejas', async (req, res) => {
   try {
-    const { id_usuario_creador, correo_destinatario } = req.body;
-
-    const destinatarios = await realizarQuery(
-      `SELECT id_usuario FROM Usuarios WHERE mail = "${correo_destinatario}"`
+    const filas = await realizarQuery(
+      'SELECT id_bandeja, id_ingrediente, codigo, pos_left, pos_top, pos_width, pos_height FROM Bandejas'
     );
-
-    if (destinatarios.length === 0) {
-      return res.status(404).send({
-        message: "El usuario destinatario no existe"
-      });
-    }
-
-    const id_destinatario = destinatarios[0].id_usuario;
-
-    if (Number(id_usuario_creador) === Number(id_destinatario)) {
-      return res.status(400).send({
-        message: "No puedes crear un chat individual contigo mismo"
-      });
-    }
-
-    const resultadoChat = await realizarQuery(
-      `INSERT INTO Chats VALUES ()`
+    // MySQL devuelve los DECIMAL como texto: se pasan a número
+    res.json(
+      filas.map((f) => ({
+        id_bandeja: f.id_bandeja,
+        id_ingrediente: f.id_ingrediente,
+        codigo: f.codigo,
+        left: Number(f.pos_left),
+        top: Number(f.pos_top),
+        width: Number(f.pos_width),
+        height: Number(f.pos_height),
+      }))
     );
-    const id_chat = resultadoChat.insertId;
-
-    await realizarQuery(
-      `INSERT INTO UsuariosEnChat (id_chat, id_usuario) VALUES (${id_chat}, ${id_usuario_creador})`
-    );
-
-    // 3. ¡IMPORTANTE! Insertar también al usuario destinatario en el chat
-    await realizarQuery(
-      `INSERT INTO UsuariosEnChat (id_chat, id_usuario) VALUES (${id_chat}, ${id_destinatario})`
-    );
-
-    res.send({
-      ok: true,
-      message: "Chat individual creado con éxito",
-      id_chat
-    });
   } catch (error) {
-    res.status(500).send({
-      message: "Error al crear chat individual",
-      error: error.message
-    });
+    console.error('❌ Error al obtener bandejas:', error);
+    res.status(500).json({ error: 'Error al obtener las bandejas de MySQL' });
   }
-});*/
+});
+
+// 9. Sabores de la máquina de milkshakes: nombre e imagen desde Ingredientes
+//    + color y posiciones desde la tabla SaboresMilkshake (ver milkshakes.sql)
+app.get('/api/maquina-milkshake', async (req, res) => {
+  try {
+    const filas = await realizarQuery(
+      `SELECT i.id_ingrediente, i.nombre, i.seccion, i.tipo,
+              s.color, s.puntos, s.vaso_x, s.boton_left, s.boton_ancho
+       FROM SaboresMilkshake s
+       JOIN Ingredientes i ON i.id_ingrediente = s.id_ingrediente
+       ORDER BY s.vaso_x ASC`
+    );
+
+    const sabores = filas
+      .map((f) => {
+        const [base] = armarSabores([f]); // id, nombre, emoji e imagen
+        if (!base) return null;
+        return {
+          ...base,
+          color: f.color,
+          puntos: f.puntos,
+          x: Number(f.vaso_x),
+          boton: [Number(f.boton_left), Number(f.boton_ancho)],
+        };
+      })
+      .filter(Boolean);
+
+    res.json(sabores);
+  } catch (error) {
+    console.error('❌ Error al obtener la máquina de milkshakes:', error);
+    res.status(500).json({ error: 'Error al obtener los sabores de la máquina de MySQL' });
+  }
+});
+
+
+
+
 app.get("/sala/partidas", async function (req, res) {
   try {
     const partidas = await realizarQuery(`

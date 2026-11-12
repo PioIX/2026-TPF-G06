@@ -5,13 +5,19 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './FreidoraStation.module.css';
 
+const API_URL = 'http://localhost:4000/api';
+
 /* ============ CONFIGURACIÓN ============
    Todas las medidas están en píxeles de la imagen Freidora.png (1671 x 941).
-   Cada caja es [x, y, ancho, alto]. El componente las convierte a % solo. */
+   Cada caja es [x, y, ancho, alto]. El componente las convierte a % solo.
+
+   PASO 1 (viene del back, ver los endpoints de index.js):
+     - GET /api/config-juego -> tamaños de papas (ids y nombres) y tiempo de fritura
+     - GET /api/fritos       -> imagen de la pila de papas (columna "tipo" de Ingredientes)
+   Lo que sigue en el front por ahora: las posiciones y medidas dibujadas sobre Freidora.png. */
 const W = 1671;
 const H = 941;
 const FONDO = '/Freidora.png';                      // ya SIN la bandeja de la derecha
-const IMG_PILA = '/papasRicas.png';                 // pila que viaja a la freidora (y después de la canasta al cartón)
 const IMG_COCIDAS = '/papas-fritas-nucleo.png';     // relleno de la canasta al terminar
 const IMG_CARTON_VACIO = '/cartonPapas.png';
 const IMG_CARTON_LLENO = '/papas.png';
@@ -23,21 +29,18 @@ const PROPORCION = 0.698;               // alto / ancho de papasRicas.png (recor
 const PROPORCION_FRITA = PROPORCION;
 const pila = (cx, cy, ancho, prop = PROPORCION) => [cx - ancho / 2, cy - (ancho * prop) / 2, ancho, ancho * prop];
 
-const FRY_MS = 5000;                      // tiempo en la freidora
 const DURACION_VUELO = 1200;              // cuánto tardan las papas en viajar (ms)
 const MESADA_PAPAS = [12, 205, 210, 210]; // papas crudas de la mesada (zona tocable)
 
 /* ---- Tres cartones vacíos en columna (donde estaba la bandeja), uno por tamaño ----
-   cx = centro horizontal de la columna, w = ancho, base = borde inferior de cada cartón. */
+   cx = centro horizontal de la columna, w = ancho, base = borde inferior de cada cartón.
+   Las claves son los ids de los tamaños que manda el back (pequeno, mediano, grande). */
 const COLUMNA_CX = 1450;
 const CARTONES = {
   pequeno: { w: 125, base: 355 },
   mediano: { w: 156, base: 506 },
   grande:  { w: 188, base: 684 },
 };
-const NOMBRES = { pequeno: 'Pequeño', mediano: 'Mediano', grande: 'Grande' };
-const TAMANOS = ['pequeno', 'mediano', 'grande'];
-const tamanoAlAzar = () => TAMANOS[Math.floor(Math.random() * TAMANOS.length)];
 
 const cartonVacioCaja = (t) => {
   const { w, base } = CARTONES[t];
@@ -124,7 +127,7 @@ function leerPartida() {
 let contador = 0;
 
 /* ============ PAPAS EN VUELO ============ */
-function Vuelo({ tipo, desde, hasta, onLlego, onFin }) {
+function Vuelo({ tipo, imagen, desde, hasta, onLlego, onFin }) {
   const ref = useRef(null);
   const llego = useRef(onLlego);
   const fin = useRef(onFin);
@@ -172,7 +175,7 @@ function Vuelo({ tipo, desde, hasta, onLlego, onFin }) {
     <div ref={ref} className={styles.vuelo} style={caja(desde)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={IMG_PILA}
+        src={imagen}
         alt=""
         draggable={false}
         style={{ objectFit: 'contain', borderRadius: 0 }}
@@ -202,6 +205,11 @@ function Vuelo({ tipo, desde, hasta, onLlego, onFin }) {
 export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo, onEntregar, volverA = VOLVER_A }) {
   const router = useRouter();
 
+  // PASO 1: datos que vienen del back
+  // { tamanos: [{ id, nombre }], fryMs, imagenPila }
+  const [datos, setDatos] = useState(null);
+  const [errorDatos, setErrorDatos] = useState('');
+
   // estado de cada canasta: vacio | cargando | friendo | listo
   const [canastas, setCanastas] = useState(CANASTAS.map(() => 'vacio'));
   const [vuelos, setVuelos] = useState([]);
@@ -213,8 +221,59 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
   const yaTermino = useRef(false);
   const entregados = useRef(0);
 
-  // Los pedidos se arman en el cliente (usa sessionStorage y azar), para no romper la hidratación
+  const nombreTamano = (t) => datos?.tamanos.find((x) => x.id === t)?.nombre ?? t;
+
+  // Pedir al back los tamaños, el tiempo de fritura y la imagen de las papas
   useEffect(() => {
+    let cancelado = false;
+
+    const cargarDatos = async () => {
+      try {
+        const [resConfig, resFritos] = await Promise.all([
+          fetch(`${API_URL}/config-juego`),
+          fetch(`${API_URL}/fritos`),
+        ]);
+        if (!resConfig.ok || !resFritos.ok) {
+          throw new Error('No se pudieron obtener los datos.');
+        }
+
+        const config = await resConfig.json();
+        const fritos = await resFritos.json();
+        if (!Array.isArray(config?.tamanosFritos) || !Array.isArray(fritos)) {
+          throw new Error('La respuesta del servidor no es válida.');
+        }
+
+        if (cancelado) return;
+        setDatos({
+          // solo los tamaños que tienen su cartón dibujado en la imagen
+          tamanos: config.tamanosFritos.filter((t) => CARTONES[t.id]),
+          fryMs: Number(config.tiempoFrituraMs) || 5000,
+          imagenPila: fritos[0]?.imagen ?? '',
+        });
+      } catch (e) {
+        console.error('Error al conectar con el backend:', e);
+        if (!cancelado) {
+          setErrorDatos(
+            'No se pudo conectar con el servidor. Comprobá que el backend esté funcionando.'
+          );
+        }
+      }
+    };
+
+    cargarDatos();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Los pedidos se arman en el cliente (usa sessionStorage y azar), para no romper la hidratación.
+  // Se arman cuando ya llegaron los tamaños del back.
+  useEffect(() => {
+    if (!datos) return;
+
+    const ids = datos.tamanos.map((t) => t.id);
+    const tamanoAlAzar = () => ids[Math.floor(Math.random() * ids.length)];
+
     let lista = null;
 
     const partida = leerPartida();
@@ -223,7 +282,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
       const quedan = Math.max(0, partida.fritosPedidos.length - hechos);
       const tamanos = Array.isArray(partida.tamanosFritos) ? partida.tamanosFritos.slice(hechos) : [];
       lista = Array.from({ length: quedan }, (_, i) =>
-        TAMANOS.includes(tamanos[i]) ? tamanos[i] : tamanoAlAzar()
+        ids.includes(tamanos[i]) ? tamanos[i] : tamanoAlAzar()
       );
     }
 
@@ -235,7 +294,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
 
     setPedidos(lista.map((t) => ({ tamano: t, hecho: false })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [datos]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -274,7 +333,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
         fin: () => {
           quitarVuelo(id);
           cambiar(i, 'friendo');
-          timers.current.push(setTimeout(() => cambiar(i, 'listo'), FRY_MS));
+          timers.current.push(setTimeout(() => cambiar(i, 'listo'), datos.fryMs));
         },
       },
     ]);
@@ -359,6 +418,23 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     }
   }
 
+  /* ---------- PANTALLAS DE ERROR / CARGA (después de todos los hooks) ---------- */
+  if (errorDatos) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.mensaje} role="alert">{errorDatos}</div>
+      </div>
+    );
+  }
+
+  if (!datos) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.mensaje} role="status">Preparando la freidora...</div>
+      </div>
+    );
+  }
+
   const mensaje =
     fase === 'lleno'
       ? pendientes > 1
@@ -392,7 +468,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
                 className={`${styles.ticketFila} ${p.hecho ? styles.ticketHecho : ''}`}
               >
                 <span>Papas fritas</span>
-                <strong>{NOMBRES[p.tamano]}</strong>
+                <strong>{nombreTamano(p.tamano)}</strong>
                 <span className={styles.ticketMarca}>{p.hecho ? '✓' : ''}</span>
               </li>
             ))}
@@ -437,7 +513,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
 
             {estado === 'friendo' && (
               <div className={styles.barra} style={caja([ix + iw / 2 - 70, 205, 140, 14])}>
-                <span style={{ animationDuration: `${FRY_MS}ms` }} />
+                <span style={{ animationDuration: `${datos.fryMs}ms` }} />
               </div>
             )}
 
@@ -456,7 +532,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
       })}
 
       {/* Los tres cartones vacíos: se elige el tamaño tocando uno */}
-      {TAMANOS.map((t) => {
+      {datos.tamanos.map(({ id: t }) => {
         const elegido = tamano === t;
         const lleno = fase === 'lleno' && elegido;
         const apagado = fase === 'lleno' && !elegido;
@@ -471,7 +547,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
                 } ${apagado ? styles.cartonApagado : ''}`}
                 style={caja([x, y, w, h])}
                 disabled={!hayListo || fase !== 'cocina'}
-                aria-label={`Cartón ${NOMBRES[t]}`}
+                aria-label={`Cartón ${nombreTamano(t)}`}
                 aria-pressed={elegido}
                 onClick={() => elegirTamano(t)}
               >
@@ -493,7 +569,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
               className={`${styles.etiqueta} ${elegido ? styles.etiquetaSel : ''} ${apagado ? styles.cartonApagado : ''}`}
               style={caja([1225, y + h / 2 - 15, 100, 30])}
             >
-              {NOMBRES[t]}
+              {nombreTamano(t)}
             </div>
           </div>
         );
@@ -501,7 +577,15 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
 
       {/* Papas en movimiento */}
       {vuelos.map((v) => (
-        <Vuelo key={v.id} tipo={v.tipo} desde={v.desde} hasta={v.hasta} onLlego={v.llego} onFin={v.fin} />
+        <Vuelo
+          key={v.id}
+          tipo={v.tipo}
+          imagen={datos.imagenPila}
+          desde={v.desde}
+          hasta={v.hasta}
+          onLlego={v.llego}
+          onFin={v.fin}
+        />
       ))}
 
       {mensaje && <div className={styles.mensaje} role="status">{mensaje}</div>}

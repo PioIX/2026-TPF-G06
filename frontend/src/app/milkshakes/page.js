@@ -5,20 +5,20 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './MilkshakeStation.module.css';
 
+const API_URL = 'http://localhost:4000/api';
+
 /* ============ CONFIGURACIÓN ============
    Todo en % del escenario (la imagen de la máquina, 1674 x 940).
-   x     = posición izquierda del vaso bajo el dispensador
-   boton = zona tocable del dispensador (left, ancho)
-   final = imagen del milkshake terminado (poné los PNG en /public/milkshakes/) */
-const SABORES = {
-  vainilla:  { nombre: 'Vainilla',        emoji: '🍦', color: '#f6e7c1', x: 49.5, boton: [49.6, 7.2], final: '/vainilla.png' },
-  chocolate: { nombre: 'Chocolate',       emoji: '🍫', color: '#5a3320', x: 59.3, boton: [59.1, 7.2], final: '/chocolate.png' },
-  frutilla:  { nombre: 'Frutilla',        emoji: '🍓', color: '#f4a7b9', x: 69.3, boton: [69.3, 7.2], final: '/frutilla.png' },
-  cookies:   { nombre: 'Cookies & Cream', emoji: '🍪', color: '#d9d2cb', x: 79.8, boton: [79.4, 8.1], final: '/cookies&cream.png', puntos: '#3a2a22' },
-};
 
-// El juego guarda los sabores con estos ids; acá se traducen a las claves de SABORES
-const ALIAS_JUEGO = { 'cookies-cream': 'cookies' };
+   Los SABORES ahora vienen del back (GET /api/maquina-milkshake), armados con la
+   tabla Ingredientes (nombre e imagen del milkshake terminado, columna "tipo") y
+   la tabla SaboresMilkshake (ver milkshakes.sql). Cada sabor trae:
+     id     = el mismo id que guarda /partidas (vainilla, chocolate, cookies-cream, frutilla)
+     nombre, emoji, color (del líquido), puntos (color de los puntitos, o null)
+     x      = posición izquierda del vaso bajo el dispensador
+     boton  = zona tocable del dispensador [left, ancho]
+     imagen = imagen del milkshake terminado
+   Lo que sigue en el front: las medidas de la máquina y de los vasos de vidrio. */
 
 const Y_MAQUINA = 47.0;                 // top del vaso vacío en la máquina
 const ANCHO_VASO = 7.5;                 // ancho del vaso vacío
@@ -35,10 +35,10 @@ const BASE_FINAL = 0.985;                               // dónde termina la bas
 function leerPedido() {
   try {
     const partida = JSON.parse(sessionStorage.getItem('partida') || 'null');
-    const sabores = (partida?.saboresMilkshake ?? [])
-      .map((id) => ALIAS_JUEGO[id] ?? id)
-      .filter((clave) => SABORES[clave]);
-    return { sabores, listos: partida?.milkshakesListos ?? 0 };
+    return {
+      sabores: Array.isArray(partida?.saboresMilkshake) ? partida.saboresMilkshake : [],
+      listos: partida?.milkshakesListos ?? 0,
+    };
   } catch (e) {
     return { sabores: [], listos: 0 };
   }
@@ -55,16 +55,16 @@ function guardarProgreso(listos, completo) {
 }
 
 /* Cada vaso maneja su propia animación, así pueden convivir varios a la vez.
-   Fases: viajando -> llenando -> listo */
-function Vaso({ id, sabor, slot, fase, onFase }) {
+   Fases: viajando -> llenando -> listo
+   "s" es el sabor completo que vino del back. */
+function Vaso({ id, s, slot, fase, onFase }) {
   const reactId = useId().replace(/:/g, '');
   const ref = useRef(null);
-  const s = SABORES[sabor];
 
   useEffect(() => {
     if (!ref.current) return;
     const origen = VASOS[slot];
-    const destino = SABORES[sabor];
+    const destino = s;
     const timers = [];
     let cancelado = false;
 
@@ -142,18 +142,58 @@ function Vaso({ id, sabor, slot, fase, onFase }) {
  */
 export default function MilkshakeStation({ onListo, onEntregar }) {
   const router = useRouter();
+
+  // Sabores que vienen del back: [{ id, nombre, emoji, imagen, color, puntos, x, boton }]
+  const [catalogo, setCatalogo] = useState(null);
+  const [errorDatos, setErrorDatos] = useState('');
+
   const [seleccionado, setSeleccionado] = useState(null); // índice del vaso elegido
-  const [trabajos, setTrabajos] = useState([]);           // [{ id, slot, sabor, fase }]
+  const [trabajos, setTrabajos] = useState([]);           // [{ id, slot, sabor (id), fase }]
   const [pedido, setPedido] = useState({ sabores: [], listos: 0 });
   const [error, setError] = useState(null);               // { elegido, esperado } mientras se muestra el popup
   const siguienteId = useRef(0);
   const trabajosRef = useRef([]);
   trabajosRef.current = trabajos;
 
-  // sessionStorage solo existe en el navegador, por eso se lee después de montar
+  const saborDe = (id) => catalogo?.find((s) => s.id === id);
+
+  // Pedir al back los sabores de la máquina
   useEffect(() => {
-    setPedido(leerPedido());
+    let cancelado = false;
+
+    const cargarSabores = async () => {
+      try {
+        const res = await fetch(`${API_URL}/maquina-milkshake`);
+        if (!res.ok) throw new Error('No se pudieron obtener los sabores.');
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error('La respuesta del servidor no es válida.');
+        if (!cancelado) setCatalogo(data);
+      } catch (e) {
+        console.error('Error al conectar con el backend:', e);
+        if (!cancelado) {
+          setErrorDatos(
+            'No se pudo conectar con el servidor. Comprobá que el backend esté funcionando.'
+          );
+        }
+      }
+    };
+
+    cargarSabores();
+    return () => {
+      cancelado = true;
+    };
   }, []);
+
+  // sessionStorage solo existe en el navegador, por eso se lee después de montar
+  // (y cuando ya llegaron los sabores, para quedarse solo con los que existen)
+  useEffect(() => {
+    if (!catalogo) return;
+    const p = leerPedido();
+    setPedido({
+      sabores: p.sabores.filter((id) => catalogo.some((s) => s.id === id)),
+      listos: p.listos,
+    });
+  }, [catalogo]);
 
   const slotOcupado = (i) => trabajos.some((t) => t.slot === i);
   const saborOcupado = (clave) => trabajos.some((t) => t.sabor === clave);
@@ -216,13 +256,30 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     if (completo) router.push('/partidas');
   }
 
+  /* ---------- PANTALLAS DE ERROR / CARGA (después de todos los hooks) ---------- */
+  if (errorDatos) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.mensaje} role="alert">{errorDatos}</div>
+      </div>
+    );
+  }
+
+  if (!catalogo) {
+    return (
+      <div className={styles.stage}>
+        <div className={styles.mensaje} role="status">Preparando la máquina...</div>
+      </div>
+    );
+  }
+
   const sirviendo = trabajos.filter((t) => t.fase !== 'listo');
   const hayListos = trabajos.some((t) => t.fase === 'listo');
 
   const mensaje =
     seleccionado !== null ? 'Ahora elegí un sabor'
     : hayListos ? '¡Listo! Tocá el milkshake para entregarlo'
-    : sirviendo.length ? `Sirviendo ${sirviendo.map((t) => SABORES[t.sabor].nombre).join(' y ')}...`
+    : sirviendo.length ? `Sirviendo ${sirviendo.map((t) => saborDe(t.sabor)?.nombre).join(' y ')}...`
     : 'Tocá un vaso de vidrio';
 
   const terminados = trabajos.filter((t) => t.fase === 'listo');
@@ -237,7 +294,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
           <h2 className={styles.ticketTitulo}>PEDIDO</h2>
           <ul className={styles.ticketLista}>
             {pedido.sabores.map((clave, i) => {
-              const s = SABORES[clave];
+              const s = saborDe(clave);
               const hecho = i < pedido.listos;
               const enCurso = i >= pedido.listos && i < pedido.listos + trabajos.length;
               const siguiente = i === pedido.listos + trabajos.length;
@@ -276,29 +333,33 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
       ))}
 
       {/* Dispensadores (se activan cuando hay un vaso elegido y el dispensador está libre) */}
-      {Object.entries(SABORES).map(([clave, s]) => {
-        const libre = seleccionado !== null && !saborOcupado(clave);
+      {catalogo.map((s) => {
+        const libre = seleccionado !== null && !saborOcupado(s.id);
         return (
           <button
-            key={clave}
+            key={s.id}
             type="button"
             className={`${styles.sabor} ${libre ? styles.activo : ''}`}
             style={{ left: `${s.boton[0]}%`, width: `${s.boton[1]}%` }}
             disabled={!libre || !!error}
             aria-label={`Servir ${s.nombre}`}
-            onClick={() => tocarSabor(clave)}
+            onClick={() => tocarSabor(s.id)}
           />
         );
       })}
 
       {/* Vasos viajando y llenándose */}
-      {trabajos.map((t) => (
-        <Vaso key={t.id} id={t.id} sabor={t.sabor} slot={t.slot} fase={t.fase} onFase={cambiarFase} />
-      ))}
+      {trabajos.map((t) => {
+        const s = saborDe(t.sabor);
+        return s ? (
+          <Vaso key={t.id} id={t.id} s={s} slot={t.slot} fase={t.fase} onFase={cambiarFase} />
+        ) : null;
+      })}
 
       {/* Milkshakes terminados */}
       {terminados.map((t) => {
-        const f = SABORES[t.sabor];
+        const f = saborDe(t.sabor);
+        if (!f) return null;
         return (
           <button
             key={t.id}
@@ -312,7 +373,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
               width: `${ANCHO_FINAL}%`,
             }}
           >
-            <Image src={f.final} alt={`Milkshake de ${f.nombre}`} width={600} height={1199} draggable={false} />
+            <Image src={f.imagen} alt={`Milkshake de ${f.nombre}`} width={600} height={1199} draggable={false} />
           </button>
         );
       })}
@@ -330,11 +391,11 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
             aria-describedby="popup-texto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={styles.popupEmoji} aria-hidden="true">{SABORES[error.elegido].emoji} ❌</div>
+            <div className={styles.popupEmoji} aria-hidden="true">{saborDe(error.elegido)?.emoji} ❌</div>
             <h3 id="popup-titulo" className={styles.popupTitulo}>¡Sabor equivocado!</h3>
             <p id="popup-texto" className={styles.popupTexto}>
-              Elegiste <strong>{SABORES[error.elegido].nombre}</strong>, pero el pedido pide{' '}
-              <strong>{SABORES[error.esperado].emoji} {SABORES[error.esperado].nombre}</strong>.
+              Elegiste <strong>{saborDe(error.elegido)?.nombre}</strong>, pero el pedido pide{' '}
+              <strong>{saborDe(error.esperado)?.emoji} {saborDe(error.esperado)?.nombre}</strong>.
               <br />
               Volvé a tocar el vaso y llevalo al sabor correcto.
             </p>

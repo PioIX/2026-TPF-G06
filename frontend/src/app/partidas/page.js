@@ -7,12 +7,6 @@ import Popup from 'reactjs-popup';
 
 const API_URL = 'http://localhost:4000/api';
 
-// Tiempo de cada pedido en segundos
-const TIEMPO_PARTIDA = 60;
-
-// Página a la que se va cuando termina la partida
-const RUTA_RANKING = '/ranking';
-
 // false = al soltar una carne en la parrilla se va a la página /parrilla.
 // true  = (solo para pruebas) la carne se agrega directo a la hamburguesa.
 const MODO_PRUEBA_PARRILLA = false;
@@ -22,46 +16,48 @@ const RUTA_PARRILLA = '/parrilla';
 // true = al tocar la máquina se da el milkshake por hecho (para probar).
 const MODO_PRUEBA_MILKSHAKE = false;
 const RUTA_MILKSHAKE = '/milkshakes';
-const PROBABILIDAD_MILKSHAKE = 0.6; // 1 = todos los pedidos piden milkshake
-const MAX_MILKSHAKES = 2; // cantidad máxima de milkshakes por pedido
 
 // Freidora: al tocar la freidora del fondo se va a /freidora.
 // true = al tocar la freidora se da lo frito por hecho (para probar).
 const MODO_PRUEBA_FREIDORA = false;
 const RUTA_FREIDORA = '/freidora';
-const PROBABILIDAD_FRITOS = 0.5; // 1 = todos los pedidos piden algo de la freidora
-const MAX_FRITOS = 2; // cantidad máxima de fritos por pedido
 
-// Sabores que puede pedir un cliente. El "id" es el que viaja a la página
-// de milkshakes dentro de la partida guardada (saboresMilkshake).
-// "imagen" es el milkshake terminado que aparece en la bandeja (están en /public).
-const SABORES_MILKSHAKE = [
-  { id: 'vainilla', nombre: 'Vainilla', emoji: '🍦', imagen: '/vainilla.png' },
-  { id: 'chocolate', nombre: 'Chocolate', emoji: '🍫', imagen: '/chocolate.png' },
-  { id: 'cookies-cream', nombre: 'Cookies & Cream', emoji: '🍪', imagen: '/cookies&cream.png' },
-  { id: 'frutilla', nombre: 'Frutilla', emoji: '🍓', imagen: '/frutilla.png' },
-];
+// Cuando se acaba el tiempo de la partida se va al ranking
+const RUTA_RANKING = '/ranking';
 
-const saborPorId = (id) =>
-  SABORES_MILKSHAKE.find((s) => s.id === id) ?? SABORES_MILKSHAKE[0];
+// ---------------------------------------------------------------------------
+// TODO LO DE ABAJO AHORA VIENE DEL BACK (ver los endpoints nuevos del index.js)
+//   GET /api/config-juego   -> tiempo por pedido, máximos, probabilidades y tamaños de papas
+//   GET /api/milkshakes     -> sabores de milkshake (tabla Ingredientes, seccion 'milkshake')
+//   GET /api/fritos         -> cosas de la freidora (tabla Ingredientes, seccion 'papas')
+//   GET /api/extras-pedido  -> milkshakes / fritos / tamaños al azar para un pedido nuevo
+//   GET /api/bandejas       -> posición de cada bandeja / máquina del fondo (tabla Bandejas)
+// La columna "tipo" de esas filas es la IMAGEN (milkshake terminado / cartón de papas lleno).
+// Los ids (vainilla, chocolate, cookies-cream, frutilla, papas, pequeno, mediano, grande)
+// son los mismos de siempre, así que /milkshakes y /freidora siguen funcionando igual.
+// ---------------------------------------------------------------------------
 
-// Cosas que puede pedir un cliente de la freidora. El "id" viaja a la página
-// /freidora dentro de la partida guardada (fritosPedidos). Editá la lista a gusto.
-const FRITOS = [
-  { id: 'papas', nombre: 'Papas fritas', emoji: '🍟' },
-];
+// Valores de reserva: solo se usan hasta que el back responde
+const CONFIG_DEFECTO = {
+  tiempoPartida: 60,
+  maxMilkshakes: 2,
+  maxFritos: 2,
+  tamanosFritos: [],
+};
 
-const fritoPorId = (id) => FRITOS.find((f) => f.id === id) ?? FRITOS[0];
+const SABOR_VACIO = { id: '', nombre: 'Milkshake', emoji: '🥤', imagen: '' };
+const FRITO_VACIO = { id: '', nombre: 'Papas', emoji: '🍟', imagen: '' };
 
-// Tamaños de las papas (los mismos ids que usa /freidora)
-const TAMANOS_FRITOS = ['pequeno', 'mediano', 'grande'];
-const NOMBRE_TAMANO = { pequeno: 'Pequeño', mediano: 'Mediano', grande: 'Grande' };
-const tamanoAlAzar = () =>
-  TAMANOS_FRITOS[Math.floor(Math.random() * TAMANOS_FRITOS.length)];
-const tamanoValido = (t) => (TAMANOS_FRITOS.includes(t) ? t : tamanoAlAzar());
+// Cartón de papas ya entregado (el que aparece en la bandeja de la cocina)
+const IMG_CARTON_PAPAS = '/papas.png';
 
-// Zona clickeable de la máquina de milkshakes (en % del escenario)
-const MAQUINA_MILKSHAKE = { left: 68.3, top: 25, width: 10.7, height: 21 };
+// Si el tamaño guardado no existe, se elige uno al azar de los que mandó el back
+const tamanoValidoEn = (t, ids) =>
+  ids.includes(t)
+    ? t
+    : ids.length > 0
+      ? ids[Math.floor(Math.random() * ids.length)]
+      : t;
 
 // Bandeja donde aparecen los milkshakes ya preparados (a la derecha del plato).
 // Poné MOSTRAR_ZONAS en true para ver un recuadro rosa con el lugar donde
@@ -82,26 +78,27 @@ const BANDEJA_MILKSHAKE = {
 };
 const PROPORCION_MILKSHAKE = 1199 / 600; // alto / ancho del PNG del milkshake
 
-// Bandeja de fritos (a la IZQUIERDA del plato). Mismos ajustes que la de milkshakes.
-//   (el hueco libre a la izquierda del plato va de ~35% a ~41.5% del ancho)
-const BANDEJA_FRITOS = {
-  x: 38.4,              // centro, en % del ancho (más bajo = más a la izquierda)
-  base: 29.5,           // dónde apoya, en % del alto desde abajo
-  separacion: 1.6,      // distancia horizontal entre fritos (cqw; 0 = uno justo detrás del otro)
-  separacionVertical: 3, // distancia vertical: el primero queda atrás y el último adelante
+// NUEVO: bandeja donde aparecen las papas ya entregadas en la freidora.
+// Se ajusta igual que la de los milkshakes (MOSTRAR_ZONAS = true muestra un recuadro amarillo):
+//   x          = centro del grupo de paquetes, en % del ANCHO
+//   base       = dónde apoya la base del cartón, en % del ALTO desde abajo
+//   separacion = distancia horizontal entre paquetes (en cqw)
+//   anchos     = ancho de cada paquete según su tamaño (en cqw).
+//                Mantienen la proporción 125 : 156 : 188 de la freidora.
+//   separacionVertical = cuánto se escalonan en profundidad: la primera queda un poco
+//                        más atrás (arriba) y la última más adelante (abajo)
+// (la imagen del cartón lleno ahora viene de la columna "tipo" de la tabla Ingredientes)
+const BANDEJA_FRITAS = {
+  x: 39.6,               // lado IZQUIERDO de la bandeja (el plato está en ~50%)
+  base: 29,
+  separacion: 3.2,       // las papas se superponen un poco para que entren a la izquierda del plato
+  separacionVertical: 1.8,
+  anchos: { pequeno: 6.2, mediano: 8.25, grande: 9.3 }, // proporción 125 : 156 : 188
 };
-// ancho de cada cartón lleno en cqw, uno por tamaño (mantienen la proporción 1 : 1.25 : 1.5
-// de la freidora). Para agrandarlos o achicarlos a todos, multiplicá los tres por el mismo número.
-const ANCHO_CARTON = { pequeno: 4.4, mediano: 5.5, grande: 6.6 };
-const IMG_CARTON_LLENO = '/papas.png';
-
-// Zona clickeable de la freidora (en % del escenario).
-// OJO: son posiciones aproximadas. Poné MOSTRAR_ZONAS en true para ver el
-// recuadro y movelo (left / top / width / height) hasta que quede sobre la freidora.
-const FREIDORA = { left: 57, top: 25, width: 10.7, height: 21 };
+const PROPORCION_PAPAS = 1.238 / 1.063; // alto / ancho de papas.png (cartón lleno)
 
 // true = dibuja un recuadro verde sobre cada bandeja con su nombre,
-// para ajustar las posiciones de BANDEJAS si no coinciden con el fondo.
+// para ajustar las posiciones de la tabla Bandejas si no coinciden con el fondo.
 const MOSTRAR_ZONAS = false;
 
 // Cuánto más pegados quedan los ingredientes en la hamburguesa.
@@ -121,9 +118,16 @@ const normalizar = (texto = '') =>
     .replace(/[_-]/g, ' ')
     .trim();
 
-// Por si el backend mandara un milkshake dentro de la receta o de los
-// ingredientes: un milkshake nunca debe mezclarse con la hamburguesa.
-const esMilkshake = (ing) => /milkshake|batido/.test(normalizar(ing?.nombre));
+// Un milkshake (o cualquier frito) nunca debe mezclarse con la hamburguesa.
+// Por si /api/orden-aleatoria los mandara dentro de la receta: se detectan por
+// la sección que viene del back y, por las dudas, por el nombre.
+const esMilkshake = (ing) =>
+  normalizar(ing?.seccion) === 'milkshake' ||
+  /milkshake|batido/.test(normalizar(ing?.nombre));
+
+const esFrito = (ing) =>
+  normalizar(ing?.seccion) === 'papas' ||
+  /(^|\s)papas?(\s|$)/.test(normalizar(ing?.nombre));
 
 // Identifica a un ingrediente de forma segura. Se usa el NOMBRE (es lo que
 // coincide entre /orden-aleatoria y /ingredientes). Antes se comparaba por
@@ -158,67 +162,30 @@ const asegurarCarne = (orden, ingredientes) => {
 };
 
 /* ---------------------------------------------------------
-   Bandejas del fondo (cocina.png). Posiciones en % del escenario.
-   "claves": palabras que identifican al ingrediente por su nombre
-   (un array dentro de claves = deben estar todas las palabras).
-   "seccion": si no se encuentra por nombre, se usa la sección del backend.
+   Bandejas del fondo (cocina.png). Las posiciones (en % del escenario) vienen
+   del back (GET /api/bandejas, tabla Bandejas). Cada bandeja de ingrediente
+   trae el id_ingrediente de la tabla Ingredientes, así que se une por id.
    --------------------------------------------------------- */
-const FILA1 = { top: 79.9, height: 8.9 };
-const FILA2 = { top: 89.8, height: 6.4 };
+const mismoId = (a, b) =>
+  a !== undefined && a !== null && b !== undefined && b !== null && Number(a) === Number(b);
 
-const BANDEJAS = [
-  { id: 'pan-arriba', claves: ['pan arriba'], seccion: 'arriba', left: 0.5, top: 79, width: 11, height: 7.5 },
-  { id: 'pan-abajo', claves: ['pan abajo'], seccion: 'abajo', left: 0.3, top: 86.6, width: 11, height: 9.4 },
-  { id: 'paty', claves: ['paty', 'patty', 'carne'], seccion: 'carnes', left: 11.5, top: 80.2, width: 5.6, height: 14.4 },
-  { id: 'pollo', claves: ['pollo'], seccion: 'carnes', left: 18.7, top: 80.2, width: 5.6, height: 6.8 },
-  { id: 'veggie', claves: ['veggie', 'vegana', 'vegano', 'vegetar'], seccion: 'carnes', left: 17.4, top: 87.2, width: 6.2, height: 7.4 },
-  { id: 'lechuga', claves: ['lechuga'], left: 25.4, width: 8.1, ...FILA1 },
-  { id: 'tomate', claves: ['tomate'], left: 34, width: 7.6, ...FILA1 },
-  { id: 'cebolla', claves: ['cebolla'], left: 41.9, width: 7.8, ...FILA1 },
-  { id: 'pepino', claves: ['pepino'], left: 50, width: 8, ...FILA1 },
-  { id: 'pickles', claves: ['pickle', 'pepinillo', 'encurtido'], left: 58.3, width: 7.9, ...FILA1 },
-  { id: 'aceituna-verde', claves: [['aceituna', 'verde'], ['oliva', 'verde'], 'verde'], left: 66.7, width: 7.2, ...FILA1 },
-  { id: 'aceituna-negra', claves: [['aceituna', 'negra'], ['oliva', 'negra'], 'negra'], left: 74.2, width: 6.6, ...FILA1 },
-  { id: 'bacon', claves: ['bacon', 'panceta', 'tocino', 'beicon'], left: 81.3, width: 8.8, ...FILA1 },
-  { id: 'huevo', claves: ['huevo'], left: 90.4, width: 7.8, ...FILA1 },
-  { id: 'cheddar', claves: ['cheddar', 'chedar', 'amarillo'], seccion: 'quesos', left: 25.3, width: 10, ...FILA2 },
-  { id: 'mozzarella', claves: ['mozz', 'mozar', 'mozat', 'muzza', 'blanco'], seccion: 'quesos', left: 35.8, width: 11.2, ...FILA2 },
-  { id: 'mostaza', claves: ['mostaza'], left: 47.9, width: 8.7, ...FILA2 },
-  { id: 'ketchup', claves: ['ketchup', 'keptchup', 'kechup', 'catsup'], left: 57.2, width: 8.7, ...FILA2 },
-  { id: 'mayonesa', claves: ['mayo'], left: 66.5, width: 9, ...FILA2 },
-  { id: 'papas', claves: ['papa', 'fritas'], left: 76.1, width: 23.2, ...FILA2 },
-];
-
-const coincide = (nombre, claves) =>
-  claves.some((k) =>
-    Array.isArray(k) ? k.every((t) => nombre.includes(t)) : nombre.includes(k)
-  );
-
-// Une cada bandeja del fondo con el ingrediente que viene del backend
-const asignarBandejas = (ingredientes) => {
-  const libres = [...ingredientes];
+const asignarBandejas = (ingredientes, bandejas) => {
   const asignadas = [];
-  const sinEncontrar = [];
+  const usados = new Set();
 
-  const tomar = (condicion) => {
-    const i = libres.findIndex(condicion);
-    return i >= 0 ? libres.splice(i, 1)[0] : null;
-  };
+  bandejas
+    .filter((b) => b.id_ingrediente !== null && b.id_ingrediente !== undefined)
+    .forEach((bandeja) => {
+      const ingrediente = ingredientes.find((i) =>
+        mismoId(i.id_ingrediente, bandeja.id_ingrediente)
+      );
+      if (ingrediente) {
+        asignadas.push({ bandeja, ingrediente });
+        usados.add(ingrediente);
+      }
+    });
 
-  BANDEJAS.forEach((bandeja) => {
-    const ingrediente = tomar((x) => coincide(normalizar(x.nombre), bandeja.claves));
-    if (ingrediente) asignadas.push({ bandeja, ingrediente });
-    else sinEncontrar.push(bandeja);
-  });
-
-  // Segunda pasada: por sección (por si el nombre del backend es distinto)
-  sinEncontrar.forEach((bandeja) => {
-    if (!bandeja.seccion) return;
-    const ingrediente = tomar((x) => x.seccion === bandeja.seccion);
-    if (ingrediente) asignadas.push({ bandeja, ingrediente });
-  });
-
-  return { asignadas, sinBandeja: libres };
+  return { asignadas, sinBandeja: ingredientes.filter((i) => !usados.has(i)) };
 };
 
 /* ---------------------------------------------------------
@@ -310,61 +277,6 @@ const leerPartidaGuardada = () => {
 };
 
 /* =========================================================
-   PANTALLA DE CARGA: una hamburguesa que se arma sola
-   ========================================================= */
-const CAPAS_CARGA = ['pan-abajo', 'carne', 'queso', 'lechuga', 'tomate', 'pan-arriba'];
-const FRASES_CARGA = [
-  'Encendiendo la parrilla…',
-  'Lavando la lechuga…',
-  'Cortando tomates…',
-  'Llenando la máquina de milkshakes…',
-  'Calentando el aceite de la freidora…',
-  '¡Abriendo el local!',
-];
-
-function CargandoCocina() {
-  const [n, setN] = useState(0);
-
-  useEffect(() => {
-    // suma una capa cada 420 ms; al terminar, espera un poco y reinicia
-    const id = setInterval(
-      () => setN((v) => (v >= CAPAS_CARGA.length + 3 ? 0 : v + 1)),
-      420
-    );
-    return () => clearInterval(id);
-  }, []);
-
-  const capas = Math.min(n, CAPAS_CARGA.length);
-  const lista = capas === CAPAS_CARGA.length;
-
-  return (
-    <main className="cargando-cocina" role="status" aria-live="polite">
-      <div className="cc-escena">
-        <div className="cc-plato" />
-        <div className={`cc-pila ${lista ? 'lista' : ''}`}>
-          {CAPAS_CARGA.slice(0, capas).map((capa) => (
-            <div key={capa} className={`cc-capa ${capa}`} />
-          ))}
-        </div>
-      </div>
-
-      <h1 className="cc-titulo">
-        Preparando la cocina
-        <span className="cc-puntos"><i>.</i><i>.</i><i>.</i></span>
-      </h1>
-
-      <div className="cc-barra">
-        <span style={{ width: `${(capas / CAPAS_CARGA.length) * 100}%` }} />
-      </div>
-
-      <p className="cc-frase">
-        {FRASES_CARGA[Math.min(n, FRASES_CARGA.length - 1)]}
-      </p>
-    </main>
-  );
-}
-
-/* =========================================================
    COMPONENTE
    ========================================================= */
 
@@ -377,9 +289,27 @@ export default function JuegoHamburguesa() {
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [tiempo, setTiempo] = useState(TIEMPO_PARTIDA);
+  const [tiempo, setTiempo] = useState(CONFIG_DEFECTO.tiempoPartida);
   const [puntaje, setPuntaje] = useState(0);
   const [pausado, setPausado] = useState(false);
+
+  // Todo esto viene del back: sabores de milkshake, cosas de la freidora y la
+  // configuración del juego (tiempo, máximos, tamaños de papas).
+  const [saboresDisponibles, setSaboresDisponibles] = useState([]);
+  const [fritosDisponibles, setFritosDisponibles] = useState([]);
+  const [config, setConfig] = useState(CONFIG_DEFECTO);
+  // Posición de las bandejas / máquinas del fondo (tabla Bandejas)
+  const [bandejas, setBandejas] = useState([]);
+
+  const saborPorId = (id) =>
+    saboresDisponibles.find((s) => s.id === id) ?? saboresDisponibles[0] ?? SABOR_VACIO;
+  const fritoPorId = (id) =>
+    fritosDisponibles.find((f) => f.id === id) ?? fritosDisponibles[0] ?? FRITO_VACIO;
+
+  const tamanoValido = (t) =>
+    tamanoValidoEn(t, config.tamanosFritos.map((x) => x.id));
+  const nombreTamano = (t) =>
+    config.tamanosFritos.find((x) => x.id === t)?.nombre ?? t;
 
   // Milkshakes de este pedido: lista de sabores pedidos, ej. ['vainilla', 'frutilla'].
   // La cantidad pedida sale de la longitud de la lista.
@@ -397,17 +327,13 @@ export default function JuegoHamburguesa() {
   const cantidadFritos = fritosPedidos.length;
   const [fritosListos, setFritosListos] = useState(0);
 
-  // Tamaño de cada frito pedido (mismo orden que fritosPedidos),
+  // NUEVO: tamaño de cada frito pedido (mismo orden que fritosPedidos),
   // ej. ['mediano', 'grande']. /freidora lo lee como "tamanosFritos".
   const [tamanosFritos, setTamanosFritos] = useState([]);
 
-  // Cuántos paquetes ya estaban en la bandeja antes de ir a la freidora
+  // NUEVO: cuántos paquetes ya estaban en la bandeja antes de ir a la freidora
   // (esos no repiten la animación)
   const [fritosRestaurados, setFritosRestaurados] = useState(0);
-
-  // Tamaño que el jugador realmente armó en la freidora (misma posición que fritosPedidos).
-  // Se guarda en la partida, pero la bandeja dibuja el tamaño que pidió el cliente.
-  const [tamanosServidos, setTamanosServidos] = useState([]);
 
   // Imágenes recortadas: { '/lechuga.png': { url, w, h } }
   const [recortes, setRecortes] = useState({});
@@ -449,10 +375,6 @@ export default function JuegoHamburguesa() {
   const soltarRef = useRef(() => {});
   const avisoTimerRef = useRef(null);
 
-  // Para que la partida termine UNA sola vez
-  const finalizadaRef = useRef(false);
-  const tiempoAgotadoRef = useRef(false);
-
   // Mientras el popup está abierto el juego queda frenado
   const activo = !(pausado || tiempo <= 0 || cargando || error || dialogo);
   const activoRef = useRef(activo);
@@ -473,18 +395,6 @@ export default function JuegoHamburguesa() {
     setZonaActiva(null);
   };
 
-  // Termina la partida: guarda el puntaje final y lleva a la página de ranking
-  const terminarPartida = (puntajeFinal) => {
-    if (finalizadaRef.current) return;
-    finalizadaRef.current = true;
-    sessionStorage.removeItem('partida');
-    sessionStorage.setItem(
-      'resultadoPartida',
-      JSON.stringify({ puntaje: puntajeFinal })
-    );
-    router.push(RUTA_RANKING);
-  };
-
   // Todo lo que hay que recordar al salir hacia otra página
   const partidaActual = (extra = {}) => ({
     miHamburguesa,
@@ -495,8 +405,7 @@ export default function JuegoHamburguesa() {
     saboresMilkshake,
     milkshakesListos,
     fritosPedidos,
-    tamanosFritos, // /freidora lo usa para saber qué tamaño pide cada papa
-    tamanosServidos,
+    tamanosFritos, // NUEVO: /freidora lo usa para saber qué tamaño pide cada papa
     fritosListos,
     guardadoEn: Date.now(),
     ...extra,
@@ -505,11 +414,13 @@ export default function JuegoHamburguesa() {
   // Obtener ingredientes y pedido aleatorio.
   // Si viene una partida guardada (al volver de la parrilla, de los
   // milkshakes o de la freidora) se retoma en vez de empezar un pedido nuevo.
-  const iniciarJuego = async (guardada = null) => {
+  // conservarTiempo = true: se pide un pedido nuevo SIN reiniciar el tiempo de la
+  // partida (así pasa al entregar un pedido). Reiniciar / primer inicio sí lo reinician.
+  const iniciarJuego = async (guardada = null, conservarTiempo = false) => {
     // OJO: algunos botones llaman a esta función con el evento del click
     const partida =
       guardada && Array.isArray(guardada.recetaObjetivo) ? guardada : null;
-      console.log('PARTIDA AL VOLVER:', guardada);
+
     setCargando(true);
     setError('');
     setPausado(false);
@@ -520,33 +431,73 @@ export default function JuegoHamburguesa() {
       sessionStorage.removeItem('partida');
       setMiHamburguesa([]);
       setRestauradas(0);
-      setTiempo(TIEMPO_PARTIDA);
       setMilkshakesListos(0);
       setMilkshakesRestaurados(0);
       setFritosListos(0);
-      setFritosRestaurados(0);
-      setTamanosServidos([]);
-      // Reinicio manual: se vuelve a poder terminar la partida
-      finalizadaRef.current = false;
-      tiempoAgotadoRef.current = false;
+      setFritosRestaurados(0); // NUEVO
     }
 
     try {
-      const [resIngredientes, resOrden] = await Promise.all([
+      const [
+        resIngredientes,
+        resOrden,
+        resExtras,
+        resMilkshakes,
+        resFritos,
+        resConfig,
+        resBandejas,
+      ] = await Promise.all([
         fetch(`${API_URL}/ingredientes`),
         partida ? Promise.resolve(null) : fetch(`${API_URL}/orden-aleatoria`),
+        partida ? Promise.resolve(null) : fetch(`${API_URL}/extras-pedido`),
+        fetch(`${API_URL}/milkshakes`),
+        fetch(`${API_URL}/fritos`),
+        fetch(`${API_URL}/config-juego`),
+        fetch(`${API_URL}/bandejas`),
       ]);
 
-      if (!resIngredientes.ok || (resOrden && !resOrden.ok)) {
+      if (
+        !resIngredientes.ok ||
+        !resMilkshakes.ok ||
+        !resFritos.ok ||
+        !resConfig.ok ||
+        !resBandejas.ok ||
+        (resOrden && !resOrden.ok) ||
+        (resExtras && !resExtras.ok)
+      ) {
         throw new Error('No se pudieron obtener los datos.');
       }
 
       const ingredientesData = await resIngredientes.json();
       const ordenData = partida ? partida.recetaObjetivo : await resOrden.json();
+      const extrasData = resExtras ? await resExtras.json() : null;
+      const saboresData = await resMilkshakes.json();
+      const fritosData = await resFritos.json();
+      const configData = await resConfig.json();
+      const bandejasData = await resBandejas.json();
 
-      if (!Array.isArray(ordenData) || !Array.isArray(ingredientesData)) {
+      if (
+        !Array.isArray(ordenData) ||
+        !Array.isArray(ingredientesData) ||
+        !Array.isArray(saboresData) ||
+        !Array.isArray(fritosData) ||
+        !Array.isArray(bandejasData) ||
+        !Array.isArray(configData?.tamanosFritos)
+      ) {
         throw new Error('La respuesta del servidor no es válida.');
       }
+
+      // Datos que antes eran variables del front y ahora vienen del back
+      setSaboresDisponibles(saboresData);
+      setFritosDisponibles(fritosData);
+      setConfig(configData);
+      setBandejas(bandejasData);
+
+      // Los milkshakes y las papas nunca forman parte de los ingredientes
+      // de la hamburguesa
+      const ingredientesLimpios = ingredientesData.filter(
+        (i) => !esMilkshake(i) && !esFrito(i)
+      );
 
       if (partida) {
         // El tiempo siguió corriendo mientras estabas en la otra página
@@ -564,12 +515,14 @@ export default function JuegoHamburguesa() {
         }
 
         setRecetaObjetivo(ordenData);
-        setTodosLosIngredientes(ingredientesData);
+        setTodosLosIngredientes(ingredientesLimpios);
         setMiHamburguesa(hamburguesa);
         setRestauradas(
           Array.isArray(partida.miHamburguesa) ? partida.miHamburguesa.length : 0
         );
-        setTiempo(Math.max(0, (partida.tiempo ?? TIEMPO_PARTIDA) - transcurrido));
+        setTiempo(
+          Math.max(0, (partida.tiempo ?? configData.tiempoPartida) - transcurrido)
+        );
         setPuntaje(partida.puntaje ?? 0);
         setSaboresMilkshake(
           Array.isArray(partida.saboresMilkshake) ? partida.saboresMilkshake : []
@@ -584,19 +537,18 @@ export default function JuegoHamburguesa() {
           ? partida.fritosPedidos
           : [];
         setFritosPedidos(fritos);
-        // Los tamaños viajan con la partida (uno por cada frito pedido)
+        // NUEVO: los tamaños viajan con la partida (uno por cada frito pedido)
+        const idsTamano = configData.tamanosFritos.map((x) => x.id);
         setTamanosFritos(
           fritos.map((_, i) =>
-            tamanoValido(
-              Array.isArray(partida.tamanosFritos) ? partida.tamanosFritos[i] : null
+            tamanoValidoEn(
+              Array.isArray(partida.tamanosFritos) ? partida.tamanosFritos[i] : null,
+              idsTamano
             )
           )
         );
-        setTamanosServidos(
-          Array.isArray(partida.tamanosServidos) ? partida.tamanosServidos : []
-        );
         setFritosListos(partida.fritosListos ?? 0);
-        // "fritosAntes" lo guarda la cocina al salir hacia la freidora
+        // NUEVO: "fritosAntes" lo guarda la cocina al salir hacia la freidora
         setFritosRestaurados(partida.fritosAntes ?? partida.fritosListos ?? 0);
         sessionStorage.removeItem('partida');
 
@@ -610,41 +562,24 @@ export default function JuegoHamburguesa() {
           mostrarAviso('🍟 ¡Frito en su punto!');
         }
       } else {
-        // Los milkshakes nunca forman parte de la receta de la hamburguesa
-        const recetaLimpia = ordenData.filter((o) => !esMilkshake(o));
-        const ingredientesLimpios = ingredientesData.filter((i) => !esMilkshake(i));
+        // Los milkshakes y las papas nunca forman parte de la receta de la hamburguesa
+        const recetaLimpia = ordenData.filter((o) => !esMilkshake(o) && !esFrito(o));
 
+        // El tiempo de la partida NO se reinicia al entregar un pedido
+        if (!conservarTiempo) setTiempo(configData.tiempoPartida);
         setRecetaObjetivo(asegurarCarne(recetaLimpia, ingredientesLimpios));
         setTodosLosIngredientes(ingredientesLimpios);
 
-        // Cada milkshake pide un sabor al azar (puede repetirse)
-        const cantidad =
-          Math.random() < PROBABILIDAD_MILKSHAKE
-            ? 1 + Math.floor(Math.random() * MAX_MILKSHAKES)
-            : 0;
+        // Milkshakes (con su sabor), fritos y tamaños: los elige el back al azar
         setSaboresMilkshake(
-          Array.from(
-            { length: cantidad },
-            () =>
-              SABORES_MILKSHAKE[
-                Math.floor(Math.random() * SABORES_MILKSHAKE.length)
-              ].id
-          )
+          Array.isArray(extrasData?.saboresMilkshake) ? extrasData.saboresMilkshake : []
         );
-
-        // Cada frito de la freidora pide algo al azar (puede repetirse)
-        const cantidadFrit =
-          Math.random() < PROBABILIDAD_FRITOS
-            ? 1 + Math.floor(Math.random() * MAX_FRITOS)
-            : 0;
         setFritosPedidos(
-          Array.from(
-            { length: cantidadFrit },
-            () => FRITOS[Math.floor(Math.random() * FRITOS.length)].id
-          )
+          Array.isArray(extrasData?.fritosPedidos) ? extrasData.fritosPedidos : []
         );
-        // Cada frito pide además un tamaño al azar
-        setTamanosFritos(Array.from({ length: cantidadFrit }, tamanoAlAzar));
+        setTamanosFritos(
+          Array.isArray(extrasData?.tamanosFritos) ? extrasData.tamanosFritos : []
+        );
       }
     } catch (error) {
       console.error('Error al conectar con el backend:', error);
@@ -658,10 +593,6 @@ export default function JuegoHamburguesa() {
 
   // Cargar el primer pedido
   useEffect(() => {
-    // La sala nos manda a /partidas?id=...: guardamos ese id para el ranking
-    const idUrl = new URLSearchParams(window.location.search).get('id');
-    if (idUrl) localStorage.setItem('id_partida', idUrl);
-
     iniciarJuego(leerPartidaGuardada());
     return () => clearTimeout(avisoTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -716,14 +647,14 @@ export default function JuegoHamburguesa() {
         Object.keys(todosLosIngredientes[0])
       );
     }
-    const { sinBandeja } = asignarBandejas(todosLosIngredientes);
+    const { sinBandeja } = asignarBandejas(todosLosIngredientes, bandejas);
     if (sinBandeja.length > 0) {
       console.warn(
         'Ingredientes sin bandeja en el fondo:',
         sinBandeja.map((i) => i.nombre)
       );
     }
-  }, [todosLosIngredientes]);
+  }, [todosLosIngredientes, bandejas]);
 
   // Cronómetro (se frena mientras hay un popup abierto)
   useEffect(() => {
@@ -738,24 +669,19 @@ export default function JuegoHamburguesa() {
     return () => clearInterval(intervalo);
   }, [cargando, pausado, tiempo, error, dialogo]);
 
-  // Se acabó el tiempo: avisa y al cerrar el popup va al ranking
-  useEffect(() => {
-    if (cargando || error || tiempo > 0) return;
-    if (tiempoAgotadoRef.current) return;
-    tiempoAgotadoRef.current = true;
-    mostrarDialogo(
-      '¡Se acabó el tiempo!',
-      `Tu puntaje final: ${puntaje}`,
-      'error',
-      () => terminarPartida(puntaje)
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tiempo, cargando, error]);
-
   // Si se pausa o se acaba el tiempo con un ingrediente en la mano, se suelta
   useEffect(() => {
     if (!activo && manoRef.current) cancelarMano();
   }, [activo]);
+
+  // Se acabó el tiempo: se manda al jugador al ranking.
+  // (También pasa si volvés de la parrilla / milkshakes / freidora y el tiempo
+  // ya se había terminado mientras estabas allá.)
+  useEffect(() => {
+    if (cargando || error) return;
+    if (tiempo <= 0) router.push(RUTA_RANKING);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiempo, cargando, error]);
 
   /* ---------- LÓGICA DE ARRASTRE ---------- */
 
@@ -846,7 +772,7 @@ export default function JuegoHamburguesa() {
 
     // Guardamos la partida para retomarla al volver de la freidora.
     // La página /freidora lee qué toca freír con fritosPedidos / tamanosFritos
-    // (a partir de fritosListos). "fritosAntes" evita repetir la
+    // (a partir de fritosListos). NUEVO: "fritosAntes" evita repetir la
     // animación de los paquetes que ya estaban en la bandeja.
     sessionStorage.setItem(
       'partida',
@@ -1022,14 +948,13 @@ export default function JuegoHamburguesa() {
         return;
       }
       const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
-      const puntajeFinal = puntaje + puntos;
-      setPuntaje(puntajeFinal);
-      // Al cerrar el popup la partida termina y va al ranking
+      setPuntaje((anterior) => anterior + puntos);
+      // Al cerrar el popup arranca el pedido nuevo (el tiempo de la partida sigue corriendo)
       mostrarDialogo(
         '¡Pedido correcto!',
         `Ganaste ${puntos} puntos.`,
         'ok',
-        () => terminarPartida(puntajeFinal)
+        () => iniciarJuego(null, true)
       );
     } else {
       mostrarDialogo(
@@ -1073,10 +998,10 @@ export default function JuegoHamburguesa() {
     .slice(0, milkshakesListos)
     .map(saborPorId);
 
-  // Papas ya entregadas en la freidora. Se entregan en el orden del pedido,
+  // NUEVO: papas ya entregadas en la freidora. Se entregan en el orden del pedido,
   // así que son los primeros "fritosListos" del pedido, cada una con su tamaño.
-  const fritosServidos = fritosPedidos.slice(0, fritosListos).map((idFrito, i) => ({
-    frito: fritoPorId(idFrito),
+  const fritosServidos = fritosPedidos.slice(0, fritosListos).map((idDelFrito, i) => ({
+    frito: fritoPorId(idDelFrito),
     tamano: tamanoValido(tamanosFritos[i]),
   }));
 
@@ -1109,7 +1034,9 @@ export default function JuegoHamburguesa() {
   });
 
   /* ---------- BANDEJAS ---------- */
-  const { asignadas } = asignarBandejas(todosLosIngredientes);
+  const { asignadas } = asignarBandejas(todosLosIngredientes, bandejas);
+  const zonaMaquinaMilkshake = bandejas.find((b) => b.codigo === 'maquina-milkshake');
+  const zonaFreidora = bandejas.find((b) => b.codigo === 'freidora');
 
   /* ---------- PANTALLAS DE CARGA / ERROR ---------- */
   if (error) {
@@ -1127,7 +1054,13 @@ export default function JuegoHamburguesa() {
   }
 
   if (cargando || !imagenesListas) {
-    return <CargandoCocina />;
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-amber-50">
+        <p className="text-xl font-bold text-amber-900">
+          Preparando la cocina...
+        </p>
+      </main>
+    );
   }
 
   const botonIngrediente = (ingrediente, estilo, clase = '') => (
@@ -1192,8 +1125,8 @@ export default function JuegoHamburguesa() {
             <section className="ticket-bebidas">
               <h3 className="ticket-subtitulo">BEBIDAS</h3>
               <ul className="ticket-lista ticket-extra">
-                {saboresMilkshake.map((idSabor, i) => {
-                  const sabor = saborPorId(idSabor);
+                {saboresMilkshake.map((idSaborPedido, i) => {
+                  const sabor = saborPorId(idSaborPedido);
                   const hecho = i < milkshakesListos;
                   return (
                     <li
@@ -1219,8 +1152,8 @@ export default function JuegoHamburguesa() {
             <section className="ticket-bebidas">
               <h3 className="ticket-subtitulo">FREIDORA</h3>
               <ul className="ticket-lista ticket-extra">
-                {fritosPedidos.map((idFrito, i) => {
-                  const frito = fritoPorId(idFrito);
+                {fritosPedidos.map((idDelFrito, i) => {
+                  const frito = fritoPorId(idDelFrito);
                   const hecho = i < fritosListos;
                   return (
                     <li
@@ -1230,9 +1163,9 @@ export default function JuegoHamburguesa() {
                       }`}
                     >
                       <span className="ticket-icono emoji">{frito.emoji}</span>
-                      {/* Se muestra el tamaño pedido */}
+                      {/* NUEVO: se muestra el tamaño pedido */}
                       <span className="ticket-nombre">
-                        {frito.nombre} ({NOMBRE_TAMANO[tamanoValido(tamanosFritos[i])]})
+                        {frito.nombre} ({nombreTamano(tamanoValido(tamanosFritos[i]))})
                       </span>
                       <span className="ticket-marca">{hecho ? '✓' : ''}</span>
                     </li>
@@ -1342,15 +1275,15 @@ export default function JuegoHamburguesa() {
               className="partida-bandeja-milkshakes-guia"
               style={{
                 width: `${
-                  (MAX_MILKSHAKES - 1) * BANDEJA_MILKSHAKE.separacion +
+                  (config.maxMilkshakes - 1) * BANDEJA_MILKSHAKE.separacion +
                   BANDEJA_MILKSHAKE.ancho + 1
                 }cqw`,
                 height: `${
                   BANDEJA_MILKSHAKE.ancho * PROPORCION_MILKSHAKE +
-                  (MAX_MILKSHAKES - 1) * BANDEJA_MILKSHAKE.separacionVertical
+                  (config.maxMilkshakes - 1) * BANDEJA_MILKSHAKE.separacionVertical
                 }cqw`,
                 bottom: `${
-                  -((MAX_MILKSHAKES - 1) * BANDEJA_MILKSHAKE.separacionVertical) / 2
+                  -((config.maxMilkshakes - 1) * BANDEJA_MILKSHAKE.separacionVertical) / 2
                 }cqw`,
               }}
             >
@@ -1385,42 +1318,61 @@ export default function JuegoHamburguesa() {
           ))}
         </div>
 
-        {/* ---------- FRITOS PREPARADOS (bandeja a la izquierda del plato) ---------- */}
+        {/* ---------- NUEVO: PAPAS ENTREGADAS (bandeja a la derecha de los milkshakes) ---------- */}
         <div
-          className="partida-bandeja-fritos"
-          style={{ left: `${BANDEJA_FRITOS.x}%`, bottom: `${BANDEJA_FRITOS.base}%` }}
+          className="partida-bandeja-fritas"
+          style={{
+            left: `${BANDEJA_FRITAS.x}%`,
+            bottom: `${BANDEJA_FRITAS.base}%`,
+          }}
         >
           {MOSTRAR_ZONAS && (
             <span
-              className="partida-bandeja-fritos-guia"
+              className="partida-bandeja-fritas-guia"
               style={{
-                width: `${(MAX_FRITOS - 1) * BANDEJA_FRITOS.separacion + ANCHO_CARTON.grande + 1}cqw`,
-                height: `${ANCHO_CARTON.grande * 1.2}cqw`,
+                width: `${
+                  (config.maxFritos - 1) * BANDEJA_FRITAS.separacion +
+                  BANDEJA_FRITAS.anchos.grande + 1
+                }cqw`,
+                height: `${
+                  BANDEJA_FRITAS.anchos.grande * PROPORCION_PAPAS +
+                  (config.maxFritos - 1) * BANDEJA_FRITAS.separacionVertical
+                }cqw`,
+                bottom: `${
+                  -((config.maxFritos - 1) * BANDEJA_FRITAS.separacionVertical) / 2
+                }cqw`,
               }}
             >
-              🍟 fritos
+              🍟 papas
             </span>
           )}
-          {fritosServidos.map(({ frito, tamano }, i) => {
-            const total = Math.max(cantidadFritos, 1);
-            return (
-              <img
-                key={`frito-servido-${i}`}
-                src={IMG_CARTON_LLENO}
-                alt={`${frito.nombre} (${NOMBRE_TAMANO[tamano]})`}
-                title={`${frito.nombre} (${NOMBRE_TAMANO[tamano]})`}
-                draggable={false}
-                className="partida-frito-servido"
-                style={{
-                  left: `${(i - (total - 1) / 2) * BANDEJA_FRITOS.separacion}cqw`,
-                  bottom: `${((total - 1) / 2 - i) * BANDEJA_FRITOS.separacionVertical}cqw`,
-                  zIndex: i + 1,
-                  width: `${ANCHO_CARTON[tamano] ?? ANCHO_CARTON.mediano}cqw`,
-                  ...(i < fritosRestaurados ? { animation: 'none' } : {}),
-                }}
-              />
-            );
-          })}
+
+          {fritosServidos.map(({ frito, tamano }, i) => (
+            <img
+              key={`frito-servido-${i}`}
+              src={IMG_CARTON_PAPAS}
+              alt={`${frito.nombre} (${nombreTamano(tamano)})`}
+              title={`${frito.nombre} (${nombreTamano(tamano)})`}
+              draggable={false}
+              className="partida-frito-servido"
+              style={{
+                // posiciones fijas según la cantidad pedida: no se corren al sumar otro
+                left: `${
+                  (i - (Math.max(cantidadFritos, 1) - 1) / 2) *
+                  BANDEJA_FRITAS.separacion
+                }cqw`,
+                // la primera queda atrás (arriba) y la última adelante (abajo)
+                bottom: `${
+                  ((Math.max(cantidadFritos, 1) - 1) / 2 - i) *
+                  BANDEJA_FRITAS.separacionVertical
+                }cqw`,
+                // el ancho depende del tamaño pedido (pequeño / mediano / grande)
+                width: `${BANDEJA_FRITAS.anchos[tamano] ?? BANDEJA_FRITAS.anchos.mediano}cqw`,
+                zIndex: i + 1,
+                ...(i < fritosRestaurados ? { animation: 'none' } : {}),
+              }}
+            />
+          ))}
         </div>
 
         {/* ---------- BANDEJAS (zonas clickeables sobre el fondo) ---------- */}
@@ -1434,38 +1386,42 @@ export default function JuegoHamburguesa() {
         )}
 
         {/* Máquina de milkshakes (del fondo) - color ROSA */}
-        <button
-          type="button"
-          data-nombre="Milkshakes"
-          title="Milkshakes"
-          onPointerDown={tocarMaquinaMilkshake}
-          className={`bandeja maquina milkshake ${
-            faltanMilkshakes ? 'pendiente' : ''
-          } ${!activo ? 'deshabilitado' : ''}`}
-          style={{
-            left: `${MAQUINA_MILKSHAKE.left}%`,
-            top: `${MAQUINA_MILKSHAKE.top}%`,
-            width: `${MAQUINA_MILKSHAKE.width}%`,
-            height: `${MAQUINA_MILKSHAKE.height}%`,
-          }}
-        />
+        {zonaMaquinaMilkshake && (
+          <button
+            type="button"
+            data-nombre="Milkshakes"
+            title="Milkshakes"
+            onPointerDown={tocarMaquinaMilkshake}
+            className={`bandeja maquina milkshake ${
+              faltanMilkshakes ? 'pendiente' : ''
+            } ${!activo ? 'deshabilitado' : ''}`}
+            style={{
+              left: `${zonaMaquinaMilkshake.left}%`,
+              top: `${zonaMaquinaMilkshake.top}%`,
+              width: `${zonaMaquinaMilkshake.width}%`,
+              height: `${zonaMaquinaMilkshake.height}%`,
+            }}
+          />
+        )}
 
         {/* Freidora (del fondo) - color AMARILLO */}
-        <button
-          type="button"
-          data-nombre="Freidora"
-          title="Freidora"
-          onPointerDown={tocarFreidora}
-          className={`bandeja maquina freidora ${
-            faltanFritos ? 'pendiente' : ''
-          } ${!activo ? 'deshabilitado' : ''}`}
-          style={{
-            left: `${FREIDORA.left}%`,
-            top: `${FREIDORA.top}%`,
-            width: `${FREIDORA.width}%`,
-            height: `${FREIDORA.height}%`,
-          }}
-        />
+        {zonaFreidora && (
+          <button
+            type="button"
+            data-nombre="Freidora"
+            title="Freidora"
+            onPointerDown={tocarFreidora}
+            className={`bandeja maquina freidora ${
+              faltanFritos ? 'pendiente' : ''
+            } ${!activo ? 'deshabilitado' : ''}`}
+            style={{
+              left: `${zonaFreidora.left}%`,
+              top: `${zonaFreidora.top}%`,
+              width: `${zonaFreidora.width}%`,
+              height: `${zonaFreidora.height}%`,
+            }}
+          />
+        )}
 
         {/* ---------- BOTONES DE ACCIÓN ---------- */}
         <div className="acciones">
@@ -1489,7 +1445,9 @@ export default function JuegoHamburguesa() {
         {aviso && <div className="aviso">{aviso}</div>}
         {pausado && <div className="cartel-central">⏸ PAUSA</div>}
         {tiempo === 0 && (
-          <div className="cartel-central rojo">¡Se acabó el tiempo!</div>
+          <div className="cartel-central rojo">
+            ¡Se acabó el tiempo! Reiniciá para jugar otra vez.
+          </div>
         )}
       </div>
 

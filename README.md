@@ -35,7 +35,7 @@ Funcionalidades desarrolladas
 ### Tabla con las tareas necesarias para desarrollar el proyecto. 
 *Objetivo:*
 *Tareas asociadas:*
-*Integrantes responsables:* Guadalupe Atienza, Delfina Ciceran, Candela Langan y Victoria Jimenez
+*Integrantes responsables:* Guadalupe Atienza, Delfina Ciceran Pellegrini, Candela Langan y Victoria Jimenez
 *Fecha estimada de finalización:* 18/11/26
 
 *Tarea                              Responsable     Fecha estimada*

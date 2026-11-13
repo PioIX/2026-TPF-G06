@@ -1055,10 +1055,128 @@ export default function JuegoHamburguesa() {
 
   if (cargando || !imagenesListas) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-amber-50">
-        <p className="text-xl font-bold text-amber-900">
-          Preparando la cocina...
+      <main className="fr-carga">
+        <style>{`
+          .fr-carga{
+            min-height:100vh;display:flex;flex-direction:column;align-items:center;
+            justify-content:center;gap:34px;overflow:hidden;position:relative;
+            background:
+              radial-gradient(circle at 50% 52%, rgba(255,150,50,.22) 0%, rgba(255,150,50,0) 45%),
+              radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px) 0 0/26px 26px,
+              linear-gradient(180deg,#1b1d22 0%,#101216 100%);
+            font-family:'Segoe UI','Helvetica Neue',Arial,system-ui,sans-serif;
+          }
+
+          /* logo */
+          .fr-logo{
+            position:relative;z-index:1;margin:0;text-align:center;line-height:1;
+            font-weight:800;text-transform:uppercase;color:#fff;
+            font-size:clamp(26px,4.6vw,46px);letter-spacing:10px;padding-left:10px;
+            animation:fr-entrada .8s ease-out both;
+          }
+          .fr-logo b{display:block;margin-top:8px;color:#ffb21e;font-size:1.35em;letter-spacing:14px;padding-left:14px}
+          .fr-logo::after{
+            content:'';display:block;width:64px;height:3px;border-radius:3px;
+            background:#ffb21e;margin:18px auto 0;
+          }
+          @keyframes fr-entrada{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+
+          /* hamburguesa que se arma sola */
+          .fr-burger{
+            position:relative;z-index:1;width:150px;height:150px;
+            display:flex;flex-direction:column-reverse;align-items:center;
+            animation:fr-rebote 1.8s ease-in-out infinite;
+          }
+          @keyframes fr-rebote{50%{transform:translateY(-6px)}}
+          .fr-capa{
+            width:140px;margin-top:-5px;opacity:0;
+            animation:fr-caer 3.6s cubic-bezier(.3,1.4,.5,1) infinite;
+            filter:drop-shadow(0 3px 0 rgba(0,0,0,.35));
+          }
+          @keyframes fr-caer{
+            0%{transform:translateY(-130px) scaleY(1.2);opacity:0}
+            10%{opacity:1}
+            18%{transform:translateY(0) scaleY(.82)}
+            24%{transform:translateY(0) scaleY(1)}
+            82%{transform:translateY(0);opacity:1}
+            92%,100%{transform:translateY(0);opacity:0}
+          }
+          .fr-pan-abajo{height:20px;border-radius:6px 6px 22px 22px;background:#e0922f;animation-delay:0s}
+          .fr-carne{height:22px;border-radius:12px;background:#5a2a12;animation-delay:.35s}
+          .fr-queso{height:12px;background:#ffc928;clip-path:polygon(0 0,100% 0,100% 55%,88% 100%,70% 55%,52% 100%,34% 55%,16% 100%,0 55%);animation-delay:.7s}
+          .fr-tomate{height:12px;border-radius:8px;background:#e53935;animation-delay:1.05s}
+          .fr-lechuga{height:14px;border-radius:10px;background:#5cb85c;width:150px;animation-delay:1.4s}
+          .fr-pan-arriba{
+            height:34px;border-radius:70px 70px 10px 10px;background:#f0a63c;
+            animation-delay:1.75s;position:relative;
+          }
+          .fr-pan-arriba::after{
+            content:'';position:absolute;top:9px;left:30px;width:6px;height:4px;border-radius:50%;
+            background:#fff3c4;box-shadow:24px -3px 0 #fff3c4,48px 2px 0 #fff3c4,70px -2px 0 #fff3c4,38px 10px 0 #fff3c4;
+          }
+
+          /* plato */
+          .fr-plato{
+            position:absolute;bottom:-14px;width:170px;height:12px;border-radius:50%;
+            background:#e9e9e9;box-shadow:0 6px 0 #9a9a9a,0 16px 22px rgba(0,0,0,.6);
+          }
+
+          /* vapor */
+          .fr-vapor{position:absolute;top:-30px;display:flex;gap:18px;left:50%;transform:translateX(-50%)}
+          .fr-vapor i{
+            width:6px;height:26px;border-radius:10px;background:rgba(255,255,255,.35);
+            animation:fr-humo 1.6s ease-in infinite;opacity:0;
+          }
+          .fr-vapor i:nth-child(2){animation-delay:.4s}
+          .fr-vapor i:nth-child(3){animation-delay:.8s}
+          @keyframes fr-humo{
+            0%{transform:translateY(10px) scaleY(.6);opacity:0}
+            40%{opacity:.7}
+            100%{transform:translateY(-22px) scaleY(1.2);opacity:0}
+          }
+
+          /* texto + barra */
+          .fr-texto{
+            position:relative;z-index:1;margin:12px 0 0;color:#c9ccd3;font-weight:600;
+            font-size:clamp(12px,1.6vw,15px);letter-spacing:4px;text-transform:uppercase;
+          }
+          .fr-puntos span{animation:fr-punto 1.2s infinite;opacity:.2}
+          .fr-puntos span:nth-child(2){animation-delay:.2s}
+          .fr-puntos span:nth-child(3){animation-delay:.4s}
+          @keyframes fr-punto{30%{opacity:1}}
+          .fr-barra{
+            position:relative;z-index:1;width:min(240px,60vw);height:4px;border-radius:4px;
+            background:rgba(255,255,255,.12);overflow:hidden;
+          }
+          .fr-barra::after{
+            content:'';position:absolute;top:0;bottom:0;width:40%;border-radius:4px;
+            background:#ffb21e;
+            animation:fr-carga-barra 1.1s ease-in-out infinite;
+          }
+          @keyframes fr-carga-barra{0%{left:-40%}100%{left:100%}}
+        `}</style>
+
+        <h1 className="fr-logo">
+          Fast Food
+          <b>Rush</b>
+        </h1>
+
+        <div className="fr-burger">
+          <div className="fr-vapor"><i /><i /><i /></div>
+          <div className="fr-plato" />
+          <div className="fr-capa fr-pan-abajo" />
+          <div className="fr-capa fr-carne" />
+          <div className="fr-capa fr-queso" />
+          <div className="fr-capa fr-tomate" />
+          <div className="fr-capa fr-lechuga" />
+          <div className="fr-capa fr-pan-arriba" />
+        </div>
+
+        <p className="fr-texto">
+          Preparando la cocina
+          <span className="fr-puntos"><span>.</span><span>.</span><span>.</span></span>
         </p>
+        <div className="fr-barra" />
       </main>
     );
   }

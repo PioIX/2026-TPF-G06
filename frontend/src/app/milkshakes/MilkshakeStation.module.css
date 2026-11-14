@@ -259,3 +259,27 @@
   from { transform: scale(0.85); opacity: 0; }
   to   { transform: scale(1);    opacity: 1; }
 }
+
+/* =========================================================
+   TIEMPO DE LA PARTIDA
+   Mismo estilo que el reloj de la parrilla (.p-datos de parrilla.css)
+   ========================================================= */
+
+.reloj {
+  position: absolute;
+  top: 2%;
+  left: 1.5%;
+  z-index: 30;
+  display: flex;
+  gap: 1.2em;
+  padding: 0.5em 1.4em;
+  background: rgba(255, 250, 241, 0.95);
+  color: #692d20;
+  font-weight: 800;
+  font-size: clamp(12px, 1.2cqw, 22px);
+  font-family: system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid #713629;
+  border-radius: 999px;
+  pointer-events: none;
+}

@@ -124,6 +124,26 @@ function leerPartida() {
   }
 }
 
+/* ============ TIEMPO DE LA PARTIDA ============
+   Mismo formato que en /partidas: ◷ MM:SS.
+   Se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
+   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn). */
+const formatearTiempo = (segundos) => {
+  const minutos = Math.floor(segundos / 60);
+  const resto = segundos % 60;
+
+  return `${String(minutos).padStart(2, '0')}:${String(resto).padStart(2, '0')}`;
+};
+
+// null = no hay partida guardada (por ejemplo, si se abre esta página sola)
+function leerTiempoRestante() {
+  const partida = leerPartida();
+  if (typeof partida?.tiempo !== 'number') return null;
+  const transcurrido = Math.floor((Date.now() - (partida.guardadoEn ?? Date.now())) / 1000);
+  return Math.max(0, partida.tiempo - transcurrido);
+}
+
+
 let contador = 0;
 
 /* ============ PAPAS EN VUELO ============ */
@@ -217,6 +237,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
   const [fase, setFase] = useState('cocina');       // cocina | llenando | lleno
   const [aviso, setAviso] = useState('');
   const [pedidos, setPedidos] = useState([]);       // [{ tamano, hecho }]
+  const [tiempo, setTiempo] = useState(null);       // segundos que quedan de la partida (null = sin partida)
   const timers = useRef([]);
   const yaTermino = useRef(false);
   const entregados = useRef(0);
@@ -297,6 +318,23 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
   }, [datos]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // Tiempo de la partida: se lee al montar (sessionStorage solo existe en el navegador)
+  // y se actualiza cada segundo
+  useEffect(() => {
+    const actualizar = () => setTiempo(leerTiempoRestante());
+    actualizar();
+    const intervalo = setInterval(actualizar, 1000);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  // Se acabó el tiempo: se vuelve a /partidas, que avisa y lleva al ranking
+  useEffect(() => {
+    if (tiempo !== 0 || yaTermino.current) return;
+    yaTermino.current = true;
+    router.push(volverA);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiempo]);
 
   const cambiar = (i, estado) => setCanastas((prev) => prev.map((e, k) => (k === i ? estado : e)));
   const quitarVuelo = (id) => setVuelos((prev) => prev.filter((v) => v.id !== id));
@@ -454,6 +492,13 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
       style={{ '--img-cocidas': `url(${IMG_COCIDAS})` }}
     >
       <Image src={FONDO} alt="Freidora con dos canastas" fill sizes="100vw" priority draggable={false} />
+
+      {/* Tiempo de la partida (mismo estilo que en la parrilla) */}
+      {tiempo !== null && (
+        <div className={styles.reloj} role="timer" aria-label="Tiempo restante">
+          <span>◷ {formatearTiempo(tiempo)}</span>
+        </div>
+)}
 
       {/* Ticket del pedido: siempre visible, con todos los pedidos de papas */}
       {pedidos.length > 0 && (

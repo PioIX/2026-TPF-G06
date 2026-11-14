@@ -375,6 +375,10 @@ export default function JuegoHamburguesa() {
   const soltarRef = useRef(() => {});
   const avisoTimerRef = useRef(null);
 
+  // Para que la partida termine UNA sola vez (ranking)
+  const finalizadaRef = useRef(false);
+  const tiempoAgotadoRef = useRef(false);
+
   // Mientras el popup está abierto el juego queda frenado
   const activo = !(pausado || tiempo <= 0 || cargando || error || dialogo);
   const activoRef = useRef(activo);
@@ -393,6 +397,19 @@ export default function JuegoHamburguesa() {
     modoClickRef.current = false;
     setMano(null);
     setZonaActiva(null);
+  };
+
+  // Termina la partida: guarda el puntaje final y lleva a la página de ranking.
+  // La página /ranking lee "resultadoPartida" y manda el puntaje al back (enviar_puntaje).
+  const terminarPartida = (puntajeFinal) => {
+    if (finalizadaRef.current) return;
+    finalizadaRef.current = true;
+    sessionStorage.removeItem('partida');
+    sessionStorage.setItem(
+      'resultadoPartida',
+      JSON.stringify({ puntaje: puntajeFinal })
+    );
+    router.push(RUTA_RANKING);
   };
 
   // Todo lo que hay que recordar al salir hacia otra página
@@ -435,6 +452,9 @@ export default function JuegoHamburguesa() {
       setMilkshakesRestaurados(0);
       setFritosListos(0);
       setFritosRestaurados(0); // NUEVO
+      // Reinicio manual: se vuelve a poder terminar la partida
+      finalizadaRef.current = false;
+      tiempoAgotadoRef.current = false;
     }
 
     try {
@@ -593,6 +613,13 @@ export default function JuegoHamburguesa() {
 
   // Cargar el primer pedido
   useEffect(() => {
+    // La sala nos manda a /partidas?id=...: guardamos ese id para el ranking
+    const idUrl = new URLSearchParams(window.location.search).get('id');
+    if (idUrl) {
+      sessionStorage.setItem('id_partida', idUrl);
+      localStorage.setItem('id_partida', idUrl);
+    }
+
     iniciarJuego(leerPartidaGuardada());
     return () => clearTimeout(avisoTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -674,12 +701,19 @@ export default function JuegoHamburguesa() {
     if (!activo && manoRef.current) cancelarMano();
   }, [activo]);
 
-  // Se acabó el tiempo: se manda al jugador al ranking.
+  // Se acabó el tiempo: avisa y al cerrar el popup se va al ranking.
   // (También pasa si volvés de la parrilla / milkshakes / freidora y el tiempo
   // ya se había terminado mientras estabas allá.)
   useEffect(() => {
-    if (cargando || error) return;
-    if (tiempo <= 0) router.push(RUTA_RANKING);
+    if (cargando || error || tiempo > 0) return;
+    if (tiempoAgotadoRef.current) return;
+    tiempoAgotadoRef.current = true;
+    mostrarDialogo(
+      '¡Se acabó el tiempo!',
+      `Tu puntaje final: ${puntaje}`,
+      'error',
+      () => terminarPartida(puntaje)
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiempo, cargando, error]);
 
@@ -948,13 +982,14 @@ export default function JuegoHamburguesa() {
         return;
       }
       const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
-      setPuntaje((anterior) => anterior + puntos);
-      // Al cerrar el popup arranca el pedido nuevo (el tiempo de la partida sigue corriendo)
+      const puntajeFinal = puntaje + puntos;
+      setPuntaje(puntajeFinal);
+      // Al cerrar el popup la partida termina y va al ranking (no empieza otro pedido)
       mostrarDialogo(
         '¡Pedido correcto!',
         `Ganaste ${puntos} puntos.`,
         'ok',
-        () => iniciarJuego(null, true)
+        () => terminarPartida(puntajeFinal)
       );
     } else {
       mostrarDialogo(

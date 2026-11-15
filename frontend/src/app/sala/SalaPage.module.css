@@ -259,6 +259,105 @@
   color: #ffd27a;
 }
 
+/* Modo eliminar partidas */
+.check {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 14px;
+  box-sizing: border-box;
+  border: 2px solid #9c2f25;
+  border-radius: 5px;
+  background: #fff8ea;
+  color: #fbf1dc;
+  font: 700 16px 'DM Sans', sans-serif;
+}
+
+.checkMarcado {
+  background: #c8281e;
+  border-color: #c8281e;
+}
+
+.partidaMarcada,
+.partidaMarcada:hover {
+  background: #f6d0c8;
+  box-shadow: inset 5px 0 0 #c8281e;
+}
+
+.partidaBloqueada,
+.partidaBloqueada:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: none;
+}
+
+.btnCerrar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #9c2f25;
+  border-radius: 50%;
+  background: #fbf1dc;
+  color: #9c2f25;
+  font: 700 16px 'DM Sans', sans-serif;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btnCerrar:hover {
+  background: #f3e2bd;
+}
+
+.btnCerrar:focus-visible {
+  outline: 3px solid #e8b02f;
+  outline-offset: 2px;
+}
+
+.dockFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.btnEliminar {
+  flex: none;
+  height: 46px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 6px;
+  background: #fbf1dc;
+  color: #9c2f25;
+  font: 500 17px 'Oswald', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #6e1d17;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+}
+
+.btnEliminar:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.btnEliminar:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #6e1d17;
+}
+
+.btnEliminar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnEliminar:focus-visible {
+  outline: 3px solid #e8b02f;
+  outline-offset: 2px;
+}
+
 /* Botones */
 .btn {
   height: 46px;

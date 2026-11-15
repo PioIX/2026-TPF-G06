@@ -473,7 +473,13 @@ app.get("/sala/partidas", async function (req, res) {
       LEFT JOIN Usuarios u ON p.id_usuario = u.id_usuario
     `);
     
-    return res.json({ ok: true, partidas });
+    // Una partida está "ocupada" si hay algún jugador adentro (esperando o jugando)
+    const partidasConEstado = partidas.map((p) => {
+      const enMemoria = jugadoresEnPartida.find((j) => j.id_partida === p.id_partida);
+      return { ...p, ocupada: !!enMemoria && enMemoria.jugadores.length > 0 };
+    });
+
+    return res.json({ ok: true, partidas: partidasConEstado });
   } catch (error) {
     console.error("Error al obtener partidas:", error.message);
     return res.status(500).json({ ok: false, message: error.message });
@@ -554,6 +560,67 @@ const jugadoresEnPartida = [
   }
 ];
 
+// Borra filas de una tabla relacionada con la partida; si la tabla no existe, se ignora
+async function borrarRelacionadas(query, params) {
+  try {
+    await realizarQuery(query, params);
+  } catch (error) {
+    if (error.code !== "ER_NO_SUCH_TABLE") throw error;
+  }
+}
+
+// 3. Eliminar una partida (cualquier usuario puede eliminarla)
+app.delete("/sala/eliminar-partida/:id_partida", async function (req, res) {
+  try {
+    const id_partida = Number(req.params.id_partida);
+    const id_usuario = Number(req.body?.id_usuario);
+
+    if (!id_partida || !id_usuario) {
+      return res.status(400).json({
+        ok: false,
+        message: "Faltan datos para eliminar la partida.",
+      });
+    }
+
+    const filas = await realizarQuery(
+      "SELECT id_usuario FROM Partidas WHERE id_partida = ?",
+      [id_partida]
+    );
+
+    if (filas.length === 0) {
+      return res.status(404).json({ ok: false, message: "La partida no existe." });
+    }
+
+    const enMemoria = jugadoresEnPartida.find((p) => p.id_partida === id_partida);
+    if (enMemoria && enMemoria.jugadores.length > 0) {
+      return res.status(409).json({
+        ok: false,
+        message: "No se puede eliminar: hay jugadores adentro de la partida.",
+      });
+    }
+
+    // Primero lo que depende de la partida (claves foráneas), después la partida
+    await borrarRelacionadas("DELETE FROM PuntajesPartida WHERE id_partida = ?", [id_partida]);
+    await borrarRelacionadas("DELETE FROM UsuarioXPartida WHERE id_partida = ?", [id_partida]);
+    await realizarQuery("DELETE FROM Partidas WHERE id_partida = ?", [id_partida]);
+
+    // Sacar la sala de la memoria del servidor
+    const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === id_partida);
+    if (indice !== -1) jugadoresEnPartida.splice(indice, 1);
+
+    // Avisar a todos para que actualicen su lista de partidas
+    io.emit("salaEliminada", { id_partida });
+
+    return res.json({ ok: true, message: "Partida eliminada." });
+  } catch (error) {
+    console.error("Error al eliminar la partida:", error.message);
+    return res.status(500).json({
+      ok: false,
+      message: "Error en la base de datos: " + error.message,
+    });
+  }
+});
+
 io.on("connection", (socket) => {
 
   socket.on("crearSALA", (dataPartida) => {
@@ -564,7 +631,7 @@ io.on("connection", (socket) => {
 
   socket.on("unirse_sala", ({ id_partida, id_usuario }) => {
     socket.join(`partida_${id_partida}`);
-    console.log("ASDJKH")
+    socket.data.sala = { id_partida, id_usuario };
     // 1. Buscar si la partida ya existe en el arreglo
     let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
 
@@ -583,6 +650,9 @@ io.on("connection", (socket) => {
     console.log("Estado de salas:", JSON.stringify(jugadoresEnPartida, null, 2));
     console.log("partida.juygadores", partida.jugadores)
     console.log(partida, "partida")
+    // Avisar a todos que cambió quién está adentro (para bloquear / liberar el borrado)
+    io.emit("salaActualizada", { id_partida });
+
     // 4. Si hay 2 o más jugadores, iniciar
     if (partida.jugadores.length == 2) {
       io.to(`partida_${id_partida}`).emit("iniciar_partida", {
@@ -595,6 +665,7 @@ io.on("connection", (socket) => {
 
   socket.on("salir_sala", ({ id_partida, id_usuario }) => {
     socket.leave(`partida_${id_partida}`);
+    socket.data.sala = null;
 
     const partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
 
@@ -609,6 +680,25 @@ io.on("connection", (socket) => {
           jugadoresEnPartida.splice(indice, 1);
         }
       }
+    }
+
+    io.emit("salaActualizada", { id_partida });
+  });
+
+  // Si alguien cierra la pestaña mientras espera, se libera su lugar
+  // (si la sala ya está completa y jugando, se conserva hasta que termine)
+  socket.on("disconnect", () => {
+    const sala = socket.data.sala;
+    if (!sala) return;
+
+    const partida = jugadoresEnPartida.find((p) => p.id_partida === sala.id_partida);
+    if (partida && partida.jugadores.length < 2) {
+      partida.jugadores = partida.jugadores.filter((id) => id !== sala.id_usuario);
+      if (partida.jugadores.length === 0) {
+        const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === sala.id_partida);
+        if (indice !== -1) jugadoresEnPartida.splice(indice, 1);
+      }
+      io.emit("salaActualizada", { id_partida: sala.id_partida });
     }
   });
 
@@ -628,6 +718,15 @@ io.on("connection", (socket) => {
         ranking,
         completo: ranking.length >= 2,
       });
+
+      // Cuando los dos ya mandaron su puntaje la partida terminó: se libera la sala
+      if (ranking.length >= 2) {
+        const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === id_partida);
+        if (indice !== -1) {
+          jugadoresEnPartida.splice(indice, 1);
+          io.emit("salaActualizada", { id_partida });
+        }
+      }
 
       callback?.({ ok: true, ranking });
     } catch (error) {

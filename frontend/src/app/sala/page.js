@@ -16,6 +16,8 @@ export default function SalaPage() {
   const [nombrePartida, setNombrePartida] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [modoEliminar, setModoEliminar] = useState(false);
+  const [idsAEliminar, setIdsAEliminar] = useState([]);
 
   useEffect(() => {
     if (!socket) return;
@@ -24,8 +26,24 @@ export default function SalaPage() {
       cargarPartidas();
     });
 
+    // Alguien entró o salió de una partida: se actualiza quién está ocupada
+    socket.on("salaActualizada", () => {
+      cargarPartidas();
+    });
+
+    // Se eliminó una partida: se actualiza la lista
+    socket.on("salaEliminada", ({ id_partida }) => {
+      cargarPartidas();
+      setPartidaSeleccionada((actual) =>
+        actual && actual.id_partida === id_partida ? null : actual
+      );
+      setIdsAEliminar((ids) => ids.filter((id) => id !== id_partida));
+    });
+
     return () => {
       socket.off("salaCreada");
+      socket.off("salaEliminada");
+      socket.off("salaActualizada");
     };
   }, [socket]);
 
@@ -66,6 +84,16 @@ export default function SalaPage() {
     };
   }, [socket]);
 
+  // Si una partida marcada se ocupa mientras tanto, se desmarca
+  useEffect(() => {
+    setIdsAEliminar((ids) =>
+      ids.filter((id) => {
+        const p = partidas.find((x) => x.id_partida === id);
+        return p && !p.ocupada;
+      })
+    );
+  }, [partidas]);
+
   async function cargarPartidas() {
     try {
       const respuesta = await fetch("http://localhost:4000/sala/partidas");
@@ -99,6 +127,72 @@ export default function SalaPage() {
         id_usuario: idUsuario,
       });
     }
+  }
+
+  // Activar / desactivar el modo "eliminar partidas"
+  function alternarModoEliminar() {
+    if (!modoEliminar && partidaSeleccionada && idUsuario) {
+      // Se sale de la partida que se había elegido para no iniciar un juego sin querer
+      socket?.emit("salir_sala", {
+        id_partida: partidaSeleccionada.id_partida,
+        id_usuario: idUsuario,
+      });
+      setPartidaSeleccionada(null);
+    }
+    setIdsAEliminar([]);
+    setModoEliminar((actual) => !actual);
+  }
+
+  // Marcar / desmarcar una partida para eliminarla
+  function alternarMarca(partida) {
+    setIdsAEliminar((ids) =>
+      ids.includes(partida.id_partida)
+        ? ids.filter((id) => id !== partida.id_partida)
+        : [...ids, partida.id_partida]
+    );
+  }
+
+  // Eliminar todas las partidas marcadas
+  async function eliminarSeleccionadas() {
+    if (idsAEliminar.length === 0 || !idUsuario) return;
+
+    const confirmar = window.confirm(
+      idsAEliminar.length === 1
+        ? "¿Eliminar la partida seleccionada? Esta acción no se puede deshacer."
+        : `¿Eliminar las ${idsAEliminar.length} partidas seleccionadas? Esta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+
+    const resultados = await Promise.all(
+      idsAEliminar.map(async (id) => {
+        try {
+          const respuesta = await fetch(
+            `http://localhost:4000/sala/eliminar-partida/${id}`,
+            {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id_usuario: Number(idUsuario) }),
+            }
+          );
+          const data = await respuesta.json();
+          return respuesta.ok && data.ok ? null : data.message || "Error";
+        } catch (error) {
+          console.error("Error al eliminar la partida:", error);
+          return "Error al conectar con el servidor.";
+        }
+      })
+    );
+
+    const errores = resultados.filter(Boolean);
+    if (errores.length > 0) {
+      alert(
+        `No se pudieron eliminar ${errores.length} partida(s): ${errores[0]}`
+      );
+    }
+
+    setIdsAEliminar([]);
+    setModoEliminar(false);
+    await cargarPartidas();
   }
 
   async function crearPartida(closeModal) {
@@ -233,6 +327,14 @@ export default function SalaPage() {
                   </div>
                 )}
               </Popup>
+
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={alternarModoEliminar}
+              >
+                {modoEliminar ? "Cancelar" : "Eliminar partidas"}
+              </button>
             </div>
 
             <svg className={styles.burger} viewBox="0 0 160 124" aria-hidden="true">
@@ -268,6 +370,17 @@ export default function SalaPage() {
               <h2 className={styles.secTitle}>Disponibles</h2>
               <i className={styles.secLine} />
               <span className={styles.secCount}>{partidas.length} en la barra</span>
+              {modoEliminar && (
+                <button
+                  type="button"
+                  className={styles.btnCerrar}
+                  onClick={alternarModoEliminar}
+                  aria-label="Salir de eliminar partidas"
+                  title="Salir de eliminar partidas"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <div className={styles.scroll}>
@@ -277,22 +390,44 @@ export default function SalaPage() {
                 <ul className={styles.menu}>
                   {partidas.map((partida) => {
                     const esSeleccionada =
+                      !modoEliminar &&
                       partidaSeleccionada?.id_partida === partida.id_partida;
+                    const marcada = idsAEliminar.includes(partida.id_partida);
+                    const bloqueada = modoEliminar && partida.ocupada;
 
                     return (
                       <li key={partida.id_partida} className={styles.menuItem}>
                         <button
                           type="button"
-                          aria-pressed={esSeleccionada}
-                          onClick={() => seleccionarPartida(partida)}
+                          aria-pressed={modoEliminar ? marcada : esSeleccionada}
+                          disabled={bloqueada}
+                          onClick={() =>
+                            modoEliminar
+                              ? alternarMarca(partida)
+                              : seleccionarPartida(partida)
+                          }
                           className={`${styles.row} ${
                             esSeleccionada ? styles.partidaSeleccionada : ""
+                          } ${marcada ? styles.partidaMarcada : ""} ${
+                            bloqueada ? styles.partidaBloqueada : ""
                           }`}
                         >
+                          {modoEliminar && (
+                            <span
+                              className={`${styles.check} ${
+                                marcada ? styles.checkMarcado : ""
+                              }`}
+                              aria-hidden="true"
+                            >
+                              {marcada ? "✓" : ""}
+                            </span>
+                          )}
                           <span className={styles.name}>{partida.nombre_partida}</span>
                           <span className={styles.dots} />
                           <span>
-                            {partida.creador_nombre || "Usuario " + partida.id_usuario}
+                            {bloqueada
+                              ? "Jugadores adentro"
+                              : partida.creador_nombre || "Usuario " + partida.id_usuario}
                           </span>
                         </button>
                       </li>
@@ -303,7 +438,28 @@ export default function SalaPage() {
             </div>
 
             <div className={styles.dock}>
-              {partidaSeleccionada ? (
+              {modoEliminar ? (
+                <div className={styles.dockFila}>
+                  <div>
+                    <p className={styles.dockMain}>
+                      Tocá las partidas que querés eliminar.
+                    </p>
+                    <p className={styles.dockSub}>
+                      {idsAEliminar.length === 0
+                        ? "Las partidas con jugadores adentro no se pueden eliminar."
+                        : `${idsAEliminar.length} seleccionada(s).`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.btnEliminar}
+                    onClick={eliminarSeleccionadas}
+                    disabled={idsAEliminar.length === 0}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ) : partidaSeleccionada ? (
                 <div>
                   <p className={styles.dockMain}>
                     En la partida: <strong>{partidaSeleccionada.nombre_partida}</strong>

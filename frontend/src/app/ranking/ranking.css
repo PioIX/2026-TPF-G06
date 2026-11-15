@@ -93,21 +93,27 @@
   text-align: center;
 }
 
-/* GRUPO DE BOTONES (uno debajo del otro) */
+/* GRUPO DE BOTONES (uno al lado del otro) */
 
 .ranking-botones {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
   gap: 10px;
   width: min(420px, 100%);
   margin-top: 8px;
 }
 
-/* BOTON VOLVER */
+/* BOTONES (todos iguales, pintados de marrón) */
 
-.ranking-boton {
-  width: 100%;
-  padding: 12px 24px;
+.ranking-boton,
+.ranking-boton.ranking-boton-secundario {
+  width: auto;
+  min-width: 0;
+  padding: 8px 20px;
+  font-size: 0.9rem;
   border-radius: 12px;
   background: #92400e;
   color: white;
@@ -117,24 +123,12 @@
   transition: background 0.2s, transform 0.2s;
 }
 
-.ranking-boton:hover {
+.ranking-boton:hover,
+.ranking-boton.ranking-boton-secundario:hover {
   background: #78350f;
   border-color: #78350f;
+  color: white;
   transform: scale(1.03);
-}
-
-/* BOTONES SECUNDARIOS (volver a la sala / volver a partidas) */
-
-.ranking-boton-secundario {
-  background: white;
-  color: #92400e;
-  border: 2px solid #f59e0b;
-}
-
-.ranking-boton-secundario:hover {
-  background: #fde68a;
-  border-color: #f59e0b;
-  color: #78350f;
 }
 
 /* ADAPTACION A CELULARES */

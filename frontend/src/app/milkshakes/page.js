@@ -31,6 +31,28 @@ const ANCHO_FINAL = 11;                               // % del ancho del escenar
 const ALTO_FINAL = ANCHO_FINAL * (1199 / 600) * (1674 / 940); // % del alto del escenario
 const BASE_FINAL = 0.985;                               // dónde termina la base del vaso en el PNG
 
+// Reloj de la partida (igual que en la parrilla)
+const formatearTiempo = (segundos) => {
+  const m = Math.floor(segundos / 60);
+  const s = segundos % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
+const calcularRestante = (p) =>
+  Math.max(
+    0,
+    (p.tiempo ?? 999999) -
+      Math.floor((Date.now() - (p.guardadoEn ?? Date.now())) / 1000)
+  );
+
+function leerPartida() {
+  try {
+    return JSON.parse(sessionStorage.getItem('partida') || 'null');
+  } catch (e) {
+    return null;
+  }
+}
+
 // Lee de la partida guardada qué milkshakes pide el pedido y cuántos ya están listos
 function leerPedido() {
   try {
@@ -180,6 +202,10 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
   const trabajosRef = useRef([]);
   trabajosRef.current = trabajos;
 
+  const [tiempoJuego, setTiempoJuego] = useState(null); // segundos que le quedan a la partida
+  const partidaInicialRef = useRef(null);              // { tiempo, guardadoEn } con que llegamos
+  const yaTermino = useRef(false);                     // para volver a /partidas una sola vez
+
   const saborDe = (id) => catalogo?.find((s) => s.id === id);
 
   // Pedir al back los sabores de la máquina
@@ -219,6 +245,35 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
       listos: p.listos,
     });
   }, [catalogo]);
+
+  // Reloj de la partida: sigue corriendo mientras estás en la máquina.
+  // Si se acaba, se vuelve a /partidas (ahí aparece el cartel de fin y el ranking).
+  // Los milkshakes ya entregados quedaron guardados en la partida (guardarProgreso).
+  useEffect(() => {
+    const partida = leerPartida();
+    if (!partida || partida.tiempo === undefined) return;
+
+    partidaInicialRef.current = {
+      tiempo: partida.tiempo,
+      guardadoEn: partida.guardadoEn,
+    };
+
+    const actualizar = () => {
+      const restante = calcularRestante(partidaInicialRef.current);
+      setTiempoJuego(restante);
+
+      if (restante <= 0 && !yaTermino.current) {
+        yaTermino.current = true;
+        router.push('/partidas');
+      }
+    };
+
+    actualizar();
+    const id = setInterval(actualizar, 250);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Tiempo de la partida: se lee al montar (sessionStorage solo existe en el navegador)
   // y se actualiza cada segundo
@@ -328,6 +383,32 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
   return (
     <div className={styles.stage}>
       <Image src="/MaquinaMilkshakes.png" alt="Máquina de milkshakes" fill sizes="100vw" priority draggable={false} />
+
+      {/* Tiempo que le queda a la partida (como en la parrilla) */}
+      {tiempoJuego !== null && (
+        <div
+          role="timer"
+          aria-label="Tiempo restante de la partida"
+          style={{
+            position: 'absolute',
+            top: '1.5%',
+            right: '1.5%',
+            zIndex: 20,
+            display: 'flex',
+            gap: '1.2em',
+            padding: '0.5em 1.4em',
+            background: 'rgba(255, 250, 241, 0.95)',
+            color: '#692d20',
+            fontWeight: 800,
+            border: '2px solid #713629',
+            borderRadius: 999,
+            fontSize: 'clamp(12px, 1.2vw, 22px)',
+            fontFamily: 'system-ui, sans-serif',
+            pointerEvents: 'none',
+          }}
+        >
+          <span>◷ {formatearTiempo(tiempoJuego)}</span>
+        </div>
 
       {/* Tiempo de la partida (mismo estilo que en la parrilla) */}
       {tiempo !== null && (

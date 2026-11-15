@@ -455,6 +455,8 @@ export default function JuegoHamburguesa() {
       setMilkshakesRestaurados(0);
       setFritosListos(0);
       setFritosRestaurados(0); // NUEVO
+      // Solo el reinicio manual borra el puntaje; al pasar de pedido se conserva
+      if (!conservarTiempo) setPuntaje(0);
       // Reinicio manual: se vuelve a poder terminar la partida
       finalizadaRef.current = false;
       tiempoAgotadoRef.current = false;
@@ -990,12 +992,13 @@ export default function JuegoHamburguesa() {
       const bonusTiempo = Math.max(0, tiempo) * PUNTOS_POR_SEGUNDO;
       const puntajeFinal = puntaje + puntos + bonusTiempo;
       setPuntaje(puntajeFinal);
-      // Al cerrar el popup la partida termina y va al ranking (no empieza otro pedido)
+      // Al cerrar el popup empieza otro pedido SIN reiniciar el tiempo
+      // (el ranking solo se abre cuando se acaba el tiempo)
       mostrarDialogo(
         '¡Pedido correcto!',
         `Ganaste ${puntos} puntos + ${bonusTiempo} por los ${formatearTiempo(tiempo)} que te sobraron. Total: ${puntos + bonusTiempo}.`,
         'ok',
-        () => terminarPartida(puntajeFinal)
+        () => iniciarJuego(null, true)
       );
     } else {
       mostrarDialogo(

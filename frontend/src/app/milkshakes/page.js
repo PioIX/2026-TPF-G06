@@ -76,6 +76,30 @@ function guardarProgreso(listos, completo) {
   } catch (e) {}
 }
 
+/* ============ TIEMPO DE LA PARTIDA ============
+   Mismo formato que en /partidas: ◷ MM:SS.
+   Se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
+   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn). */
+const formatearTiempo = (segundos) => {
+  const minutos = Math.floor(segundos / 60);
+  const resto = segundos % 60;
+
+  return `${String(minutos).padStart(2, '0')}:${String(resto).padStart(2, '0')}`;
+};
+
+// null = no hay partida guardada (por ejemplo, si se abre esta página sola)
+function leerTiempoRestante() {
+  try {
+    const partida = JSON.parse(sessionStorage.getItem('partida') || 'null');
+    if (typeof partida?.tiempo !== 'number') return null;
+    const transcurrido = Math.floor((Date.now() - (partida.guardadoEn ?? Date.now())) / 1000);
+    return Math.max(0, partida.tiempo - transcurrido);
+  } catch (e) {
+    return null;
+  }
+}
+
+
 /* Cada vaso maneja su propia animación, así pueden convivir varios a la vez.
    Fases: viajando -> llenando -> listo
    "s" es el sabor completo que vino del back. */
@@ -173,6 +197,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
   const [trabajos, setTrabajos] = useState([]);           // [{ id, slot, sabor (id), fase }]
   const [pedido, setPedido] = useState({ sabores: [], listos: 0 });
   const [error, setError] = useState(null);               // { elegido, esperado } mientras se muestra el popup
+  const [tiempo, setTiempo] = useState(null);             // segundos que quedan de la partida (null = sin partida)
   const siguienteId = useRef(0);
   const trabajosRef = useRef([]);
   trabajosRef.current = trabajos;
@@ -248,6 +273,23 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
+  // Tiempo de la partida: se lee al montar (sessionStorage solo existe en el navegador)
+  // y se actualiza cada segundo
+  useEffect(() => {
+    const actualizar = () => setTiempo(leerTiempoRestante());
+    actualizar();
+    const intervalo = setInterval(actualizar, 1000);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  // Se acabó el tiempo: se vuelve a /partidas, que avisa y lleva al ranking
+  useEffect(() => {
+    if (tiempo !== 0) return;
+    router.push('/partidas');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiempo]);
 
   const slotOcupado = (i) => trabajos.some((t) => t.slot === i);
   const saborOcupado = (clave) => trabajos.some((t) => t.sabor === clave);
@@ -367,6 +409,12 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
         >
           <span>◷ {formatearTiempo(tiempoJuego)}</span>
         </div>
+
+      {/* Tiempo de la partida (mismo estilo que en la parrilla) */}
+      {tiempo !== null && (
+        <div className={styles.reloj} role="timer" aria-label="Tiempo restante">
+        <span>◷ {formatearTiempo(tiempo)}</span>
+  </div>
       )}
 
       {/* Ticket con los sabores que hay que preparar */}

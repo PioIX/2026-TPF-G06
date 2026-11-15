@@ -14,6 +14,24 @@ export default function RegistroPage() {
   const [mail, setMail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Estado para controlar el popup
+  const [popup, setPopup] = useState({
+    isOpen: false,
+    message: '',
+    type: 'info', // 'success' o 'error'
+    onConfirm: null
+  });
+
+  const showPopup = (message, type = 'error', onConfirm = null) => {
+    setPopup({ isOpen: true, message, type, onConfirm });
+  };
+
+  const closePopup = () => {
+    const action = popup.onConfirm;
+    setPopup({ isOpen: false, message: '', type: 'info', onConfirm: null });
+    if (action) action();
+  };
+
   useEffect(() => {
     socket = io("http://localhost:4000");
 
@@ -30,12 +48,12 @@ export default function RegistroPage() {
     event.preventDefault();
 
     if (!username || !mail || !password) {
-      alert("Por favor completa todos los campos.");
+      showPopup("Por favor completa todos los campos.", "error");
       return;
     }
 
     if (!socket || !socket.connected) {
-      alert("No hay conexión con el servidor.");
+      showPopup("No hay conexión con el servidor.", "error");
       return;
     }
 
@@ -45,10 +63,11 @@ export default function RegistroPage() {
       contra: password
     }, (respuesta) => {
       if (respuesta && respuesta.ok) {
-        alert("Registro exitoso");
-        router.push('/login');
+        showPopup("Registro exitoso", "success", () => {
+          router.push('/login');
+        });
       } else {
-        alert("Error al registrar: " + (respuesta?.msg || "Sin respuesta del servidor"));
+        showPopup("Error al registrar: " + (respuesta?.msg || "Sin respuesta del servidor"), "error");
       }
     });
   }
@@ -103,6 +122,24 @@ export default function RegistroPage() {
           </p>
         </form>
       </div>
+
+      {/* Popup / Modal Personalizado */}
+      {popup.isOpen && (
+        <div className="popup-overlay">
+          <div className="popup-card">
+            <div className={`popup-indicator ${popup.type}`} />
+            <div className="popup-content">
+              <h3 className="popup-title">
+                {popup.type === 'success' ? '¡Registro Exitoso!' : 'Atención'}
+              </h3>
+              <p className="popup-message">{popup.message}</p>
+              <button onClick={closePopup} className="popup-button">
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

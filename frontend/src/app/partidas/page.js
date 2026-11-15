@@ -25,6 +25,9 @@ const RUTA_FREIDORA = '/freidora';
 // Cuando se acaba el tiempo de la partida se va al ranking
 const RUTA_RANKING = '/ranking';
 
+// Puntos extra por cada segundo que sobra al entregar el pedido
+const PUNTOS_POR_SEGUNDO = 1;
+
 // ---------------------------------------------------------------------------
 // TODO LO DE ABAJO AHORA VIENE DEL BACK (ver los endpoints nuevos del index.js)
 //   GET /api/config-juego   -> tiempo por pedido, máximos, probabilidades y tamaños de papas
@@ -982,12 +985,15 @@ export default function JuegoHamburguesa() {
         return;
       }
       const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
-      const puntajeFinal = puntaje + puntos;
+      // Bonus por los segundos que sobraron (el reloj queda frenado mientras
+      // el popup está abierto, así que este valor es el del momento de entregar)
+      const bonusTiempo = Math.max(0, tiempo) * PUNTOS_POR_SEGUNDO;
+      const puntajeFinal = puntaje + puntos + bonusTiempo;
       setPuntaje(puntajeFinal);
       // Al cerrar el popup la partida termina y va al ranking (no empieza otro pedido)
       mostrarDialogo(
         '¡Pedido correcto!',
-        `Ganaste ${puntos} puntos.`,
+        `Ganaste ${puntos} puntos + ${bonusTiempo} por los ${formatearTiempo(tiempo)} que te sobraron. Total: ${puntos + bonusTiempo}.`,
         'ok',
         () => terminarPartida(puntajeFinal)
       );

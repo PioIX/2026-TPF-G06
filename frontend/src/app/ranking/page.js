@@ -242,7 +242,7 @@ export default function Ranking() {
             )
           }
         >
-          Volver a partidas
+          Jugar otra vez
         </button>
 
         <button

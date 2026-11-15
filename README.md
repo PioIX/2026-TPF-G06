@@ -33,16 +33,7 @@ Funcionalidades desarrolladas
 ### Diagrama Entidad-Relación (DER) 
 
 ### Tabla con las tareas necesarias para desarrollar el proyecto. 
-*Objetivo:*
+*Objetivo:* crear un juego de cocinar hamburguesas
 *Tareas asociadas:*
 *Integrantes responsables:* Guadalupe Atienza, Delfina Ciceran Pellegrini, Candela Langan y Victoria Jimenez
 *Fecha estimada de finalización:* 18/11/26
-
-*Tarea                              Responsable     Fecha estimada*
-*Registro e inicio de sesión:*
-*DER*
-*CSS*
-*Backend*
-*Frontend*
-
-dddss

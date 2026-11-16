@@ -4,8 +4,9 @@ import { useEffect, useId, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './MilkshakeStation.module.css';
+import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = BACKEND_URL;
 
 /* ============ CONFIGURACIÓN ============
    Todo en % del escenario (la imagen de la máquina, 1674 x 940).

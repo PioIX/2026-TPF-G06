@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { io } from 'socket.io-client';
 import './registro.css';
+import { BACKEND_URL } from '../../ip/page';
+import Input from '../../components/Input';
+import Button from '../../components/Button';
 
 let socket;
 
@@ -33,7 +36,7 @@ export default function RegistroPage() {
   };
 
   useEffect(() => {
-    socket = io("http://localhost:4000");
+    socket = io(BACKEND_URL);
 
     socket.on("connect", () => {
       console.log("Conectado al servidor Socket.IO con ID:", socket.id);
@@ -80,10 +83,10 @@ export default function RegistroPage() {
         <form onSubmit={handleSubmit} className="registro-form">
           <h1 className="registro-form-title">REGISTRO</h1>
 
-          <input
+          <Input
             type="text"
             placeholder="Usuario"
-            aria-label="Usuario"
+            ariaLabel="Usuario"
             autoComplete="username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
@@ -91,10 +94,10 @@ export default function RegistroPage() {
             className="registro-input"
           />
 
-          <input
+          <Input
             type="email"
             placeholder="Correo"
-            aria-label="Correo"
+            ariaLabel="Correo"
             autoComplete="email"
             value={mail}
             onChange={(event) => setMail(event.target.value)}
@@ -102,10 +105,10 @@ export default function RegistroPage() {
             className="registro-input"
           />
 
-          <input
+          <Input
             type="password"
             placeholder="Contraseña"
-            aria-label="Contraseña"
+            ariaLabel="Contraseña"
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -113,9 +116,7 @@ export default function RegistroPage() {
             className="registro-input"
           />
 
-          <button type="submit" className="registro-button">
-            Registrarse
-          </button>
+          <Button type="submit" className="registro-button" text="Registrarse" />
 
           <p className="registro-alt">
             ¿Ya tenés cuenta? <Link href="/login">Entrá</Link>
@@ -133,9 +134,7 @@ export default function RegistroPage() {
                 {popup.type === 'success' ? '¡Registro Exitoso!' : 'Atención'}
               </h3>
               <p className="popup-message">{popup.message}</p>
-              <button onClick={closePopup} className="popup-button">
-                Aceptar
-              </button>
+              <Button onClick={closePopup} className="popup-button" text="Aceptar" />
             </div>
           </div>
         </div>

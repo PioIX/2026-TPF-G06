@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './FreidoraStation.module.css';
-
-const API_URL = 'http://localhost:4000/api';
+import { BACKEND_URL } from '../../ip/page';
+const API_URL = BACKEND_URL;
 
 /* ============ CONFIGURACIÓN ============
    Todas las medidas están en píxeles de la imagen Freidora.png (1671 x 941).
@@ -23,20 +23,6 @@ const IMG_CARTON_VACIO = '/cartonPapas.png';
 const IMG_CARTON_LLENO = '/papas.png';
 
 const VOLVER_A = '/partidas';
-
-// Reloj de la partida (igual que en la parrilla)
-const formatearTiempo = (segundos) => {
-  const m = Math.floor(segundos / 60);
-  const s = segundos % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
-
-const calcularRestante = (p) =>
-  Math.max(
-    0,
-    (p.tiempo ?? 999999) -
-      Math.floor((Date.now() - (p.guardadoEn ?? Date.now())) / 1000)
-  );
 
 // Las pilas mantienen siempre su proporción (alto = ancho x proporción)
 const PROPORCION = 0.698;               // alto / ancho de papasRicas.png (recortada)
@@ -157,7 +143,6 @@ function leerTiempoRestante() {
   return Math.max(0, partida.tiempo - transcurrido);
 }
 
-
 let contador = 0;
 
 /* ============ PAPAS EN VUELO ============ */
@@ -255,8 +240,6 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
   const timers = useRef([]);
   const yaTermino = useRef(false);
   const entregados = useRef(0);
-  const [tiempoJuego, setTiempoJuego] = useState(null); // segundos que le quedan a la partida
-  const partidaInicialRef = useRef(null);              // { tiempo, guardadoEn } con que llegamos
 
   const nombreTamano = (t) => datos?.tamanos.find((x) => x.id === t)?.nombre ?? t;
 
@@ -335,45 +318,6 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Reloj de la partida: sigue corriendo mientras estás en la freidora.
-  // Si se acaba, se vuelve a /partidas (ahí aparece el cartel de fin y el ranking).
-  useEffect(() => {
-    const partida = leerPartida();
-    if (!partida || partida.tiempo === undefined) return;
-
-    partidaInicialRef.current = {
-      tiempo: partida.tiempo,
-      guardadoEn: partida.guardadoEn,
-    };
-
-    const actualizar = () => {
-      const restante = calcularRestante(partidaInicialRef.current);
-      setTiempoJuego(restante);
-
-      if (restante <= 0 && !yaTermino.current) {
-        yaTermino.current = true;
-        const p = leerPartida();
-        if (p) {
-          const total = Array.isArray(p.fritosPedidos) ? p.fritosPedidos.length : Infinity;
-          p.fritosListos = Math.min(total, (p.fritosListos ?? 0) + entregados.current);
-          p.resultadoFreidora = 'cancelada';
-          try {
-            sessionStorage.setItem('partida', JSON.stringify(p));
-          } catch (e) {
-            /* si no se puede guardar, igual se vuelve */
-          }
-        }
-        router.push(volverA);
-      }
-    };
-
-    actualizar();
-    const id = setInterval(actualizar, 250);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-
   // Tiempo de la partida: se lee al montar (sessionStorage solo existe en el navegador)
   // y se actualiza cada segundo
   useEffect(() => {
@@ -383,10 +327,22 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     return () => clearInterval(intervalo);
   }, []);
 
-  // Se acabó el tiempo: se vuelve a /partidas, que avisa y lleva al ranking
+  // Se acabó el tiempo: se guarda lo que ya se entregó y se vuelve a /partidas,
+  // que avisa y lleva al ranking
   useEffect(() => {
     if (tiempo !== 0 || yaTermino.current) return;
     yaTermino.current = true;
+    const p = leerPartida();
+    if (p) {
+      const total = Array.isArray(p.fritosPedidos) ? p.fritosPedidos.length : Infinity;
+      p.fritosListos = Math.min(total, (p.fritosListos ?? 0) + entregados.current);
+      p.resultadoFreidora = 'cancelada';
+      try {
+        sessionStorage.setItem('partida', JSON.stringify(p));
+      } catch (e) {
+        /* si no se puede guardar, igual se vuelve */
+      }
+    }
     router.push(volverA);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiempo]);
@@ -548,38 +504,15 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     >
       <Image src={FONDO} alt="Freidora con dos canastas" fill sizes="100vw" priority draggable={false} />
 
-      {/* Tiempo que le queda a la partida (como en la parrilla) */}
-      {tiempoJuego !== null && (
-        <div
-          role="timer"
-          aria-label="Tiempo restante de la partida"
-          style={{
-            position: 'absolute',
-            top: '1.5%',
-            left: '1%',
-            zIndex: 20,
-            padding: '6px 16px',
-            borderRadius: 999,
-            background: 'rgba(20, 20, 24, 0.82)',
-            border: `2px solid ${tiempoJuego <= 10 ? '#ff5a4d' : '#ffb21e'}`,
-            color: tiempoJuego <= 10 ? '#ff5a4d' : '#fff',
-            fontWeight: 800,
-            fontSize: 'clamp(16px, 2vw, 26px)',
-            letterSpacing: 2,
-            fontVariantNumeric: 'tabular-nums',
-            pointerEvents: 'none',
-          }}
-        >
-          ◷ {formatearTiempo(tiempoJuego)}
-        </div>
-      )}
-
-      {/* Tiempo de la partida (mismo estilo que en la parrilla) */}
+      {/* Tiempo de la partida (mismo estilo que la barra superior de /partidas) */}
       {tiempo !== null && (
-        <div className={styles.reloj} role="timer" aria-label="Tiempo restante">
-          <span>◷ {formatearTiempo(tiempo)}</span>
-        </div>
-)}
+        <header className={styles.hud}>
+          <div className={styles.hudDato} role="timer" aria-label="Tiempo restante">
+            <span>◷</span>
+            <strong>{formatearTiempo(tiempo)}</strong>
+          </div>
+        </header>
+      )}
 
       {/* Ticket del pedido: siempre visible, con todos los pedidos de papas */}
       {pedidos.length > 0 && (

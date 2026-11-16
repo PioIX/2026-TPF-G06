@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import './login.css';
+import { BACKEND_URL } from '../../ip/page';
+import Input from '../../components/Input';
+import Button from '../../components/Button';
 
 export default function LoginPage() {
   const [mail, setMail] = useState('');
@@ -19,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/login', {
+      const res = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -52,10 +55,10 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="login-form">
           <h1 className="login-form-title">INICIAR SESIÓN</h1>
 
-          <input
+          <Input
             type="email"
             placeholder="Correo"
-            aria-label="Correo"
+            ariaLabel="Correo"
             autoComplete="email"
             value={mail}
             onChange={(e) => setMail(e.target.value)}
@@ -64,23 +67,22 @@ export default function LoginPage() {
           />
 
           <div className="login-password">
-            <input
+            <Input
               type={showPassword ? 'text' : 'password'}
               placeholder="Contraseña"
-              aria-label="Contraseña"
+              ariaLabel="Contraseña"
               autoComplete="current-password"
               value={contra}
               onChange={(e) => setContra(e.target.value)}
               required
               className="login-input"
             />
-            <button
+            <Button
               type="button"
               className="login-toggle"
               onClick={() => setShowPassword((v) => !v)}
-            >
-              {showPassword ? 'Ocultar' : 'Ver'}
-            </button>
+              text={showPassword ? 'Ocultar' : 'Ver'}
+            />
           </div>
 
           {error && (
@@ -89,9 +91,12 @@ export default function LoginPage() {
             </p>
           )}
 
-          <button type="submit" disabled={loading} className="login-button">
-            {loading ? 'Entrando…' : 'Entrar'}
-          </button>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="login-button"
+            text={loading ? 'Entrando…' : 'Entrar'}
+          />
 
           <p className="login-alt">
             ¿Primera vez? <Link href="/registro">Registrate</Link>

@@ -6,6 +6,7 @@ import Popup from "reactjs-popup";
 
 import styles from "./SalaPage.module.css";
 import useSocket from "@/hooks/useSocket";
+import { BACKEND_URL } from "../../ip/page";
 
 export default function SalaPage() {
   const router = useRouter();
@@ -96,7 +97,7 @@ export default function SalaPage() {
 
   async function cargarPartidas() {
     try {
-      const respuesta = await fetch("http://localhost:4000/sala/partidas");
+      const respuesta = await fetch(BACKEND_URL);
       if (!respuesta.ok) return;
 
       const data = await respuesta.json();
@@ -167,7 +168,7 @@ export default function SalaPage() {
       idsAEliminar.map(async (id) => {
         try {
           const respuesta = await fetch(
-            `http://localhost:4000/sala/eliminar-partida/${id}`,
+            `${BACKEND_URL}/${id}`,
             {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
@@ -209,7 +210,7 @@ export default function SalaPage() {
     }
 
     try {
-      const respuesta = await fetch("http://localhost:4000/sala/crear-partida", {
+      const respuesta = await fetch(BACKEND_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

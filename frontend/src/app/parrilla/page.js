@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import './parrilla.css';
+import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = BACKEND_URL;
 
 /* =========================================================
    CONFIGURACIÓN

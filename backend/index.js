@@ -7,10 +7,7 @@ const { realizarQuery } = require("./modulos/mysql");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors({
-  origin: "*",
-  credentials: false
-}));
+app.use(cors());
 app.use(express.json());
 
 const sessionMiddleware = session({
@@ -20,15 +17,15 @@ const sessionMiddleware = session({
 });
 app.use(sessionMiddleware);
 
-const server = app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, () => {
   console.log(`Servidor NodeJS corriendo en http://localhost:${PORT}/`);
 });
 
 const io = new Server(server, {
   cors: {
-    origin:"*",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: false,
+    credentials: true,
   },
 });
 

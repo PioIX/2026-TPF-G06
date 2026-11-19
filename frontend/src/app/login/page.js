@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import './login.css';
-import { BACKEND_URL } from '../../ip/page';
+//import { BACKEND_URL } from '../../ip/page';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(BACKEND_URL, {
+      const res = await fetch('http://localhost:4000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

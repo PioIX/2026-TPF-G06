@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { io } from 'socket.io-client';
 import './registro.css';
-import { BACKEND_URL } from '../../ip/page';
+//import { BACKEND_URL } from '../../ip/page';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
@@ -36,7 +36,7 @@ export default function RegistroPage() {
   };
 
   useEffect(() => {
-    socket = io(BACKEND_URL);
+    socket = io('http://localhost:4000');
 
     socket.on("connect", () => {
       console.log("Conectado al servidor Socket.IO con ID:", socket.id);

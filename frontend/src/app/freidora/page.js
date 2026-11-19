@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './FreidoraStation.module.css';
-import { BACKEND_URL } from '../../ip/page';
-const API_URL = BACKEND_URL;
-
+//import { BACKEND_URL } from '../../ip/page';
+const API_URL = ' http://localhost:4000/api';
 /* ============ CONFIGURACIÓN ============
    Todas las medidas están en píxeles de la imagen Freidora.png (1671 x 941).
    Cada caja es [x, y, ancho, alto]. El componente las convierte a % solo.

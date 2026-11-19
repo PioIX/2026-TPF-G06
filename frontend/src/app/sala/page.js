@@ -6,7 +6,7 @@ import Popup from "reactjs-popup";
 
 import styles from "./SalaPage.module.css";
 import useSocket from "@/hooks/useSocket";
-//import { BACKEND_URL } from "../../ip/page";
+
 
 export default function SalaPage() {
   const router = useRouter();

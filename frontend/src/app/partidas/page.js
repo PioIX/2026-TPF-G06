@@ -1606,7 +1606,17 @@ export default function JuegoHamburguesa() {
 
         {/* ---------- AVISOS ---------- */}
         {aviso && <div className="aviso">{aviso}</div>}
-        {pausado && <div className="cartel-central">⏸ PAUSA</div>}
+        {/* El cartel de PAUSA puede quedar tapando el botón "Continuar" del HUD,
+            así que tocar el cartel también reanuda el juego. */}
+        {pausado && (
+          <div
+            className="cartel-central"
+            onClick={() => setPausado(false)}
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+          >
+            ⏸ PAUSA
+          </div>
+        )}
         {tiempo === 0 && (
           <div className="cartel-central rojo">
             ¡Se acabó el tiempo! Reiniciá para jugar otra vez.

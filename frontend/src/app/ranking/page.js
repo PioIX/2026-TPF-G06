@@ -11,6 +11,8 @@
 //   segundosSobrantes -> segundos que sobraron al terminar la última hamburguesa
 //   bonusTiempo       -> puntos que dan esos segundos
 // Acá se le suma el bonus al puntaje y se manda todo al back (evento "enviar_puntaje").
+//
+// La imagen de fondo de "Empleado del mes" va en: public/empleado-del-mes.png
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -61,7 +63,19 @@ export default function Ranking() {
   const [idUsuario, setIdUsuario] = useState(null);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(true);
+  // Mejor jugador del mes (todas las partidas)
+  const [empleado, setEmpleado] = useState(null);
   const idPartidaRef = useRef(null);
+
+  const pedirEmpleado = async () => {
+    try {
+      const res = await fetch(`${API_URL}/empleado-del-mes`);
+      const data = await res.json();
+      if (data.ok) setEmpleado(data.empleado);
+    } catch (e) {
+      console.error('Error al pedir el empleado del mes:', e);
+    }
+  };
 
   const pedirRanking = async (id_partida) => {
     try {
@@ -71,6 +85,7 @@ export default function Ranking() {
       if (data.ok) {
         setRanking(data.ranking);
         setCompleto(data.ranking.length >= 2);
+        pedirEmpleado();
       }
     } catch (e) {
       console.error('Error al pedir el ranking:', e);
@@ -146,6 +161,7 @@ export default function Ranking() {
             sessionStorage.removeItem('resultadoPartida');
             setRanking(resp.ranking);
             setCompleto(resp.ranking.length >= 2);
+            pedirEmpleado();
           } else {
             setError(resp?.msg || 'No se pudo guardar tu puntaje.');
           }
@@ -188,34 +204,64 @@ export default function Ranking() {
   const medalla = (i) =>
     i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
 
+  const soyEmpleado = Boolean(empleado) && empleado.id_usuario === idUsuario;
+
   return (
     <main className="ranking-page">
-      <style>{`
-        .ranking-detalle{margin:4px 0 14px;text-align:center;font-size:.95em;opacity:.85}
-        .ranking-detalle p{margin:2px 0}
-        .ranking-hamburguesas{display:block;font-size:.8em;font-weight:400;opacity:.8}
-      `}</style>
-
       <h1 className="ranking-titulo">
         🏆 Ranking
       </h1>
 
-      {miPuntaje !== null && (
-        <p className="ranking-mi-puntaje">
-          Tu puntaje: <strong>{miPuntaje}</strong>
-        </p>
+      {/* EMPLEADO DEL MES: la imagen de fondo ya trae el título */}
+      {empleado && (
+        <>
+          <div className="empleado-mes" role="img" aria-label="Empleado del mes">
+            <div className="empleado-mes-contenido">
+              <p className="empleado-mes-nombre">
+                <span aria-hidden="true">👑</span> {empleado.nombre}
+                {soyEmpleado ? ' (vos)' : ''}
+              </p>
+
+              <div className="empleado-mes-datos">
+                <span className="empleado-mes-dato">
+                  ⭐ {empleado.puntaje} pts
+                </span>
+                <span className="empleado-mes-dato mostaza">
+                  🍔 {textoHamburguesas(empleado.hamburguesas ?? 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {miPuntaje !== null && (
+            <p className={`empleado-mes-mensaje ${soyEmpleado ? 'logrado' : ''}`}>
+              {soyEmpleado
+                ? '🎉 ¡Sos el empleado del mes!'
+                : `Te faltaron ${empleado.puntaje - miPuntaje + 1} pts para ser el empleado del mes`}
+            </p>
+          )}
+        </>
       )}
 
-      {miResultado && (
-        <div className="ranking-detalle">
-          <p>🍔 {textoHamburguesas(miResultado.hamburguesas)}</p>
-          <p>Pedidos: {miResultado.puntosPedidos} pts</p>
-          <p>
-            Tiempo sobrante:{' '}
-            {miResultado.bonusTiempo > 0
-              ? `+${miResultado.bonusTiempo} pts (${miResultado.segundosSobrantes} s)`
-              : 'sin bonus'}
+      {/* MI PUNTAJE (ticket) */}
+      {miPuntaje !== null && (
+        <div className="ranking-ticket">
+          <p className="ranking-mi-puntaje">
+            Tu puntaje: <strong>{miPuntaje}</strong>
           </p>
+
+          {miResultado && (
+            <div className="ranking-detalle">
+              <p>🍔 {textoHamburguesas(miResultado.hamburguesas)}</p>
+              <p>Pedidos: {miResultado.puntosPedidos} pts</p>
+              <p>
+                Tiempo sobrante:{' '}
+                {miResultado.bonusTiempo > 0
+                  ? `+${miResultado.bonusTiempo} pts (${miResultado.segundosSobrantes} s)`
+                  : 'sin bonus'}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -233,6 +279,8 @@ export default function Ranking() {
 
       {!cargando && !error && (
         <>
+          <h2 className="ranking-subtitulo">Posiciones de la sala</h2>
+
           <ol className="ranking-lista">
             {ranking.map((fila, i) => (
               <li

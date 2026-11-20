@@ -557,6 +557,28 @@ app.post("/sala/crear-partida", async function (req, res) {
     }
   });
 
+  // Empleado del mes: el mayor puntaje de todas las partidas del mes actual.
+  // Usa Partidas.hora_final como fecha de la partida.
+  // (Si preferís el mejor de todos los tiempos, borrá el JOIN Partidas y el WHERE.)
+  app.get("/api/empleado-del-mes", async (req, res) => {
+    try {
+      const filas = await realizarQuery(
+        `SELECT u.id_usuario, u.nombre, p.puntaje, p.hamburguesas, p.id_partida
+         FROM PuntajesPartida p
+         JOIN Usuarios u ON u.id_usuario = p.id_usuario
+         JOIN Partidas pa ON pa.id_partida = p.id_partida
+         WHERE YEAR(pa.hora_final) = YEAR(CURDATE())
+           AND MONTH(pa.hora_final) = MONTH(CURDATE())
+         ORDER BY p.puntaje DESC, p.hamburguesas DESC
+         LIMIT 1`
+      );
+      res.json({ ok: true, empleado: filas[0] || null });
+    } catch (error) {
+      console.error("❌ Error al obtener empleado del mes:", error.message);
+      res.status(500).json({ ok: false, message: "Error al obtener el empleado del mes" });
+    }
+  });
+
 const jugadoresEnPartida = [
   {
     //id_partida: 0,

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import styles from './MilkshakeStation.module.css';
 //import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = ' http://localhost:4000/api';
+const API_URL = 'http://localhost:4000/api';
 
 /* ============ CONFIGURACIÓN ============
    Todo en % del escenario (la imagen de la máquina, 1674 x 940).
@@ -55,10 +55,11 @@ function guardarProgreso(listos, completo) {
   } catch (e) {}
 }
 
-/* ============ TIEMPO DE LA PARTIDA ============
-   Mismo formato que en /partidas: ◷ MM:SS.
-   Se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
-   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn). */
+/* ============ TIEMPO Y PUNTAJE DE LA PARTIDA ============
+   Mismo formato que en /parrilla: ◷ MM:SS y ★ puntaje.
+   El tiempo se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
+   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn).
+   El puntaje es el que tenía la partida al salir (partida.puntaje). */
 const formatearTiempo = (segundos) => {
   const minutos = Math.floor(segundos / 60);
   const resto = segundos % 60;
@@ -75,6 +76,16 @@ function leerTiempoRestante() {
     return Math.max(0, partida.tiempo - transcurrido);
   } catch (e) {
     return null;
+  }
+}
+
+// Puntaje que llevaba la partida al salir hacia la máquina de milkshakes
+function leerPuntaje() {
+  try {
+    const partida = JSON.parse(sessionStorage.getItem('partida') || 'null');
+    return typeof partida?.puntaje === 'number' ? partida.puntaje : 0;
+  } catch (e) {
+    return 0;
   }
 }
 
@@ -160,6 +171,9 @@ function Vaso({ id, s, slot, fase, onFase }) {
  * llena el vaso y se suelta la selección. Cuando se entrega el último, se guarda
  * el progreso y se vuelve a la cocina principal (/partidas).
  *
+ * Arriba a la izquierda se muestra el tiempo que queda de la partida y el puntaje
+ * (leídos de la partida guardada).
+ *
  * Props:
  *  - onListo(sabor):    cuando un milkshake terminó de servirse
  *  - onEntregar(sabor): cuando el jugador toca un milkshake terminado (se retira de la máquina)
@@ -176,6 +190,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
   const [pedido, setPedido] = useState({ sabores: [], listos: 0 });
   const [error, setError] = useState(null);               // { elegido, esperado } mientras se muestra el popup
   const [tiempo, setTiempo] = useState(null);             // segundos que quedan de la partida (null = sin partida)
+  const [puntaje, setPuntaje] = useState(0);              // puntaje de la partida al salir de la cocina
   const siguienteId = useRef(0);
   const trabajosRef = useRef([]);
   trabajosRef.current = trabajos;
@@ -220,10 +235,13 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     });
   }, [catalogo]);
 
-  // Tiempo de la partida: se lee al montar (sessionStorage solo existe en el navegador)
-  // y se actualiza cada segundo
+  // Tiempo y puntaje de la partida: se leen al montar (sessionStorage solo existe en el
+  // navegador) y el tiempo se actualiza cada segundo
   useEffect(() => {
-    const actualizar = () => setTiempo(leerTiempoRestante());
+    const actualizar = () => {
+      setTiempo(leerTiempoRestante());
+      setPuntaje(leerPuntaje());
+    };
     actualizar();
     const intervalo = setInterval(actualizar, 1000);
     return () => clearInterval(intervalo);
@@ -329,14 +347,12 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     <div className={styles.stage}>
       <Image src="/MaquinaMilkshakes.png" alt="Máquina de milkshakes" fill sizes="100vw" priority draggable={false} />
 
-      {/* Tiempo de la partida (mismo estilo que la barra superior de /partidas) */}
+      {/* Tiempo y puntaje de la partida (mismo estilo que la barra de /parrilla) */}
       {tiempo !== null && (
-        <header className={styles.hud}>
-          <div className={styles.hudDato} role="timer" aria-label="Tiempo restante">
-            <span>◷</span>
-            <strong>{formatearTiempo(tiempo)}</strong>
-          </div>
-        </header>
+        <div className={styles.reloj}>
+          <span role="timer" aria-label="Tiempo restante">◷ {formatearTiempo(tiempo)}</span>
+          <span aria-label="Puntaje">★ {puntaje}</span>
+        </div>
       )}
 
       {/* Ticket con los sabores que hay que preparar */}

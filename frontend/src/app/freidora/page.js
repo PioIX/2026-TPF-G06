@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './FreidoraStation.module.css';
 //import { BACKEND_URL } from '../../ip/page';
-const API_URL = ' http://localhost:4000/api';
+const API_URL = 'http://localhost:4000/api';
 /* ============ CONFIGURACIÓN ============
    Todas las medidas están en píxeles de la imagen Freidora.png (1671 x 941).
    Cada caja es [x, y, ancho, alto]. El componente las convierte a % solo.
@@ -123,10 +123,11 @@ function leerPartida() {
   }
 }
 
-/* ============ TIEMPO DE LA PARTIDA ============
-   Mismo formato que en /partidas: ◷ MM:SS.
-   Se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
-   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn). */
+/* ============ TIEMPO Y PUNTAJE DE LA PARTIDA ============
+   Mismo formato que en /parrilla: ◷ MM:SS y ★ puntaje.
+   El tiempo se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
+   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn).
+   El puntaje es el que tenía la partida al salir (partida.puntaje). */
 const formatearTiempo = (segundos) => {
   const minutos = Math.floor(segundos / 60);
   const resto = segundos % 60;
@@ -140,6 +141,12 @@ function leerTiempoRestante() {
   if (typeof partida?.tiempo !== 'number') return null;
   const transcurrido = Math.floor((Date.now() - (partida.guardadoEn ?? Date.now())) / 1000);
   return Math.max(0, partida.tiempo - transcurrido);
+}
+
+// Puntaje que llevaba la partida al salir hacia la freidora
+function leerPuntaje() {
+  const partida = leerPartida();
+  return typeof partida?.puntaje === 'number' ? partida.puntaje : 0;
 }
 
 let contador = 0;
@@ -213,6 +220,9 @@ function Vuelo({ tipo, imagen, desde, hasta, onLlego, onFin }) {
  * y fritosListos). Al volver, el componente deja actualizado fritosListos y
  * resultadoFreidora = 'cocinada' en esa partida.
  *
+ * Arriba a la izquierda se muestra el tiempo que queda de la partida y el puntaje
+ * (leídos de la partida guardada).
+ *
  * Props (todas opcionales; solo se usan si no hay partida guardada):
  *  - pedidos:       ['pequeno' | 'mediano' | 'grande', ...]  (un tamaño por pedido)
  *  - pedido:        { tamano, numero? }  (un solo pedido, formato anterior)
@@ -236,6 +246,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
   const [aviso, setAviso] = useState('');
   const [pedidos, setPedidos] = useState([]);       // [{ tamano, hecho }]
   const [tiempo, setTiempo] = useState(null);       // segundos que quedan de la partida (null = sin partida)
+  const [puntaje, setPuntaje] = useState(0);        // puntaje de la partida al salir de la cocina
   const timers = useRef([]);
   const yaTermino = useRef(false);
   const entregados = useRef(0);
@@ -317,10 +328,13 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Tiempo de la partida: se lee al montar (sessionStorage solo existe en el navegador)
-  // y se actualiza cada segundo
+  // Tiempo y puntaje de la partida: se leen al montar (sessionStorage solo existe en el
+  // navegador) y el tiempo se actualiza cada segundo
   useEffect(() => {
-    const actualizar = () => setTiempo(leerTiempoRestante());
+    const actualizar = () => {
+      setTiempo(leerTiempoRestante());
+      setPuntaje(leerPuntaje());
+    };
     actualizar();
     const intervalo = setInterval(actualizar, 1000);
     return () => clearInterval(intervalo);
@@ -483,17 +497,37 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     );
   }
 
+  /* ---------- PASO A PASO (guía para el jugador) ----------
+     Pasos:   1. Tocar las papas de la mesada
+              2. Elegir el tamaño del cartón (cuando las papas ya están fritas)
+              3. Tocar la canasta de la freidora
+              4. Entregar el paquete de papas
+     Entre un paso y otro se "narra" lo que está pasando (echando, friendo, llenando...). */
+  const paso = (n, texto) => `Paso ${n} de 4 · ${texto}`;
+
   const mensaje =
+    // Paso 4: el cartón ya está lleno
     fase === 'lleno'
-      ? pendientes > 1
-        ? `¡Papas listas! Tocá el paquete para entregarlo (te faltan ${pendientes - 1} más)`
-        : '¡Papas listas! Tocá el paquete de papas para entregarlo'
-    : fase === 'llenando' ? ''
+      ? paso(
+          4,
+          pendientes > 1
+            ? `¡Papas listas! Tocá el paquete para entregarlo (te faltan ${pendientes - 1} más)`
+            : '¡Papas listas! Tocá el paquete de papas para entregarlo'
+        )
+    // Narración: las papas viajan de la canasta al cartón
+    : fase === 'llenando' ? 'Pasando las papas de la canasta al cartón...'
+    // Avisos puntuales (por ejemplo, tamaño equivocado)
     : aviso ? aviso
-    : hayListo && !tamano ? 'Elegí el tamaño del cartón según el ticket'
-    : hayListo ? 'Tocá la canasta para llenar el cartón'
-    : canastas.includes('friendo') ? 'Friendo...'
-    : puedeFreir ? 'Tocá las papas de la mesada'
+    // Paso 2: las papas están fritas y falta elegir el tamaño
+    : hayListo && !tamano ? paso(2, '¡Papas fritas! Elegí el tamaño de cartón que pide el ticket')
+    // Paso 3: ya se eligió el tamaño, falta sacar la canasta
+    : hayListo ? paso(3, 'Tocá la canasta de la freidora para llenar el cartón')
+    // Narración: las papas crudas viajan a la freidora
+    : canastas.includes('cargando') ? 'Echando las papas al aceite caliente...'
+    // Narración: se están friendo
+    : canastas.includes('friendo') ? 'Friendo las papas... 🍟'
+    // Paso 1: empezar tocando las papas de la mesada
+    : puedeFreir ? paso(1, 'Tocá las papas de la mesada')
     : '';
 
   return (
@@ -503,14 +537,12 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     >
       <Image src={FONDO} alt="Freidora con dos canastas" fill sizes="100vw" priority draggable={false} />
 
-      {/* Tiempo de la partida (mismo estilo que la barra superior de /partidas) */}
+      {/* Tiempo y puntaje de la partida (mismo estilo que la barra de /parrilla) */}
       {tiempo !== null && (
-        <header className={styles.hud}>
-          <div className={styles.hudDato} role="timer" aria-label="Tiempo restante">
-            <span>◷</span>
-            <strong>{formatearTiempo(tiempo)}</strong>
-          </div>
-        </header>
+        <div className={styles.reloj}>
+          <span role="timer" aria-label="Tiempo restante">◷ {formatearTiempo(tiempo)}</span>
+          <span aria-label="Puntaje">★ {puntaje}</span>
+        </div>
       )}
 
       {/* Ticket del pedido: siempre visible, con todos los pedidos de papas */}

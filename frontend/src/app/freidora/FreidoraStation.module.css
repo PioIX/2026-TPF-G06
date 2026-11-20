@@ -1,4 +1,3 @@
-/* El escenario mantiene la proporción de la imagen (1671 x 941) */
 .stage {
   position: relative;
   width: 100%;
@@ -7,7 +6,6 @@
   container-type: inline-size; /* permite usar cqw para el texto del ticket */
   user-select: none;
 }
-
 /* Papas crudas de la mesada */
 .mesada {
   position: absolute;
@@ -339,4 +337,55 @@
   border: 2px solid #713629;
   border-radius: 999px;
   pointer-events: none;
+}
+/* ============ Barra de pasos ============ */
+.pasos {
+  position: absolute;
+  left: 50%;
+  bottom: 11%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 0.6em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 700 clamp(9px, 1.15cqw, 18px) "Trebuchet MS", system-ui, sans-serif;
+  pointer-events: none;
+}
+.paso {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 0.9em 0.3em 0.4em;
+  border: 2px solid #b51d1d;
+  border-radius: 999px;
+  background: rgba(255, 246, 220, 0.85);
+  color: #9c1414;
+  opacity: 0.65;
+  transition: opacity 0.2s, transform 0.2s, background 0.2s;
+}
+.pasoNum {
+  display: grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  background: #b51d1d;
+  color: #fff6dc;
+  font-weight: 800;
+}
+.pasoActivo {
+  opacity: 1;
+  background: #fff6dc;
+  transform: scale(1.08);
+  box-shadow: 0 0 14px 3px rgba(255, 230, 140, 0.8);
+}
+.pasoHecho {
+  opacity: 1;
+  border-color: #2e8b3d;
+  color: #2e8b3d;
+}
+.pasoHecho .pasoNum {
+  background: #2e8b3d;
 }

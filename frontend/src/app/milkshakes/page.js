@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import styles from './MilkshakeStation.module.css';
 //import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = 'http://10.1.4.166:4000/api';
 
 /* ============ CONFIGURACIÓN ============
    Todo en % del escenario (la imagen de la máquina, 1674 x 940).

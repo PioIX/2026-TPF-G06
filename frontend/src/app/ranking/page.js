@@ -19,8 +19,8 @@ import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import './ranking.css';
 
-const SOCKET_URL = 'http://localhost:4000';
-const API_URL = 'http://localhost:4000/api';
+const SOCKET_URL = 'http://10.1.4.166:4000';
+const API_URL = 'http://10.1.4.166:4000/api';
 
 const INTERVALO_REFRESCO = 3000;
 
@@ -149,7 +149,7 @@ export default function Ranking() {
     setMiPuntaje(puntajeTotal);
     setMiResultado({ puntosPedidos, hamburguesas, segundosSobrantes, bonusTiempo });
 
-    const socket = io(SOCKET_URL, { withCredentials: true });
+    const socket = io(SOCKET_URL, { withCredentials: false });
 
     socket.on('connect', () => {
       // Llamado al back: guarda el puntaje total y cuántas hamburguesas hizo

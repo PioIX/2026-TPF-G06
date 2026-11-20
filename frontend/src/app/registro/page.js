@@ -36,7 +36,7 @@ export default function RegistroPage() {
   };
 
   useEffect(() => {
-    socket = io('http://localhost:4000');
+    socket = io('http://10.1.4.166:4000');
 
     socket.on("connect", () => {
       console.log("Conectado al servidor Socket.IO con ID:", socket.id);

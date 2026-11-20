@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import './parrilla.css';
 //import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = ' http://localhost:4000/api';
+const API_URL = ' http://10.1.4.166:4000/api';
 
 /* =========================================================
    CONFIGURACIÓN

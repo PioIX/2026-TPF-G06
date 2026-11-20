@@ -6,7 +6,7 @@ import './partidas.css';
 import Popup from 'reactjs-popup';
 //import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = 'http://10.1.4.166:4000/api';
 
 // false = al soltar una carne en la parrilla se va a la página /parrilla.
 // true  = (solo para pruebas) la carne se agrega directo a la hamburguesa.

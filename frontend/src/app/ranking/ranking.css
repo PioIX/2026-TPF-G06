@@ -1,47 +1,248 @@
-/* CONTENEDOR PRINCIPAL */
+/* Fuentes retro (si no cargan, se usa la de respaldo) */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap');
+
+/* =========================================================
+   PÁGINA: papel crema + cenefa de damero arriba y abajo
+   ========================================================= */
 
 .ranking-page {
+  --rojo: #b3261e;
+  --rojo-oscuro: #7f1d12;
+  --mostaza: #f0a830;
+  --crema: #f6e3bd;
+  --papel: #fff6e0;
+  --marron: #5b2a16;
+
   min-height: 100vh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 24px;
-  background: #fffbeb;
-  font-family: sans-serif;
+  gap: 18px;
+  padding: 64px 20px;
+  position: relative;
+  color: var(--marron);
+  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+  background-color: var(--crema);
+  background-image: radial-gradient(rgba(139, 69, 19, 0.1) 1px, transparent 1px);
+  background-size: 6px 6px;
 }
 
-/* TITULO */
+/* Cenefa de damero */
+.ranking-page::before,
+.ranking-page::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: 0;
+  background: repeating-conic-gradient(var(--rojo) 0% 25%, var(--papel) 0% 50%) 0 0 / 24px 24px;
+}
+
+.ranking-page::before {
+  top: 0;
+  border-bottom: 4px solid var(--rojo-oscuro);
+}
+
+.ranking-page::after {
+  bottom: 0;
+  border-top: 4px solid var(--rojo-oscuro);
+}
+
+.ranking-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================================================
+   TÍTULOS
+   ========================================================= */
 
 .ranking-titulo {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #78350f;
   margin: 0;
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-weight: 400;
+  font-size: 2.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--rojo);
+  text-shadow: 3px 3px 0 var(--mostaza);
 }
 
-/* PUNTAJE DEL JUGADOR */
-
-.ranking-mi-puntaje {
-  color: #78350f;
-  margin: 0;
+.ranking-subtitulo {
+  margin: 6px 0 -4px;
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--rojo);
 }
 
-/* CARGANDO */
+/* =========================================================
+   EMPLEADO DEL MES (la imagen es el fondo, la info va encima)
+   La imagen va en: public/empleado-del-mes.png
+   Todo el texto usa "cqw" (% del ancho de la tarjeta), así
+   se escala solo y siempre queda dentro del espacio vacío.
+   ========================================================= */
 
-.ranking-cargando {
-  color: #78350f;
+.empleado-mes {
+  width: min(720px, 100%);
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 3px solid var(--rojo-oscuro);
+  box-shadow: 0 8px 0 var(--rojo-oscuro), 0 16px 28px rgba(91, 42, 22, 0.35);
+  background: #f3d9a8 url('/empleado-del-mes.png') center / 100% 100% no-repeat;
 }
 
-/* ERROR */
-
-.ranking-error {
-  color: #b91c1c;
+/* La zona vacía de la imagen es la parte de abajo */
+.empleado-mes-contenido {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 49%;
+  bottom: 14%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.4cqw;
   text-align: center;
 }
 
-/* LISTA DEL RANKING */
+.empleado-mes-nombre {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-weight: 400;
+  font-size: 8cqw;
+  line-height: 1.1;
+  color: var(--rojo);
+  text-shadow: 0.45cqw 0.45cqw 0 var(--mostaza);
+}
+
+.empleado-mes-datos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2cqw;
+}
+
+.empleado-mes-dato {
+  padding: 0.7cqw 2.8cqw;
+  border-radius: 999px;
+  border: 0.35cqw solid var(--rojo-oscuro);
+  box-shadow: 0 0.5cqw 0 var(--rojo-oscuro);
+  background: var(--rojo);
+  color: var(--papel);
+  font-weight: 700;
+  font-size: max(11px, 3.3cqw);
+  white-space: nowrap;
+}
+
+.empleado-mes-dato.mostaza {
+  background: var(--mostaza);
+  color: var(--marron);
+}
+
+/* Mensaje personal (¿lo logré o cuánto me faltó?) */
+
+.empleado-mes-mensaje {
+  box-sizing: border-box;
+  width: min(520px, 100%);
+  margin: 4px 0 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 3px solid var(--rojo-oscuro);
+  box-shadow: 0 4px 0 var(--rojo-oscuro);
+  background: var(--papel);
+  color: var(--rojo);
+  text-align: center;
+  font-weight: 700;
+}
+
+.empleado-mes-mensaje.logrado {
+  background: var(--mostaza);
+  color: var(--rojo-oscuro);
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   MI PUNTAJE (estilo ticket de la cocina)
+   ========================================================= */
+
+.ranking-ticket {
+  box-sizing: border-box;
+  width: min(420px, 100%);
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 2px dashed var(--rojo);
+  background: var(--papel);
+  box-shadow: 0 4px 0 rgba(127, 29, 18, 0.25);
+  text-align: center;
+}
+
+.ranking-mi-puntaje {
+  margin: 0 0 6px;
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-size: 1.3rem;
+  color: var(--rojo);
+}
+
+.ranking-mi-puntaje strong {
+  font-weight: 400;
+  font-size: 1.9rem;
+}
+
+.ranking-detalle {
+  font-size: 0.95rem;
+}
+
+.ranking-detalle p {
+  margin: 2px 0;
+}
+
+/* =========================================================
+   ESTADOS
+   ========================================================= */
+
+.ranking-cargando {
+  margin: 0;
+  font-weight: 600;
+  color: var(--marron);
+}
+
+.ranking-error {
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--rojo);
+  color: var(--papel);
+  font-weight: 600;
+  text-align: center;
+}
+
+.ranking-esperando {
+  margin: 0;
+  color: var(--rojo-oscuro);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* =========================================================
+   LISTA DE POSICIONES DE LA SALA
+   ========================================================= */
 
 .ranking-lista {
   list-style: none;
@@ -50,50 +251,55 @@
   width: min(420px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
-
-/* CADA JUGADOR */
 
 .ranking-jugador {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: white;
-  border: 2px solid #f59e0b;
+  border: 3px solid var(--rojo);
+  box-shadow: 0 4px 0 var(--rojo-oscuro);
+  background: var(--papel);
   font-weight: 500;
 }
 
-/* JUGADOR ACTUAL */
-
 .ranking-jugador.jugador-actual {
-  background: #fde68a;
-  font-weight: 800;
+  background: var(--mostaza);
+  border-color: var(--rojo-oscuro);
+  font-weight: 700;
 }
-
-/* NOMBRE */
 
 .ranking-nombre {
-  color: #78350f;
+  color: var(--marron);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-/* PUNTAJE */
+.ranking-hamburguesas {
+  display: block;
+  font-size: 0.8em;
+  font-weight: 400;
+  opacity: 0.8;
+}
 
 .ranking-puntaje {
-  color: #78350f;
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  color: var(--rojo);
   white-space: nowrap;
 }
 
-/* ESPERANDO AL OTRO JUGADOR */
-
-.ranking-esperando {
-  color: #92400e;
-  text-align: center;
+.ranking-jugador.jugador-actual .ranking-puntaje {
+  color: var(--rojo-oscuro);
 }
 
-/* GRUPO DE BOTONES (uno al lado del otro) */
+/* =========================================================
+   BOTONES (estilo botón de diner, con "relieve")
+   ========================================================= */
 
 .ranking-botones {
   display: flex;
@@ -101,49 +307,69 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: min(420px, 100%);
   margin-top: 8px;
 }
-
-/* BOTONES (todos iguales, pintados de marrón) */
 
 .ranking-boton,
 .ranking-boton.ranking-boton-secundario {
   width: auto;
   min-width: 0;
-  padding: 8px 20px;
-  font-size: 0.9rem;
+  padding: 9px 20px;
   border-radius: 12px;
-  background: #92400e;
-  color: white;
+  border: 3px solid var(--rojo-oscuro);
+  box-shadow: 0 4px 0 var(--rojo-oscuro);
+  background: var(--rojo);
+  color: var(--papel);
+  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+  font-size: 0.95rem;
   font-weight: 700;
-  border: 2px solid #92400e;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.2s;
 }
 
-.ranking-boton:hover,
+.ranking-boton.ranking-boton-secundario {
+  background: var(--papel);
+  color: var(--rojo);
+}
+
+.ranking-boton:hover {
+  background: #c9332a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--rojo-oscuro);
+}
+
 .ranking-boton.ranking-boton-secundario:hover {
-  background: #78350f;
-  border-color: #78350f;
-  color: white;
-  transform: scale(1.03);
+  background: var(--mostaza);
+  color: var(--rojo-oscuro);
 }
 
-/* ADAPTACION A CELULARES */
+.ranking-boton:active,
+.ranking-boton.ranking-boton-secundario:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--rojo-oscuro);
+}
+
+/* =========================================================
+   CELULARES
+   ========================================================= */
 
 @media (max-width: 480px) {
   .ranking-page {
-    padding: 16px;
+    padding: 52px 14px;
   }
 
   .ranking-titulo {
-    font-size: 1.7rem;
+    font-size: 2.1rem;
   }
 
   .ranking-jugador {
     padding: 10px 12px;
     font-size: 0.9rem;
+  }
+
+  .empleado-mes-mensaje.logrado {
+    font-size: 1.05rem;
   }
 }

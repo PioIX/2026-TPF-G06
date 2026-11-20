@@ -534,50 +534,172 @@ app.post("/sala/crear-partida", async function (req, res) {
   }
 });
 
-// Ranking de UNA partida: solo los jugadores que mandaron su puntaje
-// (incluye cuántas hamburguesas hizo cada uno; ver ranking.sql)
-  async function obtenerRanking(id_partida) {
-    return await realizarQuery(
-      `SELECT u.id_usuario, u.nombre, p.puntaje, p.hamburguesas
-      FROM PuntajesPartida p
-      JOIN Usuarios u ON u.id_usuario = p.id_usuario
-      WHERE p.id_partida = ?
-      ORDER BY p.puntaje DESC`,
-      [id_partida]
+// =========================================================
+// RANKING  (tabla PuntajesPartida: una fila por jugador y por sala)
+//  - El ranking es global: junta los puntajes de TODAS las salas del mes actual y
+//    muestra a cada jugador una sola vez, con la SUMA de sus puntajes y hamburguesas.
+//  - El empleado del mes es el primero de ese ranking: cambia solo cuando alguien lo supera.
+//  - Cada partida que juega un jugador en una sala se SUMA a su fila de esa sala
+//    (puntaje y hamburguesas acumulados); los jugadores de las otras salas no se tocan.
+// =========================================================
+
+// Segundos máximos entre que termina un jugador y el otro para que cuenten como la misma partida
+const VENTANA_RONDA_SEG = 240;
+
+// Solo cuenta el mes actual. Para un ranking de todos los tiempos, dejá este string vacío ('').
+const FILTRO_MES = `WHERE p.fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+    AND p.fecha < DATE_FORMAT(CURDATE() + INTERVAL 1 MONTH, '%Y-%m-01')`;
+
+// La columna "fecha" guarda cuándo se anotó el puntaje (sirve para saber de qué mes es).
+// Al iniciar el servidor se revisa si existe y, solo si falta, se crea.
+(async () => {
+  try {
+    const existe = await realizarQuery(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PuntajesPartida' AND COLUMN_NAME = 'fecha'`
     );
+
+    if (existe.length === 0) {
+      await realizarQuery(
+        "ALTER TABLE PuntajesPartida ADD COLUMN fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      );
+      console.log("✅ Se agregó la columna fecha a PuntajesPartida");
+    }
+  } catch (error) {
+    console.error("⚠️ No se pudo revisar/agregar la columna fecha en PuntajesPartida:", error.message);
+  }
+})();
+
+// Ranking global: puntaje y hamburguesas TOTALES de cada jugador (suma de todas sus salas
+// del mes), de mayor a menor. Ante empate gana quien hizo más hamburguesas.
+async function obtenerRankingMensual() {
+  const filas = await realizarQuery(
+    `SELECT u.id_usuario, u.nombre,
+            SUM(p.puntaje) AS puntaje,
+            SUM(p.hamburguesas) AS hamburguesas
+     FROM PuntajesPartida p
+     JOIN Usuarios u ON u.id_usuario = p.id_usuario
+     ${FILTRO_MES}
+     GROUP BY u.id_usuario, u.nombre
+     ORDER BY SUM(p.puntaje) DESC, SUM(p.hamburguesas) DESC, u.id_usuario ASC`
+  );
+
+  // MySQL devuelve las SUM como texto: se pasan a número
+  return filas.map((f, i) => ({
+    id_usuario: f.id_usuario,
+    nombre: f.nombre,
+    puntaje: Number(f.puntaje),
+    hamburguesas: Number(f.hamburguesas),
+    posicion: i + 1,
+  }));
+}
+
+// Puntajes guardados de una sala
+async function obtenerRankingSala(id_partida) {
+  return await realizarQuery(
+    `SELECT u.id_usuario, u.nombre, p.puntaje, p.hamburguesas
+     FROM PuntajesPartida p
+     JOIN Usuarios u ON u.id_usuario = p.id_usuario
+     WHERE p.id_partida = ?
+     ORDER BY p.puntaje DESC`,
+    [id_partida]
+  );
+}
+
+// Guarda el puntaje del jugador en SU fila de esa sala (la crea si no existe)
+async function guardarPuntaje(id_partida, id_usuario, puntaje, hamburguesas) {
+  const filas = await realizarQuery(
+    `SELECT id_puntaje, puntaje,
+            (fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS del_mes
+     FROM PuntajesPartida
+     WHERE id_partida = ? AND id_usuario = ?
+     ORDER BY id_puntaje ASC
+     LIMIT 1`,
+    [id_partida, id_usuario]
+  );
+
+  if (filas.length === 0) {
+    await realizarQuery(
+      `INSERT INTO PuntajesPartida (id_partida, id_usuario, puntaje, hamburguesas)
+       VALUES (?, ?, ?, ?)`,
+      [id_partida, id_usuario, puntaje, hamburguesas]
+    );
+    return;
   }
 
-  app.get("/api/ranking/:id_partida", async (req, res) => {
-    try {
-      const ranking = await obtenerRanking(req.params.id_partida);
-      res.json({ ok: true, ranking });
-    } catch (error) {
-      console.error("❌ Error al obtener ranking:", error.message);
-      res.status(500).json({ ok: false, message: "Error al obtener el ranking" });
-    }
-  });
+  const actual = filas[0];
 
-  // Empleado del mes: el mayor puntaje de todas las partidas del mes actual.
-  // Usa Partidas.hora_final como fecha de la partida.
-  // (Si preferís el mejor de todos los tiempos, borrá el JOIN Partidas y el WHERE.)
-  app.get("/api/empleado-del-mes", async (req, res) => {
-    try {
-      const filas = await realizarQuery(
-        `SELECT u.id_usuario, u.nombre, p.puntaje, p.hamburguesas, p.id_partida
-         FROM PuntajesPartida p
-         JOIN Usuarios u ON u.id_usuario = p.id_usuario
-         JOIN Partidas pa ON pa.id_partida = p.id_partida
-         WHERE YEAR(pa.hora_final) = YEAR(CURDATE())
-           AND MONTH(pa.hora_final) = MONTH(CURDATE())
-         ORDER BY p.puntaje DESC, p.hamburguesas DESC
-         LIMIT 1`
-      );
-      res.json({ ok: true, empleado: filas[0] || null });
-    } catch (error) {
-      console.error("❌ Error al obtener empleado del mes:", error.message);
-      res.status(500).json({ ok: false, message: "Error al obtener el empleado del mes" });
-    }
-  });
+  if (Number(actual.del_mes) === 1) {
+    // Misma partida del mes: se SUMA al puntaje y a las hamburguesas ya guardadas
+    await realizarQuery(
+      `UPDATE PuntajesPartida
+       SET puntaje = puntaje + ?, hamburguesas = hamburguesas + ?, fecha = NOW()
+       WHERE id_puntaje = ?`,
+      [puntaje, hamburguesas, actual.id_puntaje]
+    );
+  } else {
+    // Lo guardado es de un mes anterior: se arranca de cero con esta partida
+    await realizarQuery(
+      `UPDATE PuntajesPartida
+       SET puntaje = ?, hamburguesas = ?, fecha = NOW()
+       WHERE id_puntaje = ?`,
+      [puntaje, hamburguesas, actual.id_puntaje]
+    );
+  }
+}
+
+// Quiénes ya mandaron su puntaje en la partida ACTUAL de cada sala (vive en memoria, igual que
+// jugadoresEnPartida). Sirve para saber si ya terminaron los dos, también cuando la sala
+// vuelve a jugar. id_partida -> { tiempos: Map(id_usuario -> ms), ultimo: ms }
+const rondasEnCurso = new Map();
+
+function registrarEnvio(id_partida, id_usuario) {
+  const ahora = Date.now();
+  let ronda = rondasEnCurso.get(id_partida);
+
+  // El mismo jugador mandando dos veces seguidas (doble envío): no abre una ronda nueva
+  if (ronda && ahora - (ronda.tiempos.get(id_usuario) || 0) < 15000) {
+    return { repetido: true, completo: ronda.tiempos.size >= 2 };
+  }
+
+  // Ronda nueva si no había, si la anterior es muy vieja o si este jugador ya había mandado
+  // en la anterior (es decir, la sala volvió a jugar)
+  const vieja = !ronda || ahora - ronda.ultimo > VENTANA_RONDA_SEG * 1000;
+  if (vieja || ronda.tiempos.has(id_usuario)) {
+    ronda = { tiempos: new Map(), ultimo: 0 };
+    rondasEnCurso.set(id_partida, ronda);
+  }
+
+  ronda.tiempos.set(id_usuario, ahora);
+  ronda.ultimo = ahora;
+  return { repetido: false, completo: ronda.tiempos.size >= 2 };
+}
+
+const rondaCompleta = (id_partida) =>
+  (rondasEnCurso.get(id_partida)?.tiempos.size || 0) >= 2;
+
+// Ranking del mes + si los dos jugadores de esta sala ya terminaron
+app.get("/api/ranking/:id_partida", async (req, res) => {
+  try {
+    const id_partida = Number(req.params.id_partida) || 0;
+    const ranking = await obtenerRankingMensual();
+    res.json({ ok: true, ranking, completo: rondaCompleta(id_partida) });
+  } catch (error) {
+    console.error("❌ Error al obtener ranking:", error.message);
+    res.status(500).json({ ok: false, message: "Error al obtener el ranking" });
+  }
+});
+
+// Empleado del mes: el primero del ranking (el mayor puntaje de todas las salas)
+app.get("/api/empleado-del-mes", async (req, res) => {
+  try {
+    const ranking = await obtenerRankingMensual();
+    res.json({ ok: true, empleado: ranking[0] || null });
+  } catch (error) {
+    console.error("❌ Error al obtener empleado del mes:", error.message);
+    res.status(500).json({ ok: false, message: "Error al obtener el empleado del mes" });
+  }
+});
 
 const jugadoresEnPartida = [
   {
@@ -729,28 +851,39 @@ io.on("connection", (socket) => {
   });
 
   // El ranking manda el puntaje TOTAL (pedidos + bonus por los segundos que sobraron)
-  // y cuántas hamburguesas entregó bien el jugador
+  // y cuántas hamburguesas entregó bien el jugador.
+  // Se actualiza SU fila de esa sala en PuntajesPartida y se devuelve el ranking global del mes
+  // + si los dos jugadores de esta sala ya terminaron.
   socket.on("enviar_puntaje", async ({ id_partida, id_usuario, puntaje, hamburguesas }, callback) => {
     try {
-      const cantidadHamburguesas = Math.max(0, Number(hamburguesas) || 0);
+      const idPartida = Number(id_partida);
+      const idUsuario = Number(id_usuario);
+      const puntos = Math.max(0, Math.round(Number(puntaje) || 0));
+      const cantidadHamburguesas = Math.max(0, Math.round(Number(hamburguesas) || 0));
 
-      await realizarQuery(
-        `INSERT INTO PuntajesPartida (id_partida, id_usuario, puntaje, hamburguesas)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje), hamburguesas = VALUES(hamburguesas)`,
-        [id_partida, id_usuario, puntaje, cantidadHamburguesas]
-      );
+      if (!idPartida || !idUsuario) {
+        return callback?.({ ok: false, msg: "Faltan datos para guardar el puntaje" });
+      }
 
-      const ranking = await obtenerRanking(id_partida);
+      const { repetido, completo } = registrarEnvio(idPartida, idUsuario);
+
+      if (!repetido) {
+        await guardarPuntaje(idPartida, idUsuario, puntos, cantidadHamburguesas);
+      }
+
+      const [ranking, rankingSala] = await Promise.all([
+        obtenerRankingMensual(),
+        obtenerRankingSala(idPartida),
+      ]);
 
       io.to(`partida_${id_partida}`).emit("ranking_actualizado", {
         id_partida,
-        ranking,
-        completo: ranking.length >= 2,
+        ranking: rankingSala,
+        completo,
       });
 
       // Cuando los dos ya mandaron su puntaje la partida terminó: se libera la sala
-      if (ranking.length >= 2) {
+      if (completo) {
         const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === id_partida);
         if (indice !== -1) {
           jugadoresEnPartida.splice(indice, 1);
@@ -758,7 +891,7 @@ io.on("connection", (socket) => {
         }
       }
 
-      callback?.({ ok: true, ranking });
+      callback?.({ ok: true, ranking, completo });
     } catch (error) {
       console.error("❌ Error al guardar puntaje:", error.message);
       callback?.({ ok: false, msg: "Error al guardar el puntaje" });

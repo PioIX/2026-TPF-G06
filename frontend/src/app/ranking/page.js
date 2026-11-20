@@ -206,6 +206,9 @@ export default function Ranking() {
 
   const soyEmpleado = Boolean(empleado) && empleado.id_usuario === idUsuario;
 
+  // Mi fila del ranking: trae el puntaje y las hamburguesas ACUMULADOS
+  const miFila = ranking.find((f) => f.id_usuario === idUsuario);
+
   return (
     <main className="ranking-page">
       <h1 className="ranking-titulo">
@@ -237,7 +240,7 @@ export default function Ranking() {
             <p className={`empleado-mes-mensaje ${soyEmpleado ? 'logrado' : ''}`}>
               {soyEmpleado
                 ? '🎉 ¡Sos el empleado del mes!'
-                : `Te faltaron ${empleado.puntaje - miPuntaje + 1} pts para ser el empleado del mes`}
+                : `Te faltan ${Math.max(1, empleado.puntaje - (miFila?.puntaje ?? miPuntaje) + 1)} pts para ser el empleado del mes`}
             </p>
           )}
         </>
@@ -250,17 +253,22 @@ export default function Ranking() {
             Tu puntaje: <strong>{miPuntaje}</strong>
           </p>
 
+          {miFila && (
+            <p className="ranking-mi-puntaje">
+              Total acumulado: <strong>{miFila.puntaje}</strong> pts ·{' '}
+              🍔 {textoHamburguesas(miFila.hamburguesas ?? 0)}
+            </p>
+          )}
+
           {miResultado && (
-            <div className="ranking-detalle">
-              <p>🍔 {textoHamburguesas(miResultado.hamburguesas)}</p>
-              <p>Pedidos: {miResultado.puntosPedidos} pts</p>
-              <p>
-                Tiempo sobrante:{' '}
+            <p className="ranking-mi-puntaje">
+              Tiempo sobrante:{' '}
+              <strong>
                 {miResultado.bonusTiempo > 0
                   ? `+${miResultado.bonusTiempo} pts (${miResultado.segundosSobrantes} s)`
                   : 'sin bonus'}
-              </p>
-            </div>
+              </strong>
+            </p>
           )}
         </div>
       )}
@@ -324,19 +332,6 @@ export default function Ranking() {
           onClick={() => router.push('/sala')}
         >
           Volver a la sala
-        </button>
-
-        <button
-          className="ranking-boton ranking-boton-secundario"
-          onClick={() =>
-            router.push(
-              idPartidaRef.current
-                ? `/partidas?id=${idPartidaRef.current}`
-                : '/partidas'
-            )
-          }
-        >
-          Jugar otra vez
         </button>
 
         <button

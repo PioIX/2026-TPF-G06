@@ -6,7 +6,7 @@ import './partidas.css';
 import Popup from 'reactjs-popup';
 //import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = ' http://localhost:4000/api';
+const API_URL = 'http://localhost:4000/api';
 
 // false = al soltar una carne en la parrilla se va a la página /parrilla.
 // true  = (solo para pruebas) la carne se agrega directo a la hamburguesa.
@@ -26,7 +26,8 @@ const RUTA_FREIDORA = '/freidora';
 // Cuando se acaba el tiempo de la partida se va al ranking
 const RUTA_RANKING = '/ranking';
 
-// Puntos extra por cada segundo que sobra al entregar el pedido
+// Puntos extra por cada segundo que sobra al entregar la ÚLTIMA hamburguesa
+// (el bonus se suma una sola vez, al terminar todas las hamburguesas de la partida)
 const PUNTOS_POR_SEGUNDO = 1;
 
 // ---------------------------------------------------------------------------
@@ -43,7 +44,8 @@ const PUNTOS_POR_SEGUNDO = 1;
 
 // Valores de reserva: solo se usan hasta que el back responde
 const CONFIG_DEFECTO = {
-  tiempoPartida: 60,
+  tiempoPartida: 135, // 2 minutos y 15 segundos
+  maxHamburguesas: 2, // la partida termina al entregar esta cantidad de hamburguesas
   maxMilkshakes: 2,
   maxFritos: 2,
   tamanosFritos: [],
@@ -62,6 +64,9 @@ const tamanoValidoEn = (t, ids) =>
     : ids.length > 0
       ? ids[Math.floor(Math.random() * ids.length)]
       : t;
+
+// Elige un elemento al azar de una lista
+const azar = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
 // Bandeja donde aparecen los milkshakes ya preparados (a la derecha del plato).
 // Poné MOSTRAR_ZONAS en true para ver un recuadro rosa con el lugar donde
@@ -296,12 +301,16 @@ export default function JuegoHamburguesa() {
   const [tiempo, setTiempo] = useState(CONFIG_DEFECTO.tiempoPartida);
   const [puntaje, setPuntaje] = useState(0);
   const [pausado, setPausado] = useState(false);
+  // Cuántas hamburguesas ya entregaste bien en esta partida
+  const [hamburguesasHechas, setHamburguesasHechas] = useState(0);
 
   // Todo esto viene del back: sabores de milkshake, cosas de la freidora y la
   // configuración del juego (tiempo, máximos, tamaños de papas).
   const [saboresDisponibles, setSaboresDisponibles] = useState([]);
   const [fritosDisponibles, setFritosDisponibles] = useState([]);
   const [config, setConfig] = useState(CONFIG_DEFECTO);
+  // Límite de hamburguesas por partida (viene del back; si no llega, se usa el de reserva)
+  const maxHamburguesas = config.maxHamburguesas ?? CONFIG_DEFECTO.maxHamburguesas;
   // Posición de las bandejas / máquinas del fondo (tabla Bandejas)
   const [bandejas, setBandejas] = useState([]);
 
@@ -403,16 +412,19 @@ export default function JuegoHamburguesa() {
     setZonaActiva(null);
   };
 
-  // Termina la partida: guarda el puntaje final y lleva a la página de ranking.
-  // La página /ranking lee "resultadoPartida" y manda el puntaje al back (enviar_puntaje).
-  const terminarPartida = (puntajeFinal) => {
+  // Termina la partida: guarda el resultado y lleva a la página de ranking.
+  // resultado = {
+  //   puntaje          -> puntos ganados con los pedidos (SIN el bonus de tiempo)
+  //   hamburguesas     -> cuántas hamburguesas entregó bien
+  //   segundosSobrantes-> segundos que sobraron al terminar la última (0 si se acabó el tiempo)
+  //   bonusTiempo      -> puntos que dan esos segundos (segundosSobrantes * PUNTOS_POR_SEGUNDO)
+  // }
+  // La página /ranking lee "resultadoPartida", suma el bonus al puntaje y lo manda al back (enviar_puntaje).
+  const terminarPartida = (resultado) => {
     if (finalizadaRef.current) return;
     finalizadaRef.current = true;
     sessionStorage.removeItem('partida');
-    sessionStorage.setItem(
-      'resultadoPartida',
-      JSON.stringify({ puntaje: puntajeFinal })
-    );
+    sessionStorage.setItem('resultadoPartida', JSON.stringify(resultado));
     router.push(RUTA_RANKING);
   };
 
@@ -422,6 +434,7 @@ export default function JuegoHamburguesa() {
     recetaObjetivo,
     tiempo,
     puntaje,
+    hamburguesasHechas,
     milkshakesPedidos,
     saboresMilkshake,
     milkshakesListos,
@@ -456,8 +469,12 @@ export default function JuegoHamburguesa() {
       setMilkshakesRestaurados(0);
       setFritosListos(0);
       setFritosRestaurados(0); // NUEVO
-      // Solo el reinicio manual borra el puntaje; al pasar de pedido se conserva
-      if (!conservarTiempo) setPuntaje(0);
+      // Solo el reinicio manual borra el puntaje y las hamburguesas hechas;
+      // al pasar de pedido se conservan
+      if (!conservarTiempo) {
+        setPuntaje(0);
+        setHamburguesasHechas(0);
+      }
       // Reinicio manual: se vuelve a poder terminar la partida
       finalizadaRef.current = false;
       tiempoAgotadoRef.current = false;
@@ -550,6 +567,7 @@ export default function JuegoHamburguesa() {
           Math.max(0, (partida.tiempo ?? configData.tiempoPartida) - transcurrido)
         );
         setPuntaje(partida.puntaje ?? 0);
+        setHamburguesasHechas(partida.hamburguesasHechas ?? 0);
         setSaboresMilkshake(
           Array.isArray(partida.saboresMilkshake) ? partida.saboresMilkshake : []
         );
@@ -596,15 +614,33 @@ export default function JuegoHamburguesa() {
         setRecetaObjetivo(asegurarCarne(recetaLimpia, ingredientesLimpios));
         setTodosLosIngredientes(ingredientesLimpios);
 
-        // Milkshakes (con su sabor), fritos y tamaños: los elige el back al azar
-        setSaboresMilkshake(
-          Array.isArray(extrasData?.saboresMilkshake) ? extrasData.saboresMilkshake : []
-        );
-        setFritosPedidos(
-          Array.isArray(extrasData?.fritosPedidos) ? extrasData.fritosPedidos : []
-        );
+        // Milkshakes (con su sabor), fritos y tamaños: los elige el back al azar.
+        // Todo pedido lleva SIEMPRE al menos un milkshake y un frito (freidora):
+        // si el back no los mandó, se completan acá con uno al azar.
+        let sabores = Array.isArray(extrasData?.saboresMilkshake)
+          ? extrasData.saboresMilkshake
+          : [];
+        let fritos = Array.isArray(extrasData?.fritosPedidos)
+          ? extrasData.fritosPedidos
+          : [];
+        const tamanos = Array.isArray(extrasData?.tamanosFritos)
+          ? extrasData.tamanosFritos
+          : [];
+
+        if (sabores.length === 0 && saboresData.length > 0) {
+          sabores = [azar(saboresData).id];
+        }
+        if (fritos.length === 0 && fritosData.length > 0) {
+          fritos = [azar(fritosData).id];
+        }
+
+        // Un tamaño por cada frito pedido
+        const idsTamanoNuevo = configData.tamanosFritos.map((x) => x.id);
+
+        setSaboresMilkshake(sabores);
+        setFritosPedidos(fritos);
         setTamanosFritos(
-          Array.isArray(extrasData?.tamanosFritos) ? extrasData.tamanosFritos : []
+          fritos.map((_, i) => tamanoValidoEn(tamanos[i], idsTamanoNuevo))
         );
       }
     } catch (error) {
@@ -716,9 +752,15 @@ export default function JuegoHamburguesa() {
     tiempoAgotadoRef.current = true;
     mostrarDialogo(
       '¡Se acabó el tiempo!',
-      `Tu puntaje final: ${puntaje}`,
+      `Hiciste ${hamburguesasHechas} de ${maxHamburguesas} hamburguesas. Tu puntaje final: ${puntaje}`,
       'error',
-      () => terminarPartida(puntaje)
+      () =>
+        terminarPartida({
+          puntaje,
+          hamburguesas: hamburguesasHechas,
+          segundosSobrantes: 0,
+          bonusTiempo: 0,
+        })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiempo, cargando, error]);
@@ -988,19 +1030,38 @@ export default function JuegoHamburguesa() {
         return;
       }
       const puntos = 100 + milkshakesPedidos * 50 + cantidadFritos * 50;
-      // Bonus por los segundos que sobraron (el reloj queda frenado mientras
-      // el popup está abierto, así que este valor es el del momento de entregar)
-      const bonusTiempo = Math.max(0, tiempo) * PUNTOS_POR_SEGUNDO;
-      const puntajeFinal = puntaje + puntos + bonusTiempo;
+      const puntajeFinal = puntaje + puntos;
+      const hechas = hamburguesasHechas + 1;
       setPuntaje(puntajeFinal);
-      // Al cerrar el popup empieza otro pedido SIN reiniciar el tiempo
-      // (el ranking solo se abre cuando se acaba el tiempo)
-      mostrarDialogo(
-        '¡Pedido correcto!',
-        `Ganaste ${puntos} puntos + ${bonusTiempo} por los ${formatearTiempo(tiempo)} que te sobraron. Total: ${puntos + bonusTiempo}.`,
-        'ok',
-        () => iniciarJuego(null, true)
-      );
+      setHamburguesasHechas(hechas);
+
+      if (hechas >= maxHamburguesas) {
+        // Última hamburguesa: se termina la partida y los segundos que sobraron
+        // se suman al puntaje (el reloj queda frenado mientras el popup está
+        // abierto, así que este valor es el del momento de entregar)
+        const segundosSobrantes = Math.max(0, tiempo);
+        const bonusTiempo = segundosSobrantes * PUNTOS_POR_SEGUNDO;
+        mostrarDialogo(
+          '¡Pedido correcto!',
+          `Ganaste ${puntos} puntos + ${bonusTiempo} por los ${formatearTiempo(segundosSobrantes)} que te sobraron. Terminaste todas las hamburguesas. Puntaje final: ${puntajeFinal + bonusTiempo}.`,
+          'ok',
+          () =>
+            terminarPartida({
+              puntaje: puntajeFinal,
+              hamburguesas: hechas,
+              segundosSobrantes,
+              bonusTiempo,
+            })
+        );
+      } else {
+        // Al cerrar el popup empieza otro pedido SIN reiniciar el tiempo
+        mostrarDialogo(
+          '¡Pedido correcto!',
+          `Ganaste ${puntos} puntos. ¡Llevás ${hechas} de ${maxHamburguesas} hamburguesas!`,
+          'ok',
+          () => iniciarJuego(null, true)
+        );
+      }
     } else {
       mostrarDialogo(
         'No coincide',
@@ -1249,7 +1310,9 @@ export default function JuegoHamburguesa() {
       >
         {/* ---------- TICKET DEL PEDIDO ---------- */}
         <aside className="ticket">
-          <h2 className="ticket-titulo">PEDIDO</h2>
+          <h2 className="ticket-titulo">
+            PEDIDO {Math.min(hamburguesasHechas + 1, maxHamburguesas)}/{maxHamburguesas}
+          </h2>
           <p className="ticket-progreso">
             {Math.min(correctos, recetaObjetivo.length)}/{recetaObjetivo.length}{' '}
             listos
@@ -1349,7 +1412,7 @@ export default function JuegoHamburguesa() {
         </aside>
 
         {/* ---------- BARRA SUPERIOR ---------- */}
-        <header className="hud">
+        <header className="hud" style={pausado ? { zIndex: 90 } : undefined}>
           <div className="hud-dato">
             <span>◷</span>
             <strong>{formatearTiempo(tiempo)}</strong>
@@ -1363,7 +1426,7 @@ export default function JuegoHamburguesa() {
             disabled={tiempo <= 0}
             className="hud-boton"
           >
-            {pausado ? 'Continuar' : 'Pausar'}
+            {pausado ? 'Reanudar' : 'Pausar'}
           </button>
           <button onClick={() => iniciarJuego()} className="hud-boton claro">
             Reiniciar
@@ -1606,15 +1669,85 @@ export default function JuegoHamburguesa() {
 
         {/* ---------- AVISOS ---------- */}
         {aviso && <div className="aviso">{aviso}</div>}
-        {/* El cartel de PAUSA puede quedar tapando el botón "Continuar" del HUD,
-            así que tocar el cartel también reanuda el juego. */}
+        {/* ---------- PANTALLA DE PAUSA ---------- */}
         {pausado && (
           <div
-            className="cartel-central"
-            onClick={() => setPausado(false)}
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+            className="fr-pausa"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Juego en pausa"
           >
-            ⏸ PAUSA
+            <style>{`
+              .fr-pausa{
+                position:absolute;inset:0;z-index:80;
+                display:flex;align-items:center;justify-content:center;
+                background:rgba(10,8,6,.62);
+                backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+                animation:fr-pausa-fondo .18s ease-out both;
+                font-family:'Segoe UI','Helvetica Neue',Arial,system-ui,sans-serif;
+              }
+              .fr-pausa .fr-pausa-caja{
+                display:flex;flex-direction:column;align-items:center;
+                gap:clamp(10px,1.1cqw,20px);
+                padding:clamp(22px,2.6cqw,48px) clamp(34px,4.6cqw,84px);
+                border-radius:clamp(14px,1.4cqw,26px);
+                border:2px solid #ffb21e;
+                background:linear-gradient(180deg,#24262c 0%,#15171b 100%);
+                box-shadow:0 0 0 clamp(3px,.35cqw,6px) rgba(0,0,0,.35),0 18px 48px rgba(0,0,0,.6);
+                text-align:center;
+                animation:fr-pausa-caja .22s ease-out both;
+              }
+              .fr-pausa .fr-pausa-titulo{
+                margin:0;color:#fff;line-height:1;font-weight:800;
+                text-transform:uppercase;letter-spacing:.18em;padding-left:.18em;
+                font-size:clamp(28px,4cqw,76px);
+              }
+              .fr-pausa .fr-pausa-titulo::after{
+                content:'';display:block;width:1.6em;height:3px;border-radius:3px;
+                background:#ffb21e;margin:.45em auto 0;
+              }
+              .fr-pausa .fr-pausa-texto{
+                margin:0;color:#c9ccd3;font-weight:600;
+                font-size:clamp(13px,1.35cqw,24px);
+              }
+              .fr-pausa .fr-pausa-boton{
+                margin-top:clamp(4px,.6cqw,12px);
+                display:inline-flex;align-items:center;gap:.6em;
+                padding:.7em 1.8em;border:0;border-radius:999px;cursor:pointer;
+                font:inherit;font-weight:800;letter-spacing:.04em;
+                font-size:clamp(16px,1.9cqw,34px);
+                background:#ffb21e;color:#2a1b05;
+                box-shadow:0 4px 0 #b97a00,0 10px 22px rgba(0,0,0,.45);
+                transition:transform .1s ease,box-shadow .1s ease,filter .15s ease;
+              }
+              .fr-pausa .fr-pausa-boton:hover{filter:brightness(1.08)}
+              .fr-pausa .fr-pausa-boton:active{
+                transform:translateY(3px);
+                box-shadow:0 1px 0 #b97a00,0 4px 10px rgba(0,0,0,.45);
+              }
+              .fr-pausa .fr-pausa-boton:focus-visible{outline:3px solid #fff;outline-offset:3px}
+              @keyframes fr-pausa-fondo{from{opacity:0}to{opacity:1}}
+              @keyframes fr-pausa-caja{
+                from{opacity:0;transform:translateY(10px) scale(.96)}
+                to{opacity:1;transform:none}
+              }
+              @media (prefers-reduced-motion:reduce){
+                .fr-pausa,.fr-pausa .fr-pausa-caja{animation:none}
+              }
+            `}</style>
+
+            <div className="fr-pausa-caja">
+              <h2 className="fr-pausa-titulo">Pausa</h2>
+              <p className="fr-pausa-texto">El reloj está detenido</p>
+              <button
+                type="button"
+                className="fr-pausa-boton"
+                onClick={() => setPausado(false)}
+                autoFocus
+              >
+                <span aria-hidden="true">▶</span> Reanudar
+              </button>
+            </div>
           </div>
         )}
         {tiempo === 0 && (

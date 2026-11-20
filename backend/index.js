@@ -244,10 +244,11 @@ app.get('/api/pedido-aleatorio', async (req, res) => {
 
 // Configuración del juego (antes eran constantes del front)
 const CONFIG_JUEGO = {
-  tiempoPartida: 90,      // segundos por pedido (ponelo en 60 para la versión final)
-  probabilidadMilkshake: 0.6,  // 1 = todos los pedidos piden milkshake
+  tiempoPartida: 135,     // segundos de toda la partida: 2 minutos y 15 segundos
+  maxHamburguesas: 2,     // la partida termina al entregar esta cantidad de hamburguesas
+  // Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (freidora).
+  // Estos máximos son la cantidad tope: cada pedido pide entre 1 y el máximo.
   maxMilkshakes: 2,            // cantidad máxima de milkshakes por pedido
-  probabilidadFritos: 0.5,     // 1 = todos los pedidos piden algo de la freidora
   maxFritos: 2,                // cantidad máxima de fritos por pedido
   tiempoFrituraMs: 5000,       // cuánto tardan en freírse las papas (página /freidora)
   // Página /parrilla (segundos)
@@ -367,6 +368,8 @@ app.get('/api/fritos', async (req, res) => {
 
 // 7. Milkshakes y fritos ALEATORIOS para un pedido nuevo
 //    (sabores pedidos, fritos pedidos y el tamaño de cada frito, en el mismo orden)
+//    Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (entre 1 y el máximo
+//    de CONFIG_JUEGO). Solo quedan en 0 si la tabla Ingredientes no tiene ninguno cargado.
 app.get('/api/extras-pedido', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -374,12 +377,12 @@ app.get('/api/extras-pedido', async (req, res) => {
     const fritos = armarFritos(ingredientes);
 
     const cantidadMilkshakes =
-      sabores.length > 0 && Math.random() < CONFIG_JUEGO.probabilidadMilkshake
+      sabores.length > 0
         ? 1 + Math.floor(Math.random() * CONFIG_JUEGO.maxMilkshakes)
         : 0;
 
     const cantidadFritos =
-      fritos.length > 0 && Math.random() < CONFIG_JUEGO.probabilidadFritos
+      fritos.length > 0
         ? 1 + Math.floor(Math.random() * CONFIG_JUEGO.maxFritos)
         : 0;
 
@@ -532,9 +535,10 @@ app.post("/sala/crear-partida", async function (req, res) {
 });
 
 // Ranking de UNA partida: solo los jugadores que mandaron su puntaje
+// (incluye cuántas hamburguesas hizo cada uno; ver ranking.sql)
   async function obtenerRanking(id_partida) {
     return await realizarQuery(
-      `SELECT u.id_usuario, u.nombre, p.puntaje
+      `SELECT u.id_usuario, u.nombre, p.puntaje, p.hamburguesas
       FROM PuntajesPartida p
       JOIN Usuarios u ON u.id_usuario = p.id_usuario
       WHERE p.id_partida = ?
@@ -702,13 +706,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("enviar_puntaje", async ({ id_partida, id_usuario, puntaje }, callback) => {
+  // El ranking manda el puntaje TOTAL (pedidos + bonus por los segundos que sobraron)
+  // y cuántas hamburguesas entregó bien el jugador
+  socket.on("enviar_puntaje", async ({ id_partida, id_usuario, puntaje, hamburguesas }, callback) => {
     try {
+      const cantidadHamburguesas = Math.max(0, Number(hamburguesas) || 0);
+
       await realizarQuery(
-        `INSERT INTO PuntajesPartida (id_partida, id_usuario, puntaje)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje)`,
-        [id_partida, id_usuario, puntaje]
+        `INSERT INTO PuntajesPartida (id_partida, id_usuario, puntaje, hamburguesas)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje), hamburguesas = VALUES(hamburguesas)`,
+        [id_partida, id_usuario, puntaje, cantidadHamburguesas]
       );
 
       const ranking = await obtenerRanking(id_partida);

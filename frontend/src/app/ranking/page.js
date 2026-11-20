@@ -4,6 +4,13 @@
 // Uso:
 //   /ranking                    -> al terminar una partida (envía tu puntaje y muestra el ranking)
 //   /ranking?id_partida=5       -> solo mira el ranking guardado de esa sala (no hace falta que nadie esté online)
+//
+// Lo que deja la página de partidas en sessionStorage ("resultadoPartida"):
+//   puntaje           -> puntos ganados con los pedidos (sin el bonus de tiempo)
+//   hamburguesas      -> cuántas hamburguesas entregó bien
+//   segundosSobrantes -> segundos que sobraron al terminar la última hamburguesa
+//   bonusTiempo       -> puntos que dan esos segundos
+// Acá se le suma el bonus al puntaje y se manda todo al back (evento "enviar_puntaje").
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,12 +45,19 @@ const leerId = (...claves) => {
   return null;
 };
 
+// "1 hamburguesa" / "2 hamburguesas"
+const textoHamburguesas = (n) =>
+  `${n} ${n === 1 ? 'hamburguesa' : 'hamburguesas'}`;
+
 export default function Ranking() {
   const router = useRouter();
 
   const [ranking, setRanking] = useState([]);
   const [completo, setCompleto] = useState(false);
+  // Puntaje total de mi partida: puntos de los pedidos + puntos por los segundos que sobraron
   const [miPuntaje, setMiPuntaje] = useState(null);
+  // Detalle de mi partida: { puntosPedidos, hamburguesas, segundosSobrantes, bonusTiempo }
+  const [miResultado, setMiResultado] = useState(null);
   const [idUsuario, setIdUsuario] = useState(null);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(true);
@@ -108,14 +122,25 @@ export default function Ranking() {
       return;
     }
 
-    setMiPuntaje(resultado.puntaje);
+    // Lo que mandó la página de partidas
+    const puntosPedidos = Number(resultado.puntaje) || 0;
+    const hamburguesas = Number(resultado.hamburguesas) || 0;
+    const segundosSobrantes = Number(resultado.segundosSobrantes) || 0;
+    const bonusTiempo = Number(resultado.bonusTiempo) || 0;
+
+    // Al puntaje de los pedidos se le suman los segundos que sobraron
+    const puntajeTotal = puntosPedidos + bonusTiempo;
+
+    setMiPuntaje(puntajeTotal);
+    setMiResultado({ puntosPedidos, hamburguesas, segundosSobrantes, bonusTiempo });
 
     const socket = io(SOCKET_URL, { withCredentials: true });
 
     socket.on('connect', () => {
+      // Llamado al back: guarda el puntaje total y cuántas hamburguesas hizo
       socket.emit(
         'enviar_puntaje',
-        { id_partida, id_usuario, puntaje: resultado.puntaje },
+        { id_partida, id_usuario, puntaje: puntajeTotal, hamburguesas },
         (resp) => {
           if (resp?.ok) {
             sessionStorage.removeItem('resultadoPartida');
@@ -165,6 +190,11 @@ export default function Ranking() {
 
   return (
     <main className="ranking-page">
+      <style>{`
+        .ranking-detalle{margin:4px 0 14px;text-align:center;font-size:.95em;opacity:.85}
+        .ranking-detalle p{margin:2px 0}
+        .ranking-hamburguesas{display:block;font-size:.8em;font-weight:400;opacity:.8}
+      `}</style>
 
       <h1 className="ranking-titulo">
         🏆 Ranking
@@ -174,6 +204,19 @@ export default function Ranking() {
         <p className="ranking-mi-puntaje">
           Tu puntaje: <strong>{miPuntaje}</strong>
         </p>
+      )}
+
+      {miResultado && (
+        <div className="ranking-detalle">
+          <p>🍔 {textoHamburguesas(miResultado.hamburguesas)}</p>
+          <p>Pedidos: {miResultado.puntosPedidos} pts</p>
+          <p>
+            Tiempo sobrante:{' '}
+            {miResultado.bonusTiempo > 0
+              ? `+${miResultado.bonusTiempo} pts (${miResultado.segundosSobrantes} s)`
+              : 'sin bonus'}
+          </p>
+        </div>
       )}
 
       {cargando && (
@@ -201,6 +244,9 @@ export default function Ranking() {
                 <span className="ranking-nombre">
                   {medalla(i)} {fila.nombre}
                   {fila.id_usuario === idUsuario ? ' (vos)' : ''}
+                  <small className="ranking-hamburguesas">
+                    🍔 {textoHamburguesas(fila.hamburguesas ?? 0)}
+                  </small>
                 </span>
 
                 <span className="ranking-puntaje">

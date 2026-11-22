@@ -22,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://10.1.4.166:4000/login', {
+      const res = await fetch('http://192.168.1.8:4000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

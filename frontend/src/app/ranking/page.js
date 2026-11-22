@@ -19,8 +19,8 @@ import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import './ranking.css';
 
-const SOCKET_URL = 'http://10.1.4.166:4000';
-const API_URL = 'http://10.1.4.166:4000/api';
+const SOCKET_URL = 'http://192.168.1.8:4000';
+const API_URL = 'http://192.168.1.8:4000/api';
 
 const INTERVALO_REFRESCO = 3000;
 

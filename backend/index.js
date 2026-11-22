@@ -201,7 +201,7 @@ const TAMANOS = ['chica', 'mediana', 'grande'];
 const BEBIDAS = ['cola']; // agregá más cuando tengas más imágenes
 const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
-app.get('/api/pedido-aleatorio', async (req, res) => {
+/*app.get('/api/pedido-aleatorio', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
 
@@ -232,7 +232,7 @@ app.get('/api/pedido-aleatorio', async (req, res) => {
     console.error('❌ Error al generar pedido:', error);
     res.status(500).json({ error: 'Error interno al generar pedido' });
   }
-});
+});*/
 
 // =========================================================
 // NUEVO: DATOS DE LA PÁGINA DE PARTIDAS (milkshakes, freidora, config y extras del pedido)

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import './parrilla.css';
 //import { BACKEND_URL } from '../../ip/page';
 
-const API_URL = ' http://10.1.4.166:4000/api';
+const API_URL = ' http://192.168.1.8:4000/api';
 
 /* =========================================================
    CONFIGURACIÓN
@@ -57,7 +57,7 @@ const limitar = (n, min, max) => Math.min(max, Math.max(min, n));
    --------------------------------------------------------- */
 const COLOR_CRUDO = {
   paty: [200, 88, 96],
-  pollo: [244, 224, 196], // pálido/crema: así se ve el pollo crudo (no rosado como la vaca)
+  pollo: [244, 224, 196],  
   veggie: [170, 192, 100],
 };
 

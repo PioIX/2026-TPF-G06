@@ -96,7 +96,7 @@ export default function SalaPage() {
 
   async function cargarPartidas() {
     try {
-      const respuesta = await fetch("http://10.1.4.166:4000/sala/partidas");
+      const respuesta = await fetch("http://192.168.1.8:4000/sala/partidas");
       if (!respuesta.ok) return;
 
       const data = await respuesta.json();
@@ -167,7 +167,7 @@ export default function SalaPage() {
       idsAEliminar.map(async (id) => {
         try {
           const respuesta = await fetch(
-            `http://10.1.4.166:4000/sala/eliminar-partida/${id}`,
+            `http://192.168.1.8:4000/sala/eliminar-partida/${id}`,
             {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
@@ -209,7 +209,7 @@ export default function SalaPage() {
     }
 
     try {
-      const respuesta = await fetch("http://10.1.4.166:4000/sala/crear-partida", {
+      const respuesta = await fetch("http://192.168.1.8:4000/sala/crear-partida", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

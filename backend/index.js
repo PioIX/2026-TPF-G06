@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const session = require("express-session");
 const { Server } = require("socket.io");
 const { realizarQuery } = require("./modulos/mysql");
 
@@ -9,13 +8,6 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
-
-const sessionMiddleware = session({
-  secret: "supersarasa",
-  resave: false,
-  saveUninitialized: false,
-});
-app.use(sessionMiddleware);
 
 const server = app.listen(PORT, () => {
   console.log(`Servidor NodeJS corriendo en http://localhost:${PORT}/`);
@@ -29,229 +21,52 @@ const io = new Server(server, {
   },
 });
 
-io.use((socket, next) => {
-  sessionMiddleware(socket.request, {}, next);
-});
+// Jugadores que hay adentro de cada sala (vive en memoria): [{ id_partida, jugadores: [id_usuario] }]
+const jugadoresEnPartida = [];
 
-// =========================================================
-// MANEJO DE EVENTOS DE SOCKET.IO
-// =========================================================
-io.on("connection", (socket) => {
-  console.log("🟢 Nuevo cliente conectado por Socket.IO con ID:", socket.id);
-
-  socket.on("register", async (data, callback) => {
-    console.log("📥 Datos recibidos en el servidor:", data);
-
-
-    try {
-      // 1. Verificar si el usuario o mail ya existe
-      let existe = await realizarQuery(`
-        SELECT * FROM Usuarios WHERE nombre = '${data.nombre}' OR mail = '${data.mail}'
-      `);
-
-      if (existe.length > 0) {
-        console.log("⚠️ El usuario o mail ya existe");
-        return callback({
-          ok: false,
-          msg: "El nombre de usuario o el email ya están en uso."
-        });
-      }
-
-  
-      await realizarQuery(`
-        INSERT INTO Usuarios (nombre, contra, mail) VALUES
-        ('${data.nombre}', '${data.contra}', '${data.mail}');
-      `);
-
-      console.log("✅ Usuario insertado con éxito en MySQL");
-      callback({
-        ok: true,
-        msg: "Usuario registrado con éxito",
-        usuario: { nombre: data.nombre, mail: data.mail }
-      });
-
-    } catch (error) {
-      console.error("❌ Error en MySQL:", error);
-      callback({
-        ok: false,
-        msg: "Error interno al intentar registrar."
-      });
-    }
-  });
-
-  // Evento para que el usuario se una a la sala de un chat específico
-  socket.on("join_chat", (id_chat) => {
-    socket.join(`chat_${id_chat}`);
-    console.log(`Socket ${socket.id} se unió a la sala: chat_${id_chat}`);
-  });
-
-  // Evento para enviar un mensaje en tiempo real y guardarlo en la DB
-  socket.on("send_message", async (data, callback) => {
-    const { id_chat, id_emisor, contenido } = data;
-
-    try {
-      // 1. Guardar el mensaje en la base de datos
-      const resultado = await realizarQuery(
-        "INSERT INTO Mensajes (id_chat, id_emisor, contenido) VALUES (?, ?, ?)",
-        [id_chat, id_emisor, contenido]
-      );
-
-      // 2. Consultar datos del emisor para adjuntarlos al evento emitido
-      const emisor = await realizarQuery(
-        "SELECT nombre FROM Usuarios WHERE id_usuario = ?",
-        [id_emisor]
-      );
-
-      const nuevoMensaje = {
-        id_mensaje: resultado.insertId,
-        id_chat,
-        id_emisor,
-        contenido,
-        fecha_hora: new Date(),
-        nombre: emisor[0]?.nombre,
-      };
-
-      // 3. Emitir a TODOS los conectados en la sala del chat
-      io.to(`chat_${id_chat}`).emit("receive_message", nuevoMensaje);
-
-      if (callback) callback({ ok: true, mensaje: nuevoMensaje });
-    } catch (error) {
-      console.error("❌ Error al guardar/enviar mensaje:", error);
-      if (callback) callback({ ok: false, msg: "Error al procesar el mensaje." });
-    }
-  });
-
-  socket.on("disconnect", () => {
-    console.log("🔴 Cliente desconectado:", socket.id);
-  });
-});
-
-// =========================================================
-// RUTAS EXPRESS INTACTAS
-// =========================================================
-
-app.post('/login', async function (req, res) {
-    console.log(req.body);
-    try {
-      let respuesta = {
-            ok: false,
-            msg: "¿No tienes cuenta? Regístrate aquí"
-        };
-        let existe = await realizarQuery(`
-            SELECT * FROM Usuarios WHERE mail = '${req.body.mail}' AND contra = '${req.body.contra}'
-        `);
-
-        if (existe.length > 0) {
-            respuesta.msg = "El usuario existe.";
-            respuesta.ok = true
-        }
-        return res.send({respuesta, existe});
-    } catch (error) {
-        console.log(error.message)
-        res.send({ message: "usuario no existe registrate", ok: false });
-    }
-});
-
-
-// 1. Endpoint para obtener TODOS los ingredientes
-app.get('/api/ingredientes', async (req, res) => {
-  try {
-    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
-    res.json(ingredientes);
-  } catch (error) {
-    console.error("❌ Error al consultar ingredientes:", error);
-    res.status(500).json({ error: "Error al obtener ingredientes de MySQL" });
-  }
-});
-
-// 2. Endpoint para generar una orden/receta ALEATORIA
-app.get('/api/orden-aleatoria', async (req, res) => {
-  try {
-    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
-
-    const panInf = ingredientes.find(i => i.seccion === 'abajo');
-    const panSup = ingredientes.find(i => i.seccion === 'arriba');
-
-    const rellenosPosibles = ingredientes.filter(
-      i => i.seccion !== 'abajo' && i.seccion !== 'arriba'
-    );
-
-    if (!panInf || !panSup) {
-      return res.status(400).json({ error: 'Faltan los panes en la tabla Ingredientes' });
-    }
-
-    const cantidadRelleno = Math.floor(Math.random() * 3) + 2;
-    const relleno = [];
-
-    for (let i = 0; i < cantidadRelleno; i++) {
-      const ingredienteAzar = rellenosPosibles[Math.floor(Math.random() * rellenosPosibles.length)];
-      relleno.push(ingredienteAzar);
-    }
-
-    const recetaValida = [panInf, ...relleno, panSup];
-    res.json(recetaValida);
-  } catch (error) {
-    console.error("❌ Error al generar receta:", error);
-    res.status(500).json({ error: "Error interno al generar receta" });
-  }
-});
-
-// 3. Pedido completo: hamburguesa + papas (opcional) + bebida (opcional)
-const TAMANOS = ['chica', 'mediana', 'grande'];
-const BEBIDAS = ['cola']; // agregá más cuando tengas más imágenes
 const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
-/*app.get('/api/pedido-aleatorio', async (req, res) => {
+// =========================================================
+// LOGIN  (page de login)
+// =========================================================
+app.post("/login", async function (req, res) {
   try {
-    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+    let respuesta = {
+      ok: false,
+      msg: "¿No tienes cuenta? Regístrate aquí",
+    };
+    let existe = await realizarQuery(`
+      SELECT * FROM Usuarios WHERE mail = '${req.body.mail}' AND contra = '${req.body.contra}'
+    `);
 
-    const panInf = ingredientes.find(i => i.seccion === 'abajo');
-    const panSup = ingredientes.find(i => i.seccion === 'arriba');
-    const rellenosPosibles = ingredientes.filter(
-      i => i.seccion !== 'abajo' && i.seccion !== 'arriba'
-    );
-
-    if (!panInf || !panSup) {
-      return res.status(400).json({ error: 'Faltan los panes en la tabla Ingredientes' });
+    if (existe.length > 0) {
+      respuesta.msg = "El usuario existe.";
+      respuesta.ok = true;
     }
-
-    const cantidadRelleno = Math.floor(Math.random() * 3) + 2;
-    const relleno = [];
-    for (let i = 0; i < cantidadRelleno; i++) {
-      relleno.push(elegir(rellenosPosibles));
-    }
-
-    res.json({
-      hamburguesa: [panInf, ...relleno, panSup],
-      papas: Math.random() < 0.6 ? elegir(TAMANOS) : null,
-      bebida: Math.random() < 0.6
-        ? { tipo: elegir(BEBIDAS), tamano: elegir(TAMANOS) }
-        : null,
-    });
+    return res.send({ respuesta, existe });
   } catch (error) {
-    console.error('❌ Error al generar pedido:', error);
-    res.status(500).json({ error: 'Error interno al generar pedido' });
+    console.log(error.message);
+    res.send({ message: "usuario no existe registrate", ok: false });
   }
-});*/
+});
 
 // =========================================================
-// NUEVO: DATOS DE LA PÁGINA DE PARTIDAS (milkshakes, freidora, config y extras del pedido)
-// Todo esto antes eran variables / arrays dentro del front.
+// JUEGO  (pages: partidas, parrilla, milkshakes, freidora)
 // Los sabores y los fritos salen de la tabla Ingredientes:
 //   seccion = 'milkshake' -> sabores de milkshake (tipo = imagen del milkshake terminado)
 //   seccion = 'papas'     -> cosas de la freidora (tipo = imagen del cartón lleno)
 // =========================================================
 
-// Configuración del juego (antes eran constantes del front)
+// Configuración del juego
 const CONFIG_JUEGO = {
   tiempoPartida: 135,     // segundos de toda la partida: 2 minutos y 15 segundos
   maxHamburguesas: 2,     // la partida termina al entregar esta cantidad de hamburguesas
   // Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (freidora).
   // Estos máximos son la cantidad tope: cada pedido pide entre 1 y el máximo.
-  maxMilkshakes: 2,            // cantidad máxima de milkshakes por pedido
-  maxFritos: 2,                // cantidad máxima de fritos por pedido
-  tiempoFrituraMs: 5000,       // cuánto tardan en freírse las papas (página /freidora)
-  // Página /parrilla (segundos)
+  maxMilkshakes: 2,       // cantidad máxima de milkshakes por pedido
+  maxFritos: 2,           // cantidad máxima de fritos por pedido
+  tiempoFrituraMs: 5000,  // cuánto tardan en freírse las papas (page /freidora)
+  // Page /parrilla (segundos)
   parrilla: {
     coccion: { paty: 6, pollo: 6, veggie: 4 }, // lo que tarda en cocinarse CADA lado
     gracia: 3.5,           // margen, una vez cocido el lado, antes de que se queme
@@ -259,7 +74,7 @@ const CONFIG_JUEGO = {
     esperaCocinada: 1.8,   // tiempo mostrando "¡en su punto!" antes de volver
     esperaQuemada: 2.6,    // tiempo mostrando "¡se quemó!" antes de volver
   },
-  // Los ids son los que usa la página /freidora
+  // Los ids son los que usa la page /freidora
   tamanosFritos: [
     { id: 'pequeno', nombre: 'Pequeño' },
     { id: 'mediano', nombre: 'Mediano' },
@@ -304,7 +119,7 @@ const esFritoJuego = (ing) =>
   normalizarJuego(ing?.seccion) === 'papas' ||
   /(^|\s)papas?(\s|$)/.test(normalizarJuego(ing?.nombre));
 
-// Ids estables: son los mismos que reciben las páginas /milkshakes y /freidora
+// Ids estables: son los mismos que reciben las pages /milkshakes y /freidora
 const idSaborJuego = (ing) => {
   const n = normalizarJuego(ing?.nombre).replace(/milkshake|batido/g, '').trim();
   if (n.includes('vainilla')) return 'vainilla';
@@ -339,12 +154,53 @@ const armarFritos = (ingredientes) =>
     imagen: rutaImagenJuego(ing.tipo),
   }));
 
-// 4. Configuración del juego
+// Todos los ingredientes (page partidas)
+app.get('/api/ingredientes', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+    res.json(ingredientes);
+  } catch (error) {
+    console.error("❌ Error al consultar ingredientes:", error);
+    res.status(500).json({ error: "Error al obtener ingredientes de MySQL" });
+  }
+});
+
+// Receta de hamburguesa ALEATORIA (page partidas)
+app.get('/api/orden-aleatoria', async (req, res) => {
+  try {
+    const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
+
+    const panInf = ingredientes.find(i => i.seccion === 'abajo');
+    const panSup = ingredientes.find(i => i.seccion === 'arriba');
+
+    const rellenosPosibles = ingredientes.filter(
+      i => i.seccion !== 'abajo' && i.seccion !== 'arriba'
+    );
+
+    if (!panInf || !panSup) {
+      return res.status(400).json({ error: 'Faltan los panes en la tabla Ingredientes' });
+    }
+
+    const cantidadRelleno = Math.floor(Math.random() * 3) + 2;
+    const relleno = [];
+
+    for (let i = 0; i < cantidadRelleno; i++) {
+      relleno.push(elegir(rellenosPosibles));
+    }
+
+    res.json([panInf, ...relleno, panSup]);
+  } catch (error) {
+    console.error("❌ Error al generar receta:", error);
+    res.status(500).json({ error: "Error interno al generar receta" });
+  }
+});
+
+// Configuración del juego (pages partidas, parrilla y freidora)
 app.get('/api/config-juego', (req, res) => {
   res.json(CONFIG_JUEGO);
 });
 
-// 5. Sabores de milkshake disponibles (desde la tabla Ingredientes)
+// Sabores de milkshake disponibles (page partidas)
 app.get('/api/milkshakes', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -355,7 +211,7 @@ app.get('/api/milkshakes', async (req, res) => {
   }
 });
 
-// 6. Cosas de la freidora disponibles (desde la tabla Ingredientes)
+// Cosas de la freidora disponibles (pages partidas y freidora)
 app.get('/api/fritos', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -366,10 +222,10 @@ app.get('/api/fritos', async (req, res) => {
   }
 });
 
-// 7. Milkshakes y fritos ALEATORIOS para un pedido nuevo
-//    (sabores pedidos, fritos pedidos y el tamaño de cada frito, en el mismo orden)
-//    Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (entre 1 y el máximo
-//    de CONFIG_JUEGO). Solo quedan en 0 si la tabla Ingredientes no tiene ninguno cargado.
+// Milkshakes y fritos ALEATORIOS para un pedido nuevo (page partidas):
+// sabores pedidos, fritos pedidos y el tamaño de cada frito, en el mismo orden.
+// Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (entre 1 y el máximo
+// de CONFIG_JUEGO). Solo quedan en 0 si la tabla Ingredientes no tiene ninguno cargado.
 app.get('/api/extras-pedido', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -400,19 +256,17 @@ app.get('/api/extras-pedido', async (req, res) => {
   }
 });
 
-
-// 8. Posiciones de las bandejas del fondo (tabla Bandejas, en % del escenario).
-//    Las de ingredientes traen id_ingrediente; las máquinas traen "codigo"
-//    ('maquina-milkshake', 'freidora'). Ver bandejas.sql
+// Posiciones de las bandejas del fondo, en % del escenario (page partidas, tabla Bandejas).
+// Las de ingredientes traen id_ingrediente; las máquinas traen "codigo"
+// ('maquina-milkshake', 'freidora'). Ver bandejas.sql
 app.get('/api/bandejas', async (req, res) => {
   try {
     const filas = await realizarQuery(
-      'SELECT id_bandeja, id_ingrediente, codigo, pos_left, pos_top, pos_width, pos_height FROM Bandejas'
+      'SELECT id_ingrediente, codigo, pos_left, pos_top, pos_width, pos_height FROM Bandejas'
     );
     // MySQL devuelve los DECIMAL como texto: se pasan a número
     res.json(
       filas.map((f) => ({
-        id_bandeja: f.id_bandeja,
         id_ingrediente: f.id_ingrediente,
         codigo: f.codigo,
         left: Number(f.pos_left),
@@ -427,8 +281,8 @@ app.get('/api/bandejas', async (req, res) => {
   }
 });
 
-// 9. Sabores de la máquina de milkshakes: nombre e imagen desde Ingredientes
-//    + color y posiciones desde la tabla SaboresMilkshake (ver milkshakes.sql)
+// Sabores de la máquina de milkshakes (page milkshakes): nombre e imagen desde Ingredientes
+// + color y posiciones desde la tabla SaboresMilkshake (ver milkshakes.sql)
 app.get('/api/maquina-milkshake', async (req, res) => {
   try {
     const filas = await realizarQuery(
@@ -460,13 +314,15 @@ app.get('/api/maquina-milkshake', async (req, res) => {
   }
 });
 
+// =========================================================
+// SALAS  (page sala)
+// =========================================================
 
-
-
+// Lista de partidas; "ocupada" = hay algún jugador adentro (esperando o jugando)
 app.get("/sala/partidas", async function (req, res) {
   try {
     const partidas = await realizarQuery(`
-      SELECT 
+      SELECT
         p.id_partida,
         p.nombre_partida,
         p.id_usuario,
@@ -475,8 +331,7 @@ app.get("/sala/partidas", async function (req, res) {
       FROM Partidas p
       LEFT JOIN Usuarios u ON p.id_usuario = u.id_usuario
     `);
-    
-    // Una partida está "ocupada" si hay algún jugador adentro (esperando o jugando)
+
     const partidasConEstado = partidas.map((p) => {
       const enMemoria = jugadoresEnPartida.find((j) => j.id_partida === p.id_partida);
       return { ...p, ocupada: !!enMemoria && enMemoria.jugadores.length > 0 };
@@ -489,22 +344,22 @@ app.get("/sala/partidas", async function (req, res) {
   }
 });
 
-// 2. Crear una nueva partida
+// Crear una nueva partida
 app.post("/sala/crear-partida", async function (req, res) {
   try {
     const { id_usuario_creador, nombre_partida } = req.body;
 
     if (!id_usuario_creador) {
-      return res.status(400).json({ 
-        ok: false, 
-        message: "Usuario no identificado. Inicia sesión nuevamente." 
+      return res.status(400).json({
+        ok: false,
+        message: "Usuario no identificado. Inicia sesión nuevamente."
       });
     }
 
     if (!nombre_partida) {
-      return res.status(400).json({ 
-        ok: false, 
-        message: "Debe ingresar un nombre para la partida." 
+      return res.status(400).json({
+        ok: false,
+        message: "Debe ingresar un nombre para la partida."
       });
     }
 
@@ -513,12 +368,10 @@ app.post("/sala/crear-partida", async function (req, res) {
       .slice(0, 19)
       .replace("T", " ");
 
-    const query = `
-      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final) 
+    const resultado = await realizarQuery(`
+      INSERT INTO Partidas (id_usuario, nombre_partida, hora_final)
       VALUES (${id_usuario_creador}, '${nombre_partida}', '${hora_final}')
-    `;
-
-    const resultado = await realizarQuery(query);
+    `);
 
     return res.json({
       ok: true,
@@ -527,15 +380,76 @@ app.post("/sala/crear-partida", async function (req, res) {
     });
   } catch (error) {
     console.error("Error exacto en MySQL:", error.message);
-    return res.status(500).json({ 
-      ok: false, 
-      message: "Error en la base de datos: " + error.message 
+    return res.status(500).json({
+      ok: false,
+      message: "Error en la base de datos: " + error.message
+    });
+  }
+});
+
+// Borra filas de una tabla relacionada con la partida; si la tabla no existe, se ignora
+async function borrarRelacionadas(query, params) {
+  try {
+    await realizarQuery(query, params);
+  } catch (error) {
+    if (error.code !== "ER_NO_SUCH_TABLE") throw error;
+  }
+}
+
+// Eliminar una partida (cualquier usuario puede eliminarla)
+app.delete("/sala/eliminar-partida/:id_partida", async function (req, res) {
+  try {
+    const id_partida = Number(req.params.id_partida);
+    const id_usuario = Number(req.body?.id_usuario);
+
+    if (!id_partida || !id_usuario) {
+      return res.status(400).json({
+        ok: false,
+        message: "Faltan datos para eliminar la partida.",
+      });
+    }
+
+    const filas = await realizarQuery(
+      "SELECT id_usuario FROM Partidas WHERE id_partida = ?",
+      [id_partida]
+    );
+
+    if (filas.length === 0) {
+      return res.status(404).json({ ok: false, message: "La partida no existe." });
+    }
+
+    const enMemoria = jugadoresEnPartida.find((p) => p.id_partida === id_partida);
+    if (enMemoria && enMemoria.jugadores.length > 0) {
+      return res.status(409).json({
+        ok: false,
+        message: "No se puede eliminar: hay jugadores adentro de la partida.",
+      });
+    }
+
+    // Primero lo que depende de la partida (claves foráneas), después la partida
+    await borrarRelacionadas("DELETE FROM PuntajesPartida WHERE id_partida = ?", [id_partida]);
+    await borrarRelacionadas("DELETE FROM UsuarioXPartida WHERE id_partida = ?", [id_partida]);
+    await realizarQuery("DELETE FROM Partidas WHERE id_partida = ?", [id_partida]);
+
+    // Sacar la sala de la memoria del servidor
+    const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === id_partida);
+    if (indice !== -1) jugadoresEnPartida.splice(indice, 1);
+
+    // Avisar a todos para que actualicen su lista de partidas
+    io.emit("salaEliminada", { id_partida });
+
+    return res.json({ ok: true, message: "Partida eliminada." });
+  } catch (error) {
+    console.error("Error al eliminar la partida:", error.message);
+    return res.status(500).json({
+      ok: false,
+      message: "Error en la base de datos: " + error.message,
     });
   }
 });
 
 // =========================================================
-// RANKING  (tabla PuntajesPartida: una fila por jugador y por sala)
+// RANKING  (page ranking; tabla PuntajesPartida: una fila por jugador y por sala)
 //  - El ranking es global: junta los puntajes de TODAS las salas del mes actual y
 //    muestra a cada jugador una sola vez, con la SUMA de sus puntajes y hamburguesas.
 //  - El empleado del mes es el primero de ese ranking: cambia solo cuando alguien lo supera.
@@ -585,31 +499,18 @@ async function obtenerRankingMensual() {
   );
 
   // MySQL devuelve las SUM como texto: se pasan a número
-  return filas.map((f, i) => ({
+  return filas.map((f) => ({
     id_usuario: f.id_usuario,
     nombre: f.nombre,
     puntaje: Number(f.puntaje),
     hamburguesas: Number(f.hamburguesas),
-    posicion: i + 1,
   }));
-}
-
-// Puntajes guardados de una sala
-async function obtenerRankingSala(id_partida) {
-  return await realizarQuery(
-    `SELECT u.id_usuario, u.nombre, p.puntaje, p.hamburguesas
-     FROM PuntajesPartida p
-     JOIN Usuarios u ON u.id_usuario = p.id_usuario
-     WHERE p.id_partida = ?
-     ORDER BY p.puntaje DESC`,
-    [id_partida]
-  );
 }
 
 // Guarda el puntaje del jugador en SU fila de esa sala (la crea si no existe)
 async function guardarPuntaje(id_partida, id_usuario, puntaje, hamburguesas) {
   const filas = await realizarQuery(
-    `SELECT id_puntaje, puntaje,
+    `SELECT id_puntaje,
             (fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS del_mes
      FROM PuntajesPartida
      WHERE id_partida = ? AND id_usuario = ?
@@ -701,115 +602,80 @@ app.get("/api/empleado-del-mes", async (req, res) => {
   }
 });
 
-const jugadoresEnPartida = [
-  {
-    //id_partida: 0,
-    //jugadores: []
-  }
-];
-
-// Borra filas de una tabla relacionada con la partida; si la tabla no existe, se ignora
-async function borrarRelacionadas(query, params) {
-  try {
-    await realizarQuery(query, params);
-  } catch (error) {
-    if (error.code !== "ER_NO_SUCH_TABLE") throw error;
-  }
-}
-
-// 3. Eliminar una partida (cualquier usuario puede eliminarla)
-app.delete("/sala/eliminar-partida/:id_partida", async function (req, res) {
-  try {
-    const id_partida = Number(req.params.id_partida);
-    const id_usuario = Number(req.body?.id_usuario);
-
-    if (!id_partida || !id_usuario) {
-      return res.status(400).json({
-        ok: false,
-        message: "Faltan datos para eliminar la partida.",
-      });
-    }
-
-    const filas = await realizarQuery(
-      "SELECT id_usuario FROM Partidas WHERE id_partida = ?",
-      [id_partida]
-    );
-
-    if (filas.length === 0) {
-      return res.status(404).json({ ok: false, message: "La partida no existe." });
-    }
-
-    const enMemoria = jugadoresEnPartida.find((p) => p.id_partida === id_partida);
-    if (enMemoria && enMemoria.jugadores.length > 0) {
-      return res.status(409).json({
-        ok: false,
-        message: "No se puede eliminar: hay jugadores adentro de la partida.",
-      });
-    }
-
-    // Primero lo que depende de la partida (claves foráneas), después la partida
-    await borrarRelacionadas("DELETE FROM PuntajesPartida WHERE id_partida = ?", [id_partida]);
-    await borrarRelacionadas("DELETE FROM UsuarioXPartida WHERE id_partida = ?", [id_partida]);
-    await realizarQuery("DELETE FROM Partidas WHERE id_partida = ?", [id_partida]);
-
-    // Sacar la sala de la memoria del servidor
-    const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === id_partida);
-    if (indice !== -1) jugadoresEnPartida.splice(indice, 1);
-
-    // Avisar a todos para que actualicen su lista de partidas
-    io.emit("salaEliminada", { id_partida });
-
-    return res.json({ ok: true, message: "Partida eliminada." });
-  } catch (error) {
-    console.error("Error al eliminar la partida:", error.message);
-    return res.status(500).json({
-      ok: false,
-      message: "Error en la base de datos: " + error.message,
-    });
-  }
-});
-
+// =========================================================
+// SOCKET.IO  (un solo manejador de conexión)
+// =========================================================
 io.on("connection", (socket) => {
 
-  socket.on("crearSALA", (dataPartida) => {
-    // Notifica a todos los usuarios para que ejecuten cargarPartidas()
-    io.emit("salaCreada", dataPartida);
+  // ---------- Registro (page de registro) ----------
+  socket.on("register", async (data, callback) => {
+    try {
+      // Verificar si el usuario o mail ya existe
+      let existe = await realizarQuery(`
+        SELECT * FROM Usuarios WHERE nombre = '${data.nombre}' OR mail = '${data.mail}'
+      `);
+
+      if (existe.length > 0) {
+        return callback({
+          ok: false,
+          msg: "El nombre de usuario o el email ya están en uso."
+        });
+      }
+
+      await realizarQuery(`
+        INSERT INTO Usuarios (nombre, contra, mail) VALUES
+        ('${data.nombre}', '${data.contra}', '${data.mail}');
+      `);
+
+      callback({
+        ok: true,
+        msg: "Usuario registrado con éxito",
+        usuario: { nombre: data.nombre, mail: data.mail }
+      });
+
+    } catch (error) {
+      console.error("❌ Error en MySQL:", error);
+      callback({
+        ok: false,
+        msg: "Error interno al intentar registrar."
+      });
+    }
   });
 
+  // ---------- Salas (page sala) ----------
+
+  // Notifica a todos los usuarios para que ejecuten cargarPartidas()
+  socket.on("crearSALA", (dataPartida) => {
+    io.emit("salaCreada", dataPartida);
+  });
 
   socket.on("unirse_sala", ({ id_partida, id_usuario }) => {
     socket.join(`partida_${id_partida}`);
     socket.data.sala = { id_partida, id_usuario };
-    // 1. Buscar si la partida ya existe en el arreglo
-    let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
 
-    // 2. Si no existe, la creamos y la agregamos al arreglo
+    // Buscar la sala; si no existe, se crea
+    let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
     if (!partida) {
-      partida = { id_partida: id_partida, jugadores: [] };
+      partida = { id_partida, jugadores: [] };
       jugadoresEnPartida.push(partida);
     }
 
-    // 3. Evitamos duplicar al usuario
+    // Evitamos duplicar al usuario
     if (!partida.jugadores.includes(id_usuario)) {
       partida.jugadores.push(id_usuario);
     }
 
-    console.log(`Usuario ${id_usuario} se unió a la partida ${id_partida}`);
-    console.log("Estado de salas:", JSON.stringify(jugadoresEnPartida, null, 2));
-    console.log("partida.juygadores", partida.jugadores)
-    console.log(partida, "partida")
     // Avisar a todos que cambió quién está adentro (para bloquear / liberar el borrado)
     io.emit("salaActualizada", { id_partida });
 
-    // 4. Si hay 2 o más jugadores, iniciar
-    if (partida.jugadores.length == 2) {
+    // Con 2 jugadores arranca la partida
+    if (partida.jugadores.length === 2) {
       io.to(`partida_${id_partida}`).emit("iniciar_partida", {
         id_partida,
         jugadores: partida.jugadores
       });
     }
   });
-
 
   socket.on("salir_sala", ({ id_partida, id_usuario }) => {
     socket.leave(`partida_${id_partida}`);
@@ -818,15 +684,12 @@ io.on("connection", (socket) => {
     const partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
 
     if (partida) {
-      // Filtrar al usuario que sale
       partida.jugadores = partida.jugadores.filter(id => id !== id_usuario);
 
       // Si la sala queda vacía, eliminar el objeto del arreglo
       if (partida.jugadores.length === 0) {
         const indice = jugadoresEnPartida.findIndex(p => p.id_partida === id_partida);
-        if (indice !== -1) {
-          jugadoresEnPartida.splice(indice, 1);
-        }
+        if (indice !== -1) jugadoresEnPartida.splice(indice, 1);
       }
     }
 
@@ -850,7 +713,8 @@ io.on("connection", (socket) => {
     }
   });
 
-  // El ranking manda el puntaje TOTAL (pedidos + bonus por los segundos que sobraron)
+  // ---------- Ranking (page ranking) ----------
+  // La page manda el puntaje TOTAL (pedidos + bonus por los segundos que sobraron)
   // y cuántas hamburguesas entregó bien el jugador.
   // Se actualiza SU fila de esa sala en PuntajesPartida y se devuelve el ranking global del mes
   // + si los dos jugadores de esta sala ya terminaron.
@@ -871,16 +735,7 @@ io.on("connection", (socket) => {
         await guardarPuntaje(idPartida, idUsuario, puntos, cantidadHamburguesas);
       }
 
-      const [ranking, rankingSala] = await Promise.all([
-        obtenerRankingMensual(),
-        obtenerRankingSala(idPartida),
-      ]);
-
-      io.to(`partida_${id_partida}`).emit("ranking_actualizado", {
-        id_partida,
-        ranking: rankingSala,
-        completo,
-      });
+      const ranking = await obtenerRankingMensual();
 
       // Cuando los dos ya mandaron su puntaje la partida terminó: se libera la sala
       if (completo) {

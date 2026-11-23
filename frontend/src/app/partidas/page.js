@@ -820,9 +820,6 @@ export default function JuegoHamburguesa() {
       return;
     }
 
-    // Guardamos la partida para retomarla al volver de la máquina.
-    // La página de milkshakes lee el sabor que toca preparar con:
-    // saboresMilkshake[milkshakesListos]
     sessionStorage.setItem(
       'partida',
       JSON.stringify(partidaActual({ milkshakesAntes: milkshakesListos }))
@@ -851,10 +848,7 @@ export default function JuegoHamburguesa() {
       return;
     }
 
-    // Guardamos la partida para retomarla al volver de la freidora.
-    // La página /freidora lee qué toca freír con fritosPedidos / tamanosFritos
-    // (a partir de fritosListos). NUEVO: "fritosAntes" evita repetir la
-    // animación de los paquetes que ya estaban en la bandeja.
+  
     sessionStorage.setItem(
       'partida',
       JSON.stringify(partidaActual({ fritosAntes: fritosListos }))

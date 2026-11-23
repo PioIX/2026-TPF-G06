@@ -3,21 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import './parrilla.css';
-//import { BACKEND_URL } from '../../ip/page';
 
 const API_URL = ' http://192.168.1.8:4000/api';
 
-/* =========================================================
-   CONFIGURACIÓN
-   Los tiempos de cocción (por tipo de carne), el margen para no quemarla y los
-   tiempos de las animaciones ahora vienen del back: GET /api/config-juego -> "parrilla"
-   ========================================================= */
-
 const RUTA_COCINA = '/partidas';
-
-/* =========================================================
-   UTILIDADES
-   ========================================================= */
 
 const normalizar = (texto = '') =>
   String(texto)
@@ -48,13 +37,6 @@ const calcularRestante = (p) =>
 
 const limitar = (n, min, max) => Math.min(max, Math.max(min, n));
 
-/* ---------------------------------------------------------
-   A partir del PNG de la carne (que se toma como "cocida") se
-   generan solas las otras dos versiones, así no hace falta
-   ninguna imagen extra:
-     - cruda:   mismo relieve pero rosada / pálida
-     - quemada: mismo relieve pero negra, con manchas y cenizas
-   --------------------------------------------------------- */
 const COLOR_CRUDO = {
   paty: [200, 88, 96],
   pollo: [244, 224, 196],  
@@ -96,7 +78,6 @@ const crearVariantes = (src, tipo) =>
         const recorte = ctx.getImageData(minX, minY, cw, ch);
         const d = recorte.data;
 
-        // Luminosidad media (para conservar el relieve de la imagen)
         let suma = 0;
         let cuenta = 0;
         for (let i = 0; i < d.length; i += 4) {
@@ -129,7 +110,7 @@ const crearVariantes = (src, tipo) =>
           crudo.data[i + 1] = Math.min(255, base[1] * kc);
           crudo.data[i + 2] = Math.min(255, base[2] * kc);
 
-          // Quemada (carbón con manchas más oscuras y algunas cenizas)
+          // Quemada 
           let kq = limitar(0.5 + 0.6 * lum, 0.3, 1.4);
           if (azar > 90) kq *= 0.5;
           let r = 54 * kq;
@@ -171,10 +152,8 @@ const crearVariantes = (src, tipo) =>
     img.src = src;
   });
 
-/* =========================================================
-   PÁGINA DE LA PARRILLA
-   ========================================================= */
 
+//PÁGINA DE LA PARRILLA
 export default function Parrilla() {
   const router = useRouter();
 
@@ -182,14 +161,13 @@ export default function Parrilla() {
   const [partida, setPartida] = useState(null);
   const [variantes, setVariantes] = useState(null);
 
-  // Configuración que viene del back (tiempos de cocción, margen, animaciones)
   const [cfg, setCfg] = useState(null);
   const [errorCfg, setErrorCfg] = useState('');
 
-  // fase: 'lado1' | 'volteando' | 'lado2' | 'cocinada' | 'quemada'
+  // fase: lado1 | volteando | lado2 | cocinada | quemada
   const [fase, setFase] = useState('lado1');
   const [lado, setLado] = useState(1);
-  const [t, setT] = useState(0); // segundos cocinando el lado actual
+  const [t, setT] = useState(0); 
   const [tiempoJuego, setTiempoJuego] = useState(null);
   const [aviso, setAviso] = useState('');
   const [sacudir, setSacudir] = useState(false);
@@ -202,8 +180,6 @@ export default function Parrilla() {
   const ingrediente = partida?.ingredienteACocinar ?? null;
   const tipo = tipoCarne(ingrediente);
 
-  // Valores del back (mientras no llegan se usan valores neutros: la pantalla
-  // de carga se muestra hasta que cfg existe)
   const coccion = cfg ? cfg.coccion[tipo] ?? cfg.coccion.paty ?? 1 : 1; // segundos por lado
   const gracia = cfg?.gracia ?? 1; // margen para dar la vuelta / sacar antes de que se queme
   const duracionVolteo = cfg?.duracionVolteo ?? 1; // segundos que dura la animación de dar vuelta
@@ -242,7 +218,6 @@ export default function Parrilla() {
     };
   }, []);
 
-  // Leer la partida que dejó la cocina
   useEffect(() => {
     try {
       const texto = sessionStorage.getItem('partida');
@@ -258,7 +233,6 @@ export default function Parrilla() {
     return () => temporizadoresRef.current.forEach(clearTimeout);
   }, []);
 
-  // Generar las versiones cruda / cocida / quemada de la carne
   useEffect(() => {
     if (!ingrediente?.tipo) return;
     let cancelado = false;
@@ -268,11 +242,11 @@ export default function Parrilla() {
     return () => {
       cancelado = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [ingrediente?.tipo]);
 
-  /* ---------- salir de la parrilla ---------- */
 
+  //salir de parrilla
   // Guarda el resultado y vuelve a la cocina
   const volverACocina = (resultado) => {
     try {
@@ -282,7 +256,7 @@ export default function Parrilla() {
           ...partida,
           tiempo: calcularRestante(partida),
           guardadoEn: Date.now(),
-          resultadoParrilla: resultado, // 'cocinada' | 'quemada' | 'cancelada'
+          resultadoParrilla: resultado, // cocinada | quemada | cancelada
         })
       );
     } catch (e) {
@@ -310,7 +284,7 @@ export default function Parrilla() {
     );
   };
 
-  /* ---------- reloj de cocción ---------- */
+  // reloj de coccion
   useEffect(() => {
     if (!variantes || !partida || !cfg) return;
 
@@ -321,7 +295,7 @@ export default function Parrilla() {
       const dt = Math.min(0.1, (ahora - ultimo) / 1000);
       ultimo = ahora;
 
-      // Tiempo total de la partida (sigue corriendo mientras cocinás)
+      // Tiempo total (sigue corriendo mientras se cocina)
       const restante = calcularRestante(partida);
       setTiempoJuego(restante);
       if (restante <= 0 && !terminadoRef.current) {
@@ -348,10 +322,8 @@ export default function Parrilla() {
 
     raf = requestAnimationFrame(bucle);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variantes, partida, cfg]);
 
-  /* ---------- acción del jugador: dar vuelta / sacar ---------- */
   const avisar = (texto) => {
     setAviso(texto);
     setSacudir(true);
@@ -391,8 +363,6 @@ export default function Parrilla() {
       finalizar('cocinada');
     }
   };
-
-  /* ---------- valores para dibujar ---------- */
   const cocinandoLado = fase === 'lado1' || fase === 'lado2' || fase === 'volteando';
   const progreso = Math.min(1, t / coccion); // 0 → 1 (cruda → cocida)
   const quemado = t > coccion ? Math.min(1, (t - coccion) / gracia) : 0; // 0 → 1
@@ -425,7 +395,7 @@ export default function Parrilla() {
       ? 'Cocinando el primer lado…'
       : 'Cocinando el segundo lado…';
 
-  /* ---------- pantallas de espera ---------- */
+  // pantalla de espera
   if (!leida) {
     return (
       <main className="parrilla centrado">
@@ -473,9 +443,7 @@ export default function Parrilla() {
 
   return (
     <main className={`parrilla ${variantes.fallback ? 'sin-variantes' : ''}`}>
-      {/* ---------- ESCENA: la foto de la parrilla ---------- */}
       <div className="escena">
-        {/* Brasas bajo la carne: se intensifican a medida que se cocina */}
         <div
           className="brasa"
           style={{ opacity: 0.35 + 0.5 * Math.max(progreso, quemado) }}
@@ -558,7 +526,7 @@ export default function Parrilla() {
           )}
         </div>
 
-        {/* ---------- RELOJ + ESTADO (sobre la parrilla, a la derecha) ---------- */}
+        {/* RELOJ + ESTADO (sobre la parrilla, a la derecha)*/}
         <aside className="p-panel">
           <p className="p-nombre">{ingrediente?.nombre}</p>
 
@@ -594,11 +562,9 @@ export default function Parrilla() {
           </button>
         </aside>
 
-        {/* Mensaje sobre el borde de acero de la parrilla */}
         <p className={`p-guia ${listo ? 'urgente' : ''}`}>{mensajeGuia}</p>
       </div>
 
-      {/* ---------- BARRA SUPERIOR ---------- */}
       <header className="p-hud">
         <button
           className="p-volver"
@@ -616,7 +582,6 @@ export default function Parrilla() {
         </div>
       </header>
 
-      {/* ---------- AYUDA ---------- */}
       <footer className="p-ayuda">
         Esperá a que el reloj llegue a 0, dale la vuelta, y sacala del otro lado
         a tiempo. Si te pasás, ¡se quema!
@@ -624,7 +589,6 @@ export default function Parrilla() {
 
       {aviso && <div className="p-aviso">{aviso}</div>}
 
-      {/* ---------- RESULTADO ---------- */}
       {fase === 'cocinada' && (
         <div className="p-resultado">
           <div className="p-resultado-card bien">

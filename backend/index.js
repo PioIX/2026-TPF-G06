@@ -21,14 +21,11 @@ const io = new Server(server, {
   },
 });
 
-// Jugadores que hay adentro de cada sala (vive en memoria): [{ id_partida, jugadores: [id_usuario] }]
 const jugadoresEnPartida = [];
 
 const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
-// =========================================================
-// LOGIN  (page de login)
-// =========================================================
+// LOGIN 
 app.post("/login", async function (req, res) {
   try {
     let respuesta = {
@@ -50,31 +47,24 @@ app.post("/login", async function (req, res) {
   }
 });
 
-// =========================================================
-// JUEGO  (pages: partidas, parrilla, milkshakes, freidora)
-// Los sabores y los fritos salen de la tabla Ingredientes:
-//   seccion = 'milkshake' -> sabores de milkshake (tipo = imagen del milkshake terminado)
-//   seccion = 'papas'     -> cosas de la freidora (tipo = imagen del cartón lleno)
-// =========================================================
 
 // Configuración del juego
 const CONFIG_JUEGO = {
-  tiempoPartida: 135,     // segundos de toda la partida: 2 minutos y 15 segundos
-  maxHamburguesas: 2,     // la partida termina al entregar esta cantidad de hamburguesas
-  // Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (freidora).
-  // Estos máximos son la cantidad tope: cada pedido pide entre 1 y el máximo.
-  maxMilkshakes: 2,       // cantidad máxima de milkshakes por pedido
-  maxFritos: 2,           // cantidad máxima de fritos por pedido
-  tiempoFrituraMs: 5000,  // cuánto tardan en freírse las papas (page /freidora)
-  // Page /parrilla (segundos)
+  tiempoPartida: 135,     
+  maxHamburguesas: 2,    
+  maxMilkshakes: 2,      
+  maxFritos: 2,          
+  tiempoFrituraMs: 5000, 
+
+  // Page /parrilla 
   parrilla: {
-    coccion: { paty: 6, pollo: 6, veggie: 4 }, // lo que tarda en cocinarse CADA lado
-    gracia: 3.5,           // margen, una vez cocido el lado, antes de que se queme
-    duracionVolteo: 0.8,   // duración de la animación de dar vuelta
-    esperaCocinada: 1.8,   // tiempo mostrando "¡en su punto!" antes de volver
-    esperaQuemada: 2.6,    // tiempo mostrando "¡se quemó!" antes de volver
+    coccion: { paty: 6, pollo: 6, veggie: 4 }, 
+    gracia: 3.5,           
+    duracionVolteo: 0.8,   
+    esperaCocinada: 1.8,   
+    esperaQuemada: 2.6,    
   },
-  // Los ids son los que usa la page /freidora
+  // Los ids de /freidora
   tamanosFritos: [
     { id: 'pequeno', nombre: 'Pequeño' },
     { id: 'mediano', nombre: 'Mediano' },
@@ -95,14 +85,13 @@ const capitalizarJuego = (texto = '') =>
 
 const slugJuego = (texto = '') => normalizarJuego(texto).replace(/\s+/g, '-');
 
-// Las imágenes están en /public del front: se les agrega la barra inicial si falta
 const rutaImagenJuego = (tipo) => {
   if (!tipo) return '';
   const t = String(tipo);
   return /^(\/|https?:|data:)/.test(t) ? t : `/${t}`;
 };
 
-// Solo decoración para el ticket (la tabla no tiene columna de emoji)
+// Solo decoración para el ticket 
 const EMOJI_SABORES = {
   vainilla: '🍦',
   chocolate: '🍫',
@@ -119,7 +108,7 @@ const esFritoJuego = (ing) =>
   normalizarJuego(ing?.seccion) === 'papas' ||
   /(^|\s)papas?(\s|$)/.test(normalizarJuego(ing?.nombre));
 
-// Ids estables: son los mismos que reciben las pages /milkshakes y /freidora
+
 const idSaborJuego = (ing) => {
   const n = normalizarJuego(ing?.nombre).replace(/milkshake|batido/g, '').trim();
   if (n.includes('vainilla')) return 'vainilla';
@@ -154,7 +143,7 @@ const armarFritos = (ingredientes) =>
     imagen: rutaImagenJuego(ing.tipo),
   }));
 
-// Todos los ingredientes (page partidas)
+// Todos los ingredientes 
 app.get('/api/ingredientes', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -211,7 +200,7 @@ app.get('/api/milkshakes', async (req, res) => {
   }
 });
 
-// Cosas de la freidora disponibles (pages partidas y freidora)
+// Cosas de la freidora 
 app.get('/api/fritos', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -223,9 +212,6 @@ app.get('/api/fritos', async (req, res) => {
 });
 
 // Milkshakes y fritos ALEATORIOS para un pedido nuevo (page partidas):
-// sabores pedidos, fritos pedidos y el tamaño de cada frito, en el mismo orden.
-// Todo pedido lleva SIEMPRE al menos 1 milkshake y 1 frito (entre 1 y el máximo
-// de CONFIG_JUEGO). Solo quedan en 0 si la tabla Ingredientes no tiene ninguno cargado.
 app.get('/api/extras-pedido', async (req, res) => {
   try {
     const ingredientes = await realizarQuery('SELECT * FROM Ingredientes');
@@ -256,15 +242,12 @@ app.get('/api/extras-pedido', async (req, res) => {
   }
 });
 
-// Posiciones de las bandejas del fondo, en % del escenario (page partidas, tabla Bandejas).
-// Las de ingredientes traen id_ingrediente; las máquinas traen "codigo"
-// ('maquina-milkshake', 'freidora'). Ver bandejas.sql
 app.get('/api/bandejas', async (req, res) => {
   try {
     const filas = await realizarQuery(
       'SELECT id_ingrediente, codigo, pos_left, pos_top, pos_width, pos_height FROM Bandejas'
     );
-    // MySQL devuelve los DECIMAL como texto: se pasan a número
+  
     res.json(
       filas.map((f) => ({
         id_ingrediente: f.id_ingrediente,
@@ -281,8 +264,6 @@ app.get('/api/bandejas', async (req, res) => {
   }
 });
 
-// Sabores de la máquina de milkshakes (page milkshakes): nombre e imagen desde Ingredientes
-// + color y posiciones desde la tabla SaboresMilkshake (ver milkshakes.sql)
 app.get('/api/maquina-milkshake', async (req, res) => {
   try {
     const filas = await realizarQuery(
@@ -314,11 +295,7 @@ app.get('/api/maquina-milkshake', async (req, res) => {
   }
 });
 
-// =========================================================
-// SALAS  (page sala)
-// =========================================================
-
-// Lista de partidas; "ocupada" = hay algún jugador adentro (esperando o jugando)
+// SALAS  
 app.get("/sala/partidas", async function (req, res) {
   try {
     const partidas = await realizarQuery(`
@@ -387,7 +364,6 @@ app.post("/sala/crear-partida", async function (req, res) {
   }
 });
 
-// Borra filas de una tabla relacionada con la partida; si la tabla no existe, se ignora
 async function borrarRelacionadas(query, params) {
   try {
     await realizarQuery(query, params);
@@ -426,7 +402,6 @@ app.delete("/sala/eliminar-partida/:id_partida", async function (req, res) {
       });
     }
 
-    // Primero lo que depende de la partida (claves foráneas), después la partida
     await borrarRelacionadas("DELETE FROM PuntajesPartida WHERE id_partida = ?", [id_partida]);
     await borrarRelacionadas("DELETE FROM UsuarioXPartida WHERE id_partida = ?", [id_partida]);
     await realizarQuery("DELETE FROM Partidas WHERE id_partida = ?", [id_partida]);
@@ -448,57 +423,20 @@ app.delete("/sala/eliminar-partida/:id_partida", async function (req, res) {
   }
 });
 
-// =========================================================
-// RANKING  (page ranking; tabla PuntajesPartida: una fila por jugador y por sala)
-//  - El ranking es global: junta los puntajes de TODAS las salas del mes actual y
-//    muestra a cada jugador una sola vez, con la SUMA de sus puntajes y hamburguesas.
-//  - El empleado del mes es el primero de ese ranking: cambia solo cuando alguien lo supera.
-//  - Cada partida que juega un jugador en una sala se SUMA a su fila de esa sala
-//    (puntaje y hamburguesas acumulados); los jugadores de las otras salas no se tocan.
-// =========================================================
-
-// Segundos máximos entre que termina un jugador y el otro para que cuenten como la misma partida
+// RANKING  
 const VENTANA_RONDA_SEG = 240;
 
-// Solo cuenta el mes actual. Para un ranking de todos los tiempos, dejá este string vacío ('').
-const FILTRO_MES = `WHERE p.fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-    AND p.fecha < DATE_FORMAT(CURDATE() + INTERVAL 1 MONTH, '%Y-%m-01')`;
-
-// La columna "fecha" guarda cuándo se anotó el puntaje (sirve para saber de qué mes es).
-// Al iniciar el servidor se revisa si existe y, solo si falta, se crea.
-(async () => {
-  try {
-    const existe = await realizarQuery(
-      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PuntajesPartida' AND COLUMN_NAME = 'fecha'`
-    );
-
-    if (existe.length === 0) {
-      await realizarQuery(
-        "ALTER TABLE PuntajesPartida ADD COLUMN fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
-      );
-      console.log("✅ Se agregó la columna fecha a PuntajesPartida");
-    }
-  } catch (error) {
-    console.error("⚠️ No se pudo revisar/agregar la columna fecha en PuntajesPartida:", error.message);
-  }
-})();
-
-// Ranking global: puntaje y hamburguesas TOTALES de cada jugador (suma de todas sus salas
-// del mes), de mayor a menor. Ante empate gana quien hizo más hamburguesas.
-async function obtenerRankingMensual() {
+async function obtenerRanking() {
   const filas = await realizarQuery(
     `SELECT u.id_usuario, u.nombre,
             SUM(p.puntaje) AS puntaje,
             SUM(p.hamburguesas) AS hamburguesas
      FROM PuntajesPartida p
      JOIN Usuarios u ON u.id_usuario = p.id_usuario
-     ${FILTRO_MES}
      GROUP BY u.id_usuario, u.nombre
      ORDER BY SUM(p.puntaje) DESC, SUM(p.hamburguesas) DESC, u.id_usuario ASC`
   );
 
-  // MySQL devuelve las SUM como texto: se pasan a número
   return filas.map((f) => ({
     id_usuario: f.id_usuario,
     nombre: f.nombre,
@@ -507,11 +445,9 @@ async function obtenerRankingMensual() {
   }));
 }
 
-// Guarda el puntaje del jugador en SU fila de esa sala (la crea si no existe)
 async function guardarPuntaje(id_partida, id_usuario, puntaje, hamburguesas) {
   const filas = await realizarQuery(
-    `SELECT id_puntaje,
-            (fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS del_mes
+    `SELECT id_puntaje
      FROM PuntajesPartida
      WHERE id_partida = ? AND id_usuario = ?
      ORDER BY id_puntaje ASC
@@ -528,43 +464,24 @@ async function guardarPuntaje(id_partida, id_usuario, puntaje, hamburguesas) {
     return;
   }
 
-  const actual = filas[0];
-
-  if (Number(actual.del_mes) === 1) {
-    // Misma partida del mes: se SUMA al puntaje y a las hamburguesas ya guardadas
-    await realizarQuery(
-      `UPDATE PuntajesPartida
-       SET puntaje = puntaje + ?, hamburguesas = hamburguesas + ?, fecha = NOW()
-       WHERE id_puntaje = ?`,
-      [puntaje, hamburguesas, actual.id_puntaje]
-    );
-  } else {
-    // Lo guardado es de un mes anterior: se arranca de cero con esta partida
-    await realizarQuery(
-      `UPDATE PuntajesPartida
-       SET puntaje = ?, hamburguesas = ?, fecha = NOW()
-       WHERE id_puntaje = ?`,
-      [puntaje, hamburguesas, actual.id_puntaje]
-    );
-  }
+  await realizarQuery(
+    `UPDATE PuntajesPartida
+     SET puntaje = puntaje + ?, hamburguesas = hamburguesas + ?
+     WHERE id_puntaje = ?`,
+    [puntaje, hamburguesas, filas[0].id_puntaje]
+  );
 }
 
-// Quiénes ya mandaron su puntaje en la partida ACTUAL de cada sala (vive en memoria, igual que
-// jugadoresEnPartida). Sirve para saber si ya terminaron los dos, también cuando la sala
-// vuelve a jugar. id_partida -> { tiempos: Map(id_usuario -> ms), ultimo: ms }
 const rondasEnCurso = new Map();
 
 function registrarEnvio(id_partida, id_usuario) {
   const ahora = Date.now();
   let ronda = rondasEnCurso.get(id_partida);
 
-  // El mismo jugador mandando dos veces seguidas (doble envío): no abre una ronda nueva
   if (ronda && ahora - (ronda.tiempos.get(id_usuario) || 0) < 15000) {
     return { repetido: true, completo: ronda.tiempos.size >= 2 };
   }
 
-  // Ronda nueva si no había, si la anterior es muy vieja o si este jugador ya había mandado
-  // en la anterior (es decir, la sala volvió a jugar)
   const vieja = !ronda || ahora - ronda.ultimo > VENTANA_RONDA_SEG * 1000;
   if (vieja || ronda.tiempos.has(id_usuario)) {
     ronda = { tiempos: new Map(), ultimo: 0 };
@@ -579,11 +496,11 @@ function registrarEnvio(id_partida, id_usuario) {
 const rondaCompleta = (id_partida) =>
   (rondasEnCurso.get(id_partida)?.tiempos.size || 0) >= 2;
 
-// Ranking del mes + si los dos jugadores de esta sala ya terminaron
+// Ranking + si los dos jugadores de esta sala ya terminaron
 app.get("/api/ranking/:id_partida", async (req, res) => {
   try {
     const id_partida = Number(req.params.id_partida) || 0;
-    const ranking = await obtenerRankingMensual();
+    const ranking = await obtenerRanking();
     res.json({ ok: true, ranking, completo: rondaCompleta(id_partida) });
   } catch (error) {
     console.error("❌ Error al obtener ranking:", error.message);
@@ -591,10 +508,9 @@ app.get("/api/ranking/:id_partida", async (req, res) => {
   }
 });
 
-// Empleado del mes: el primero del ranking (el mayor puntaje de todas las salas)
 app.get("/api/empleado-del-mes", async (req, res) => {
   try {
-    const ranking = await obtenerRankingMensual();
+    const ranking = await obtenerRanking();
     res.json({ ok: true, empleado: ranking[0] || null });
   } catch (error) {
     console.error("❌ Error al obtener empleado del mes:", error.message);
@@ -602,12 +518,10 @@ app.get("/api/empleado-del-mes", async (req, res) => {
   }
 });
 
-// =========================================================
 // SOCKET.IO  (un solo manejador de conexión)
-// =========================================================
 io.on("connection", (socket) => {
 
-  // ---------- Registro (page de registro) ----------
+  // registro
   socket.on("register", async (data, callback) => {
     try {
       // Verificar si el usuario o mail ya existe
@@ -642,9 +556,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ---------- Salas (page sala) ----------
-
-  // Notifica a todos los usuarios para que ejecuten cargarPartidas()
+  //salas
   socket.on("crearSALA", (dataPartida) => {
     io.emit("salaCreada", dataPartida);
   });
@@ -653,22 +565,18 @@ io.on("connection", (socket) => {
     socket.join(`partida_${id_partida}`);
     socket.data.sala = { id_partida, id_usuario };
 
-    // Buscar la sala; si no existe, se crea
     let partida = jugadoresEnPartida.find(p => p.id_partida === id_partida);
     if (!partida) {
       partida = { id_partida, jugadores: [] };
       jugadoresEnPartida.push(partida);
     }
-
-    // Evitamos duplicar al usuario
+  
     if (!partida.jugadores.includes(id_usuario)) {
       partida.jugadores.push(id_usuario);
     }
 
-    // Avisar a todos que cambió quién está adentro (para bloquear / liberar el borrado)
     io.emit("salaActualizada", { id_partida });
 
-    // Con 2 jugadores arranca la partida
     if (partida.jugadores.length === 2) {
       io.to(`partida_${id_partida}`).emit("iniciar_partida", {
         id_partida,
@@ -686,7 +594,6 @@ io.on("connection", (socket) => {
     if (partida) {
       partida.jugadores = partida.jugadores.filter(id => id !== id_usuario);
 
-      // Si la sala queda vacía, eliminar el objeto del arreglo
       if (partida.jugadores.length === 0) {
         const indice = jugadoresEnPartida.findIndex(p => p.id_partida === id_partida);
         if (indice !== -1) jugadoresEnPartida.splice(indice, 1);
@@ -695,9 +602,6 @@ io.on("connection", (socket) => {
 
     io.emit("salaActualizada", { id_partida });
   });
-
-  // Si alguien cierra la pestaña mientras espera, se libera su lugar
-  // (si la sala ya está completa y jugando, se conserva hasta que termine)
   socket.on("disconnect", () => {
     const sala = socket.data.sala;
     if (!sala) return;
@@ -713,11 +617,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ---------- Ranking (page ranking) ----------
-  // La page manda el puntaje TOTAL (pedidos + bonus por los segundos que sobraron)
-  // y cuántas hamburguesas entregó bien el jugador.
-  // Se actualiza SU fila de esa sala en PuntajesPartida y se devuelve el ranking global del mes
-  // + si los dos jugadores de esta sala ya terminaron.
+  //Ranking 
   socket.on("enviar_puntaje", async ({ id_partida, id_usuario, puntaje, hamburguesas }, callback) => {
     try {
       const idPartida = Number(id_partida);
@@ -735,9 +635,8 @@ io.on("connection", (socket) => {
         await guardarPuntaje(idPartida, idUsuario, puntos, cantidadHamburguesas);
       }
 
-      const ranking = await obtenerRankingMensual();
+      const ranking = await obtenerRanking();
 
-      // Cuando los dos ya mandaron su puntaje la partida terminó: se libera la sala
       if (completo) {
         const indice = jugadoresEnPartida.findIndex((p) => p.id_partida === id_partida);
         if (indice !== -1) {

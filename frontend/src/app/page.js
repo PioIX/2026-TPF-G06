@@ -12,10 +12,6 @@ export default function Home() {
   // Limpia el temporizador si se sale de la página antes de tiempo
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const handleLogin = () => {
-    router.push('/login');
-  };
-
   // Al tocar el diner se ilumina y, un instante después, entra al login
   const handleDiner = () => {
     if (encendido) return;

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import './login.css';
-//import { BACKEND_URL } from '../../ip/page';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 

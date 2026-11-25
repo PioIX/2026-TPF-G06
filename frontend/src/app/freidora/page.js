@@ -4,36 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './FreidoraStation.module.css';
-//import { BACKEND_URL } from '../../ip/page';
 const API_URL = 'http://192.168.1.8:4000/api';
-/* ============ CONFIGURACIÓN ============
-   Todas las medidas están en píxeles de la imagen Freidora.png (1671 x 941).
-   Cada caja es [x, y, ancho, alto]. El componente las convierte a % solo.
 
-   PASO 1 (viene del back, ver los endpoints de index.js):
-     - GET /api/config-juego -> tamaños de papas (ids y nombres) y tiempo de fritura
-     - GET /api/fritos       -> imagen de la pila de papas (columna "tipo" de Ingredientes)
-   Lo que sigue en el front por ahora: las posiciones y medidas dibujadas sobre Freidora.png. */
 const W = 1671;
 const H = 941;
-const FONDO = '/Freidora.png';                      // ya SIN la bandeja de la derecha
-const IMG_COCIDAS = '/papas-fritas-nucleo.png';     // relleno de la canasta al terminar
+const FONDO = '/Freidora.png';                      
+const IMG_COCIDAS = '/papas-fritas-nucleo.png';     
 const IMG_CARTON_VACIO = '/cartonPapas.png';
 const IMG_CARTON_LLENO = '/papas.png';
 
 const VOLVER_A = '/partidas';
 
-// Las pilas mantienen siempre su proporción (alto = ancho x proporción)
-const PROPORCION = 0.698;               // alto / ancho de papasRicas.png (recortada)
+const PROPORCION = 0.698;              
 const PROPORCION_FRITA = PROPORCION;
 const pila = (cx, cy, ancho, prop = PROPORCION) => [cx - ancho / 2, cy - (ancho * prop) / 2, ancho, ancho * prop];
 
-const DURACION_VUELO = 1200;              // cuánto tardan las papas en viajar (ms)
-const MESADA_PAPAS = [12, 205, 210, 210]; // papas crudas de la mesada (zona tocable)
+const DURACION_VUELO = 1200;              
+const MESADA_PAPAS = [12, 205, 210, 210]; // papas crudas de la mesada 
 
-/* ---- Tres cartones vacíos en columna (donde estaba la bandeja), uno por tamaño ----
-   cx = centro horizontal de la columna, w = ancho, base = borde inferior de cada cartón.
-   Las claves son los ids de los tamaños que manda el back (pequeno, mediano, grande). */
 const COLUMNA_CX = 1450;
 const CARTONES = {
   pequeno: { w: 125, base: 355 },
@@ -46,20 +34,22 @@ const cartonVacioCaja = (t) => {
   const h = w * 0.875;
   return [COLUMNA_CX - w / 2, base - h, w, h];
 };
-// el cartón lleno trae las papas sobresaliendo, por eso es más alto (el cuerpo coincide con el vacío)
+
+
 const cartonLlenoCaja = (t) => {
   const { w, base } = CARTONES[t];
   const w2 = w * 1.063;
   const h2 = w * 1.238;
   return [COLUMNA_CX - w2 / 2, base - h2, w2, h2];
 };
-// donde aterrizan las papas: la boca del cartón
+
+// donde aterrizan las papas
 const bocaCarton = (t) => {
   const [x, y, w, h] = cartonVacioCaja(t);
   return pila(x + w / 2, y + h * 0.45, w * 0.8, PROPORCION_FRITA);
 };
 
-// Ticket (arriba, sobre la mesada de la derecha). Más alto para que entren varios pedidos.
+
 const TICKET = [1205, 12, 300, 185];
 
 // region = recorte de la canasta (incluye el mango) para poder "levantarla"
@@ -82,7 +72,7 @@ const CANASTAS = [
 const SUBE_ESCALA = 1.12;
 const SUBE_DY = -14;
 
-/* ============ AYUDAS ============ */
+/* ayuda */
 const caja = ([x, y, w, h]) => ({
   left: `${(x / W) * 100}%`,
   top: `${(y / H) * 100}%`,
@@ -123,11 +113,7 @@ function leerPartida() {
   }
 }
 
-/* ============ TIEMPO Y PUNTAJE DE LA PARTIDA ============
-   Mismo formato que en /parrilla: ◷ MM:SS y ★ puntaje.
-   El tiempo se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
-   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn).
-   El puntaje es el que tenía la partida al salir (partida.puntaje). */
+
 const formatearTiempo = (segundos) => {
   const minutos = Math.floor(segundos / 60);
   const resto = segundos % 60;
@@ -151,7 +137,7 @@ function leerPuntaje() {
 
 let contador = 0;
 
-/* ============ PAPAS EN VUELO ============ */
+/* papas volando */
 function Vuelo({ tipo, imagen, desde, hasta, onLlego, onFin }) {
   const ref = useRef(null);
   const llego = useRef(onLlego);
@@ -160,7 +146,6 @@ function Vuelo({ tipo, imagen, desde, hasta, onLlego, onFin }) {
   fin.current = onFin;
 
   useEffect(() => {
-    // La pila sube en arco y baja; siempre conserva su proporción
     const prop = desde[3] / desde[2];
     const ancho = ((desde[2] + hasta[2]) / 2) * 1.12;
     const medio = [
@@ -194,11 +179,10 @@ function Vuelo({ tipo, imagen, desde, hasta, onLlego, onFin }) {
       .then(() => fin.current?.())
       .catch(() => {});
     return () => anim.cancel();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
   return (
     <div ref={ref} className={styles.vuelo} style={caja(desde)}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imagen}
         alt=""
@@ -209,27 +193,7 @@ function Vuelo({ tipo, imagen, desde, hasta, onLlego, onFin }) {
   );
 }
 
-/**
- * Flujo (se repite una vez por cada pedido de papas del ticket):
- * tocás las papas de la mesada -> viajan a la freidora y se fríen unos segundos
- * -> la canasta sube -> elegís el tamaño del cartón (según el ticket) -> tocás la canasta
- * y las papas viajan al cartón -> tocás el paquete de papas para entregarlo.
- * Cuando entregaste todos los pedidos del ticket vuelve a /partidas.
- *
- * Los pedidos salen de la partida guardada por /partidas (fritosPedidos, tamanosFritos
- * y fritosListos). Al volver, el componente deja actualizado fritosListos y
- * resultadoFreidora = 'cocinada' en esa partida.
- *
- * Arriba a la izquierda se muestra el tiempo que queda de la partida y el puntaje
- * (leídos de la partida guardada).
- *
- * Props (todas opcionales; solo se usan si no hay partida guardada):
- *  - pedidos:       ['pequeno' | 'mediano' | 'grande', ...]  (un tamaño por pedido)
- *  - pedido:        { tamano, numero? }  (un solo pedido, formato anterior)
- *  - onListo():     las papas llegaron al cartón
- *  - onEntregar({ tamano, pedido, correcto, entregados, total }): cada vez que se entrega un paquete
- *  - volverA:       ruta de regreso (por defecto '/partidas')
- */
+
 export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo, onEntregar, volverA = VOLVER_A }) {
   const router = useRouter();
 
@@ -296,7 +260,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     };
   }, []);
 
-  // Los pedidos se arman en el cliente (usa sessionStorage y azar), para no romper la hidratación.
+  // Los pedidos se arman en el cliente (usa sessionStorage y azar)
   // Se arman cuando ya llegaron los tamaños del back.
   useEffect(() => {
     if (!datos) return;
@@ -323,13 +287,11 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     }
 
     setPedidos(lista.map((t) => ({ tamano: t, hecho: false })));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datos]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Tiempo y puntaje de la partida: se leen al montar (sessionStorage solo existe en el
-  // navegador) y el tiempo se actualiza cada segundo
+  // Tiempo y puntaje de la partida y el tiempo se actualiza cada segundo
   useEffect(() => {
     const actualizar = () => {
       setTiempo(leerTiempoRestante());
@@ -357,7 +319,6 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
       }
     }
     router.push(volverA);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiempo]);
 
   const cambiar = (i, estado) => setCanastas((prev) => prev.map((e, k) => (k === i ? estado : e)));
@@ -480,7 +441,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     }
   }
 
-  /* ---------- PANTALLAS DE ERROR / CARGA (después de todos los hooks) ---------- */
+  /* PANTALLAS DE ERROR / CARGA  */
   if (errorDatos) {
     return (
       <div className={styles.stage}>
@@ -497,12 +458,7 @@ export default function FreidoraStation({ pedido, pedidos: pedidosProp, onListo,
     );
   }
 
-  /* ---------- PASO A PASO (guía para el jugador) ----------
-     Pasos:   1. Tocar las papas de la mesada
-              2. Elegir el tamaño del cartón (cuando las papas ya están fritas)
-              3. Tocar la canasta de la freidora
-              4. Entregar el paquete de papas
-     Entre un paso y otro se "narra" lo que está pasando (echando, friendo, llenando...). */
+  /* paso a paso: guia para el user */
   const paso = (n, texto) => `Paso ${n} de 4 · ${texto}`;
 
   const mensaje =

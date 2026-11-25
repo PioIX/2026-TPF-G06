@@ -4,22 +4,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import styles from './MilkshakeStation.module.css';
-//import { BACKEND_URL } from '../../ip/page';
 
 const API_URL = 'http://192.168.1.8:4000/api';
-
-/* ============ CONFIGURACIÓN ============
-   Todo en % del escenario (la imagen de la máquina, 1674 x 940).
-
-   Los SABORES ahora vienen del back (GET /api/maquina-milkshake), armados con la
-   tabla Ingredientes (nombre e imagen del milkshake terminado, columna "tipo") y
-   la tabla SaboresMilkshake (ver milkshakes.sql). Cada sabor trae:
-     id     = el mismo id que guarda /partidas (vainilla, chocolate, cookies-cream, frutilla)
-     nombre, emoji, color (del líquido), puntos (color de los puntitos, o null)
-     x      = posición izquierda del vaso bajo el dispensador
-     boton  = zona tocable del dispensador [left, ancho]
-     imagen = imagen del milkshake terminado
-   Lo que sigue en el front: las medidas de la máquina y de los vasos de vidrio. */
 
 const Y_MAQUINA = 47.0;                 // top del vaso vacío en la máquina
 const ANCHO_VASO = 7.5;                 // ancho del vaso vacío
@@ -27,7 +13,7 @@ const ALTO_VASO = 31.4;                 // alto del vaso vacío
 const VASOS = [14.6, 22.4, 30.3, 38.4].map((left) => ({ left, top: 53.7 }));
 const PUNTOS = [[25,70],[50,110],[80,80],[40,150],[70,140],[60,50],[35,100],[90,120]];
 
-// Tamaño del milkshake terminado (podés agrandarlo o achicarlo con ANCHO_FINAL)
+// Tamaño del milkshake terminado (se agranda o achica con ANCHO_FINAL)
 const ANCHO_FINAL = 11;                               // % del ancho del escenario
 const ALTO_FINAL = ANCHO_FINAL * (1199 / 600) * (1674 / 940); // % del alto del escenario
 const BASE_FINAL = 0.985;                               // dónde termina la base del vaso en el PNG
@@ -55,11 +41,6 @@ function guardarProgreso(listos, completo) {
   } catch (e) {}
 }
 
-/* ============ TIEMPO Y PUNTAJE DE LA PARTIDA ============
-   Mismo formato que en /parrilla: ◷ MM:SS y ★ puntaje.
-   El tiempo se calcula igual que lo hace /partidas al volver: el tiempo que tenía al salir
-   menos los segundos que pasaron desde entonces (partida.tiempo y partida.guardadoEn).
-   El puntaje es el que tenía la partida al salir (partida.puntaje). */
 const formatearTiempo = (segundos) => {
   const minutos = Math.floor(segundos / 60);
   const resto = segundos % 60;
@@ -89,9 +70,6 @@ function leerPuntaje() {
   }
 }
 
-/* Cada vaso maneja su propia animación, así pueden convivir varios a la vez.
-   Fases: viajando -> llenando -> listo
-   "s" es el sabor completo que vino del back. */
 function Vaso({ id, s, slot, fase, onFase }) {
   const reactId = useId().replace(/:/g, '');
   const ref = useRef(null);
@@ -158,26 +136,6 @@ function Vaso({ id, s, slot, fase, onFase }) {
   );
 }
 
-/**
- * Flujo: tocás un vaso -> tocás el sabor en la máquina -> el vaso viaja, se llena
- * y se transforma en el milkshake terminado.
- *
- * Se pueden servir varios vasos al mismo tiempo (uno por dispensador y uno por
- * vaso de vidrio). Cada uno avanza por su cuenta y se entrega tocándolo.
- *
- * El ticket de la esquina muestra los sabores del pedido (los lee de la partida
- * guardada) y va tachando los que ya entregaste. Se piden en orden: si tocás un
- * sabor que no es el que toca, aparece un popup avisando que está mal, NO se
- * llena el vaso y se suelta la selección. Cuando se entrega el último, se guarda
- * el progreso y se vuelve a la cocina principal (/partidas).
- *
- * Arriba a la izquierda se muestra el tiempo que queda de la partida y el puntaje
- * (leídos de la partida guardada).
- *
- * Props:
- *  - onListo(sabor):    cuando un milkshake terminó de servirse
- *  - onEntregar(sabor): cuando el jugador toca un milkshake terminado (se retira de la máquina)
- */
 export default function MilkshakeStation({ onListo, onEntregar }) {
   const router = useRouter();
 
@@ -224,7 +182,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     };
   }, []);
 
-  // sessionStorage solo existe en el navegador, por eso se lee después de montar
+  // sessionStorage solo existe en el navegador, por eso se lee después de levantar
   // (y cuando ya llegaron los sabores, para quedarse solo con los que existen)
   useEffect(() => {
     if (!catalogo) return;
@@ -235,8 +193,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     });
   }, [catalogo]);
 
-  // Tiempo y puntaje de la partida: se leen al montar (sessionStorage solo existe en el
-  // navegador) y el tiempo se actualiza cada segundo
+
   useEffect(() => {
     const actualizar = () => {
       setTiempo(leerTiempoRestante());
@@ -251,7 +208,6 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
   useEffect(() => {
     if (tiempo !== 0) return;
     router.push('/partidas');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiempo]);
 
   const slotOcupado = (i) => trabajos.some((t) => t.slot === i);
@@ -315,7 +271,7 @@ export default function MilkshakeStation({ onListo, onEntregar }) {
     if (completo) router.push('/partidas');
   }
 
-  /* ---------- PANTALLAS DE ERROR / CARGA (después de todos los hooks) ---------- */
+  /* pantalla de error! */
   if (errorDatos) {
     return (
       <div className={styles.stage}>

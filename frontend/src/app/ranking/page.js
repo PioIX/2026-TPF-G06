@@ -1,19 +1,5 @@
 'use client';
 
-// Va en: app/ranking/page.js
-// Uso:
-//   /ranking                    -> al terminar una partida (envía tu puntaje y muestra el ranking)
-//   /ranking?id_partida=5       -> solo mira el ranking guardado de esa sala (no hace falta que nadie esté online)
-//
-// Lo que deja la página de partidas en sessionStorage ("resultadoPartida"):
-//   puntaje           -> puntos ganados con los pedidos (sin el bonus de tiempo)
-//   hamburguesas      -> cuántas hamburguesas entregó bien
-//   segundosSobrantes -> segundos que sobraron al terminar la última hamburguesa
-//   bonusTiempo       -> puntos que dan esos segundos
-// Acá se le suma el bonus al puntaje y se manda todo al back (evento "enviar_puntaje").
-//
-// La imagen de fondo de "Empleado del mes" va en: public/empleado-del-mes.png
-
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
@@ -93,7 +79,6 @@ export default function Ranking() {
   };
 
   useEffect(() => {
-    // Si viene ?id_partida=X en la URL, solo se mira el ranking de esa sala
     const params = new URLSearchParams(window.location.search);
     const idQuery = Number(params.get('id_partida'));
 
@@ -120,7 +105,6 @@ export default function Ranking() {
       return;
     }
 
-    // Solo se envía el puntaje si venimos de jugar (hay resultado y no se pidió otra sala)
     const debeEnviar = Boolean(resultado) && !idQuery;
 
     if (debeEnviar && !id_usuario) {
@@ -131,7 +115,6 @@ export default function Ranking() {
       return;
     }
 
-    // Modo solo lectura: se muestra lo que ya está guardado en la base de datos
     if (!debeEnviar) {
       pedirRanking(id_partida).finally(() => setCargando(false));
       return;

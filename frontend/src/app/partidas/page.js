@@ -1594,7 +1594,6 @@ export default function JuegoHamburguesa() {
           ))}
         </div>
 
-        {/* ---------- BANDEJAS (zonas clickeables sobre el fondo) ---------- */}
         {asignadas.map(({ bandeja, ingrediente }) =>
           botonIngrediente(ingrediente, {
             left: `${bandeja.left}%`,
@@ -1765,7 +1764,7 @@ export default function JuegoHamburguesa() {
         />
       )}
 
-      {/* ---------- POPUP DE MENSAJES (reemplaza a los alert) ---------- */}
+      {/* POPUP DE MENSAJES */}
       <Popup
         open={!!dialogo}
         modal
